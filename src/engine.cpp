@@ -27,6 +27,8 @@ Engine::~Engine() = default; // Will later handle waiting for threads and memory
 void Engine::run(Application& application) {
 	TRIVIAL_PROFILE_THREAD("Main Thread");
 
+	m_time.reset();
+
 	{
 		TRIVIAL_PROFILE_SCOPE("Application Start")
 		application.onStart();
@@ -34,6 +36,7 @@ void Engine::run(Application& application) {
 
 	while (!m_window.shouldClose()) {
 		TRIVIAL_PROFILE_FRAME("Frame");
+		m_time.tick();
 
 		internal::platform::Window::pollEvents();
 

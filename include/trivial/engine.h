@@ -8,6 +8,7 @@
 #include <trivial/internal/platform/window.h>
 #include <trivial/render/renderer.h>
 #include <trivial/scene/scene.h>
+#include <trivial/time/engine_time.h>
 
 namespace trivial {
 
@@ -37,6 +38,7 @@ public:
 
 private:
 	GraphicsApi m_requestedGraphicsApi = GraphicsApi::Auto;
+	EngineTime m_time;
 
 	internal::platform::Window m_window;
 	internal::gpu::Context m_gpu;
