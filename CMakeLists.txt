@@ -22,6 +22,7 @@ option(TRIVIAL_ENABLE_TRACY "Enable Tracy profiling" OFF)
 
 set(TRIVIAL_PRIVATE_SOURCES
 	src/engine.cpp
+	src/application.cpp
 	src/core/log.cpp
 	src/ecs/world.cpp
 	src/gpu/context.cpp

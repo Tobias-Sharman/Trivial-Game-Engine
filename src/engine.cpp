@@ -24,27 +24,32 @@ Engine::Engine(const EngineConfig* config)
 
 Engine::~Engine() = default; // Will later handle waiting for threads and memory freeing
 
-void Engine::run() {
+void Engine::run(Application& application) {
 	TRIVIAL_PROFILE_THREAD("Main Thread");
+
+	{
+		TRIVIAL_PROFILE_SCOPE("Application Start")
+		application.onStart();
+	}
 
 	while (!m_window.shouldClose()) {
 		TRIVIAL_PROFILE_FRAME("Frame");
 
 		internal::platform::Window::pollEvents();
 
-		ecs::World& world = m_scene.world();
-
 		{
-			TRIVIAL_PROFILE_SCOPE("Scene Update");
+			TRIVIAL_PROFILE_SCOPE("Application Update");
 
-			for (int i = 0; i < 1000; ++i) {
-				const ecs::Entity kEntity = world.create();
-				world.destroy(kEntity);
-			}
+			application.onUpdate();
 		}
 
 		// Later begin and end frame stuff here too ig
 		// Also maybe a render scope for profiling, see when having multithreading
+	}
+
+	{
+		TRIVIAL_PROFILE_SCOPE("Application End");
+		application.onEnd();
 	}
 }
 

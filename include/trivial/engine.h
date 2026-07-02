@@ -1,6 +1,7 @@
 #ifndef TRIVIAL_ENGINE_H
 #define TRIVIAL_ENGINE_H
 
+#include <trivial/application.h>
 #include <trivial/engine_config.h>
 #include <trivial/core/graphics_api.h>
 #include <trivial/internal/gpu/context.h>
@@ -23,7 +24,7 @@ public:
 	Engine(Engine&&) = delete;
 	Engine& operator=(Engine&&) = delete;
 
-	void run();
+	void run(Application& application);
 
 	[[nodiscard]] GraphicsApi requestedGraphicsApi() const { return m_requestedGraphicsApi; }
 	[[nodiscard]] GraphicsApi activeGraphicsApi() const { return m_gpu.activeGraphicsApi(); }
