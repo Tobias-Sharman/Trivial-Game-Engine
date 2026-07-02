@@ -20,7 +20,7 @@ Engine::Engine(const EngineConfig* config)
     , m_window(config)
     , m_gpu(config, &m_window)
     , m_renderer(&m_gpu) {
-} // TODO: Add scene into here when having not just one scene
+} // TODO: Rework to integrate World/WorldContext/GameInstance
 
 Engine::~Engine() = default; // Will later handle waiting for threads and memory freeing
 
@@ -30,7 +30,7 @@ void Engine::run(Application& application) {
 	m_time.reset();
 
 	{
-		TRIVIAL_PROFILE_SCOPE("Application Start")
+		TRIVIAL_PROFILE_SCOPE("Application Start");
 		application.onStart();
 	}
 

@@ -1,5 +1,5 @@
-#ifndef TRIVIAL_ECS_WORLD_H
-#define TRIVIAL_ECS_WORLD_H
+#ifndef TRIVIAL_WORLD_WORLD_H
+#define TRIVIAL_WORLD_WORLD_H
 
 #include <memory>
 #include <type_traits>
@@ -12,9 +12,12 @@
 #include <trivial/ecs/components.h>
 #include <trivial/ecs/entity.h>
 
-namespace trivial::ecs {
+namespace trivial::world {
+
+using namespace ::trivial::ecs; // RETHINK: Got to be a better way of doing this
 
 class World {
+
 public:
 	World() = default;
 
@@ -205,6 +208,6 @@ private:
 	std::unordered_map<std::type_index, std::unique_ptr<IComponentStore>> m_componentStores;
 };
 
-} // namespace trivial::ecs
+} // namespace trivial::world
 
-#endif // TRIVIAL_ECS_WORLD_H
+#endif // TRIVIAL_WORLD_WORLD_H

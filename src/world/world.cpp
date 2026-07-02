@@ -1,10 +1,10 @@
-#include <trivial/ecs/world.h>
+#include <trivial/world/world.h>
 
 #include "core/assert.h"
 #include "core/log.h"
 #include "core/profile.h"
 
-namespace trivial::ecs {
+namespace trivial::world {
 
 Entity World::create() {
 	TRIVIAL_PROFILE_FUNCTION();
@@ -90,4 +90,4 @@ bool World::alive(Entity entity) const {
 	return slot.alive && slot.generation == entity.generation();
 }
 
-} // namespace trivial::ecs
+} // namespace trivial::world

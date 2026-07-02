@@ -6,6 +6,10 @@
 
 #include <trivial/ecs/entity.h>
 
+// NOTE: Remeber not all cache lines are 64 bytes, will want some special handling for 128 byte for m series chips
+//       Do not care about any server cpu that may have more
+//       When adding in support for gpu compute will need to take care for their different cache size too
+
 namespace trivial::ecs {
 
 template <typename T>

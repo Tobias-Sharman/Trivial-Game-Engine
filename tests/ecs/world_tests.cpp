@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <trivial/ecs/world.h>
+#include <trivial/world/world.h>
 
 namespace {
 
@@ -11,7 +11,7 @@ struct CustomComponent {
 } // namespace
 
 TEST(WorldTests, CreatesAliveEntity) {
-	trivial::ecs::World world;
+	trivial::world::World world;
 
 	const trivial::ecs::Entity kEntity = world.create();
 
@@ -22,7 +22,7 @@ TEST(WorldTests, CreatesAliveEntity) {
 }
 
 TEST(WorldTests, DestroysEntity) {
-	trivial::ecs::World world;
+	trivial::world::World world;
 
 	const trivial::ecs::Entity kEntity = world.create();
 
@@ -34,7 +34,7 @@ TEST(WorldTests, DestroysEntity) {
 }
 
 TEST(WorldTests, ReusesDestroyedEntitySlotWithNewGeneration) {
-	trivial::ecs::World world;
+	trivial::world::World world;
 
 	const trivial::ecs::Entity kFirst = world.create();
 
@@ -51,7 +51,7 @@ TEST(WorldTests, ReusesDestroyedEntitySlotWithNewGeneration) {
 }
 
 TEST(WorldTests, StoresStandardComponents) {
-	trivial::ecs::World world;
+	trivial::world::World world;
 
 	const trivial::ecs::Entity kEntity = world.create();
 
@@ -66,7 +66,7 @@ TEST(WorldTests, ReadsStandardComponents) {
 	constexpr float kX = 2.0f;
 	constexpr float kY = 3.0f;
 
-	trivial::ecs::World world;
+	trivial::world::World world;
 
 	const trivial::ecs::Entity kEntity = world.create();
 
@@ -85,7 +85,7 @@ TEST(WorldTests, ReadsStandardComponents) {
 TEST(WorldTests, StoresCustomComponents) {
 	constexpr int kValue = 42;
 
-	trivial::ecs::World world;
+	trivial::world::World world;
 
 	const trivial::ecs::Entity kEntity = world.create();
 
@@ -99,7 +99,7 @@ TEST(WorldTests, StoresCustomComponents) {
 }
 
 TEST(WorldTests, RemovesStandardComponent) {
-	trivial::ecs::World world;
+	trivial::world::World world;
 
 	const trivial::ecs::Entity kEntity = world.create();
 
@@ -115,7 +115,7 @@ TEST(WorldTests, RemovesStandardComponent) {
 TEST(WorldTests, RemovesCustomComponent) {
 	constexpr int kValue = 42;
 
-	trivial::ecs::World world;
+	trivial::world::World world;
 
 	const trivial::ecs::Entity kEntity = world.create();
 
@@ -131,7 +131,7 @@ TEST(WorldTests, RemovesCustomComponent) {
 TEST(WorldTests, DestroyRemovesComponentsBeforeReusingEntitySlot) {
 	constexpr int kValue = 42;
 
-	trivial::ecs::World world;
+	trivial::world::World world;
 
 	const trivial::ecs::Entity kFirst = world.create();
 
@@ -154,7 +154,7 @@ TEST(WorldTests, DestroyRemovesComponentsBeforeReusingEntitySlot) {
 TEST(WorldTests, IgnoresComponentsAddedToDestroyedEntity) {
 	constexpr int kValue = 42;
 
-	trivial::ecs::World world;
+	trivial::world::World world;
 
 	const trivial::ecs::Entity kEntity = world.create();
 

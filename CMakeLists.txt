@@ -24,7 +24,6 @@ set(TRIVIAL_PRIVATE_SOURCES
 	src/engine.cpp
 	src/application.cpp
 	src/core/log.cpp
-	src/ecs/world.cpp
 	src/gpu/context.cpp
 	src/platform/window.cpp
 	src/platform/glfw/window.cpp
@@ -32,6 +31,7 @@ set(TRIVIAL_PRIVATE_SOURCES
 	src/rhi/backend.cpp
 	src/rhi/vulkan/backend.cpp
 	src/rhi/vulkan/result.cpp
+	src/world/world.cpp
 )
 
 # -----------------------------------------------------------------------------
