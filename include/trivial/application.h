@@ -5,6 +5,7 @@
 
 #include <trivial/layers.h>
 #include <trivial/core/config.h>
+#include <trivial/frame/frame_context.h>
 
 namespace trivial {
 // NOTE: Need to decide if wanting to support more layers, could even be a vector of them used like a stack
@@ -26,8 +27,12 @@ public:
 #endif // TRIVIAL_CONFIG_DEBUG
 
 	void onStart();
-	void onUpdate(); // TODO: Add time
 	void onEnd();
+
+	void updateGame(const FrameContext& frameContext);
+#if TRIVIAL_CONFIG_DEBUG
+	void updateDebug(const FrameContext& frameContext);
+#endif // TRIVIAL_CONFIG_DEBUG
 
 private:
 	std::unique_ptr<Layer> m_gameLayer;

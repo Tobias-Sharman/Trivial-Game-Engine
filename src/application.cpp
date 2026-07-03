@@ -30,15 +30,17 @@ void Application::onStart() {
 #endif // TRIVIAL_CONFIG_DEBUG
 }
 
-void Application::onUpdate() {
+void Application::updateGame(const FrameContext& frameContext) {
 	TRIVIAL_ASSERT(m_gameLayer != nullptr);
-	m_gameLayer->onUpdate();
+	m_gameLayer->onUpdate(frameContext);
+}
 
 #if TRIVIAL_CONFIG_DEBUG
+void Application::updateDebug(const FrameContext& frameContext) {
 	TRIVIAL_ASSERT(m_debugLayer != nullptr);
-	m_debugLayer->onUpdate();
-#endif // TRIVIAL_CONFIG_DEBUG
+	m_debugLayer->onUpdate(frameContext);
 }
+#endif // TRIVIAL_CONFIG_DEBUG
 
 void Application::onEnd() {
 	TRIVIAL_ASSERT(m_gameLayer != nullptr);

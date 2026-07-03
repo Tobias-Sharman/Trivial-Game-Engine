@@ -1,6 +1,8 @@
 #ifndef TRIVIAL_LAYERS_H
 #define TRIVIAL_LAYERS_H
 
+#include <trivial/frame/frame_context.h>
+
 namespace trivial {
 
 class Layer {
@@ -16,7 +18,7 @@ public:
 	Layer& operator=(Layer&&) = delete;
 
 	virtual void onStart() {};
-	virtual void onUpdate() {};
+	virtual void onUpdate(const FrameContext& frameContext) {};
 	virtual void onEnd() {};
 };
 

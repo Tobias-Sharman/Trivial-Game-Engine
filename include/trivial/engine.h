@@ -24,6 +24,7 @@ public:
 	Engine(Engine&&) = delete;
 	Engine& operator=(Engine&&) = delete;
 
+	void tick(Application& application);
 	void run(Application& application);
 
 	[[nodiscard]] GraphicsApi requestedGraphicsApi() const { return m_requestedGraphicsApi; }
@@ -33,8 +34,10 @@ public:
 	[[nodiscard]] const render::Renderer& renderer() const { return m_renderer; }
 
 private:
+	// TODO: Once form of what objects engine actually owns is explicit then update this
 	GraphicsApi m_requestedGraphicsApi = GraphicsApi::Auto;
 	EngineTime m_time;
+	std::uint64_t m_frameIndex;
 
 	internal::platform::Window m_window;
 	internal::gpu::Context m_gpu;
