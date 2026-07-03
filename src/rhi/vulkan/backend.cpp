@@ -4,6 +4,7 @@
 #include <span>
 #include <vector>
 
+#include <trivial/core/config.h>
 #include <trivial/internal/rhi/vulkan/result.h>
 
 #include "core/assert.h"

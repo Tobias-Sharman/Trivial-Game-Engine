@@ -4,6 +4,7 @@
 #include <memory>
 
 #include <trivial/layers.h>
+#include <trivial/core/config.h>
 
 namespace trivial {
 // NOTE: Need to decide if wanting to support more layers, could even be a vector of them used like a stack

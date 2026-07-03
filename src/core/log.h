@@ -3,6 +3,8 @@
 
 #include <cstdint>
 
+#include <trivial/core/config.h>
+
 namespace trivial::internal::core {
 
 enum class LogLevel : uint8_t {
