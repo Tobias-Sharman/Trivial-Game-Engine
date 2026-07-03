@@ -13,6 +13,7 @@ project(
 option(TRIVIAL_ENABLE_ASSERTS "Enable fatal engine assertions" ON)
 option(TRIVIAL_ENABLE_SLOW_ASSERTS "Enable expensive engine assertions" OFF)
 option(TRIVIAL_ENABLE_LOGGING "Enable engine logging" ON)
+option(TRIVIAL_ENABLE_SIMD "Enable SIMD optimisations" ON)
 option(TRIVIAL_ENABLE_VULKAN_VALIDATION "Enable Vulkan validation layers" ON)
 option(TRIVIAL_ENABLE_TRACY "Enable Tracy profiling" OFF)
 
@@ -24,6 +25,7 @@ set(TRIVIAL_PRIVATE_SOURCES
 	src/engine.cpp
 	src/application.cpp
 	src/core/log.cpp
+	src/core/math/mat4.cpp
 	src/gpu/context.cpp
 	src/platform/window.cpp
 	src/platform/glfw/window.cpp
@@ -73,6 +75,7 @@ target_compile_definitions(trivial
 	PUBLIC
 		TRIVIAL_ENABLE_ASSERTS=$<BOOL:${TRIVIAL_ENABLE_ASSERTS}>
 		TRIVIAL_ENABLE_SLOW_ASSERTS=$<BOOL:${TRIVIAL_ENABLE_SLOW_ASSERTS}>
+		TRIVIAL_ENABLE_SIMD=$<BOOL:${TRIVIAL_ENABLE_SIMD}>
 		TRIVIAL_ENABLE_VULKAN_VALIDATION=$<BOOL:${TRIVIAL_ENABLE_VULKAN_VALIDATION}>
 
 		TRIVIAL_CONFIG_DEBUG=$<CONFIG:Debug>

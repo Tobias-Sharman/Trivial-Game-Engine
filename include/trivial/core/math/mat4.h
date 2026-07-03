@@ -1,6 +1,7 @@
 #ifndef TRIVIAL_CORE_MATH_MAT4_H
 #define TRIVIAL_CORE_MATH_MAT4_H
 
+#include <trivial/core/config.h>
 #include <trivial/core/math/concepts.h>
 #include <trivial/core/math/vec3.h>
 #include <trivial/core/math/vec4.h>
@@ -161,24 +162,51 @@ struct Mat4 {
 	[[nodiscard]] constexpr bool operator==(const Mat4& rhs) const noexcept = default;
 };
 
+namespace detail {
+
 template <Arithmetic T>
-[[nodiscard]] constexpr Vec4<T> operator*(Mat4<T> m, Vec4<T> v) noexcept {
+[[nodiscard]] constexpr Vec4<T> matVecScalar(const Mat4<T>& m, Vec4<T> v) noexcept {
 	return m.col0 * v.x + m.col1 * v.y + m.col2 * v.z + m.col3 * v.w;
 }
 
+#if TRIVIAL_ENABLE_SIMD && (defined(__aarch64__) || defined(_M_ARM64) || defined(__x86_64__) || defined(_M_X64))
+
+[[nodiscard]] Vec4<float> matVecSimd(const Mat4<float>& m, Vec4<float> v) noexcept;
+
+#endif // SIMD stuff
+
+} // namespace detail
+
 template <Arithmetic T>
-[[nodiscard]] constexpr Mat4<T> operator*(Mat4<T> lhs, Mat4<T> rhs) noexcept {
+[[nodiscard]] constexpr Vec4<T> operator*(const Mat4<T>& m, Vec4<T> v) noexcept {
+	return detail::matVecScalar(m, v);
+}
+
+#if TRIVIAL_ENABLE_SIMD && (defined(__aarch64__) || defined(_M_ARM64) || defined(__x86_64__) || defined(_M_X64))
+
+[[nodiscard]] constexpr Vec4<float> operator*(const Mat4<float>& m, Vec4<float> v) noexcept {
+	if (std::is_constant_evaluated()) {
+		return detail::matVecScalar(m, v);
+	}
+
+	return detail::matVecSimd(m, v);
+}
+
+#endif // SIMD stuff
+
+template <Arithmetic T>
+[[nodiscard]] constexpr Mat4<T> operator*(Mat4<T>& lhs, Mat4<T>& rhs) noexcept {
 	return {lhs * rhs.col0, lhs * rhs.col1, lhs * rhs.col2, lhs * rhs.col3};
 }
 
 template <Arithmetic T>
-constexpr Mat4<T>& operator*=(Mat4<T>& lhs, Mat4<T> rhs) noexcept {
+constexpr Mat4<T>& operator*=(Mat4<T>& lhs, const Mat4<T>& rhs) noexcept {
 	lhs = lhs * rhs;
 	return lhs;
 }
 
 template <Arithmetic T>
-[[nodiscard]] constexpr Mat4<T> transpose(Mat4<T> m) noexcept {
+[[nodiscard]] constexpr Mat4<T> transpose(Mat4<T>& m) noexcept {
 	return {m.col0.x,
 	        m.col0.y,
 	        m.col0.z,
@@ -198,7 +226,7 @@ template <Arithmetic T>
 }
 
 template <std::floating_point T>
-[[nodiscard]] constexpr bool nearlyEqual(Mat4<T> lhs, Mat4<T> rhs, T epsilon) noexcept {
+[[nodiscard]] constexpr bool nearlyEqual(const Mat4<T>& lhs, const Mat4<T>& rhs, T epsilon) noexcept {
 	return nearlyEqual(lhs.col0, rhs.col0, epsilon) && nearlyEqual(lhs.col1, rhs.col1, epsilon)
 	       && nearlyEqual(lhs.col2, rhs.col2, epsilon) && nearlyEqual(lhs.col3, rhs.col3, epsilon);
 }
