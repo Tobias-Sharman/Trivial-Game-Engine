@@ -65,7 +65,9 @@ void Engine::run(Application& application) {
 		application.onStart();
 	}
 
-	while (!m_window.shouldClose()) {}
+	while (!m_window.shouldClose()) {
+		tick(application);
+	}
 
 	{
 		TRIVIAL_PROFILE_SCOPE("Application End");
