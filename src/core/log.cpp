@@ -1,4 +1,4 @@
-#include "core/log.h"
+#include <trivial/core/log.h>
 
 #if TRIVIAL_ENABLE_LOGGING
 

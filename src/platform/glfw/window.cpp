@@ -2,10 +2,9 @@
 
 #include <cstdint>
 
+#include <trivial/core/assert.h>
+#include <trivial/core/log.h>
 #include <trivial/internal/rhi/vulkan/result.h>
-
-#include "core/assert.h"
-#include "core/log.h"
 
 namespace trivial::internal::platform::glfw {
 

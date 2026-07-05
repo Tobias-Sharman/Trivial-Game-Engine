@@ -2,9 +2,8 @@
 
 #include <utility>
 
+#include <trivial/core/assert.h>
 #include <trivial/core/config.h>
-
-#include "core/assert.h"
 
 namespace trivial {
 

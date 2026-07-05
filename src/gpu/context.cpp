@@ -1,9 +1,8 @@
 #include <trivial/internal/gpu/context.h>
 
+#include <trivial/core/assert.h>
+#include <trivial/core/log.h>
 #include <trivial/internal/rhi/vulkan/backend.h>
-
-#include "core/assert.h"
-#include "core/log.h"
 
 namespace trivial::internal::gpu {
 

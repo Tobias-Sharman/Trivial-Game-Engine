@@ -1,6 +1,6 @@
 #include <trivial/render/renderer.h>
 
-#include "core/assert.h"
+#include <trivial/core/assert.h>
 
 namespace trivial::render {
 

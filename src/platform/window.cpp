@@ -1,6 +1,6 @@
 #include <trivial/internal/platform/window.h>
 
-#include "core/assert.h"
+#include <trivial/core/assert.h>
 
 namespace trivial::internal::platform {
 

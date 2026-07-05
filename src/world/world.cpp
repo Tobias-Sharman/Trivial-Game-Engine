@@ -1,8 +1,8 @@
 #include <trivial/world/world.h>
 
-#include "core/assert.h"
-#include "core/log.h"
-#include "core/profile.h"
+#include <trivial/core/assert.h>
+#include <trivial/core/log.h>
+#include <trivial/core/profile.h>
 
 namespace trivial::world {
 
