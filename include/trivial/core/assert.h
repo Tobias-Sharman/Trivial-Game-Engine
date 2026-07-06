@@ -1,5 +1,5 @@
-#ifndef TRIVIAL_SRC_CORE_ASSERT_H
-#define TRIVIAL_SRC_CORE_ASSERT_H
+#ifndef TRIVIAL_CORE_ASSERT_H
+#define TRIVIAL_CORE_ASSERT_H
 
 #include <trivial/core/config.h>
 
@@ -52,4 +52,4 @@ inline void reportAssertionFailure(const char* expression,
 
 #endif // TRIVIAL_ENABLE__SLOW_ASSERTS
 
-#endif // TRIVIAL_SRC_CORE_ASSERT_H
+#endif // TRIVIAL_CORE_ASSERT_H

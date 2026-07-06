@@ -1,5 +1,5 @@
-#ifndef TRIVIAL_SRC_CORE_PROFILE_H
-#define TRIVIAL_SRC_CORE_PROFILE_H
+#ifndef TRIVIAL_CORE_PROFILE_H
+#define TRIVIAL_CORE_PROFILE_H
 
 #include <trivial/core/config.h>
 
@@ -23,4 +23,4 @@
 
 #endif // TRIVIAL_ENABLE_TRACY
 
-#endif // TRIVIAL_SRC_CORE_PROFILE_H
+#endif // TRIVIAL_CORE_PROFILE_H
