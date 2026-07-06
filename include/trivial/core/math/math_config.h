@@ -1,0 +1,23 @@
+#ifndef TRIVIAL_CORE_MATH_MATH_CONFIG_H
+#define TRIVIAL_CORE_MATH_MATH_CONFIG_H
+
+#include <trivial/core/compiler.h>
+#include <trivial/core/platform.h>
+
+#ifndef TRIVIAL_MATH_DISABLE_SIMD_BACKEND
+#define TRIVIAL_MATH_DISABLE_SIMD_BACKEND 0
+#endif
+
+#ifndef TRIVIAL_MATH_DISABLE_FMA
+#define TRIVIAL_MATH_DISABLE_FMA 0
+#endif
+
+#if (TRIVIAL_MATH_DISABLE_SIMD_BACKEND != 0) && (TRIVIAL_MATH_DISABLE_SIMD_BACKEND != 1)
+#error "TRIVIAL_MATH_FORCE_SCALAR must be 0 or 1"
+#endif
+
+#if (TRIVIAL_MATH_DISABLE_FMA != 0) && (TRIVIAL_MATH_DISABLE_FMA != 1)
+#error "TRIVIAL_MATH_DISABLE_FMA must be 0 or 1"
+#endif
+
+#endif // TRIVIAL_CORE_MATH_MATH_CONFIG_H

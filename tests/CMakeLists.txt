@@ -2,7 +2,10 @@ find_package(GTest CONFIG REQUIRED)
 
 add_executable(trivial_tests
 	ecs/world_tests.cpp
+	math/angle.cpp
+	math/vector.cpp
 	math/matrix.cpp
+	math/transform.cpp
 )
 
 target_link_libraries(trivial_tests

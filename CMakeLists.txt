@@ -13,9 +13,10 @@ project(
 option(TRIVIAL_ENABLE_ASSERTS "Enable fatal engine assertions" ON)
 option(TRIVIAL_ENABLE_SLOW_ASSERTS "Enable expensive engine assertions" OFF)
 option(TRIVIAL_ENABLE_LOGGING "Enable engine logging" ON)
-option(TRIVIAL_ENABLE_SIMD "Enable SIMD optimisations" ON)
 option(TRIVIAL_ENABLE_VULKAN_VALIDATION "Enable Vulkan validation layers" ON)
 option(TRIVIAL_ENABLE_TRACY "Enable Tracy profiling" OFF)
+option(TRIVIAL_MATH_DISABLE_SIMD_BACKEND "Disable explicit SIMD math backends" OFF)
+option(TRIVIAL_MATH_DISABLE_FMA "Disable explicit FMA in math backends" OFF)
 
 # -----------------------------------------------------------------------------
 # Source files
@@ -66,26 +67,21 @@ target_compile_features(trivial
 		c_std_99
 )
 
-# TODO: Sort this mess out
-#       Need to decide if want to keep logging and assertion into just source files or move to public since there is a
-#       lot of templated stuff that would benefit
-#       Library is going to be static so that would be fine, just ought to be careful as they are meant to be internal
-#       macros
 target_compile_definitions(trivial
 	PUBLIC
 		TRIVIAL_ENABLE_ASSERTS=$<BOOL:${TRIVIAL_ENABLE_ASSERTS}>
 		TRIVIAL_ENABLE_SLOW_ASSERTS=$<BOOL:${TRIVIAL_ENABLE_SLOW_ASSERTS}>
-		TRIVIAL_ENABLE_SIMD=$<BOOL:${TRIVIAL_ENABLE_SIMD}>
+		TRIVIAL_ENABLE_LOGGING=$<BOOL:${TRIVIAL_ENABLE_LOGGING}>
 		TRIVIAL_ENABLE_VULKAN_VALIDATION=$<BOOL:${TRIVIAL_ENABLE_VULKAN_VALIDATION}>
+		TRIVIAL_ENABLE_TRACY=$<BOOL:${TRIVIAL_ENABLE_TRACY}>
+		TRIVIAL_MATH_DISABLE_SIMD_BACKEND=$<BOOL:${TRIVIAL_MATH_DISABLE_SIMD_BACKEND}>
+		TRIVIAL_MATH_DISABLE_FMA=$<BOOL:${TRIVIAL_MATH_DISABLE_FMA}>
 
 		TRIVIAL_CONFIG_DEBUG=$<CONFIG:Debug>
 		TRIVIAL_CONFIG_RELEASE=$<CONFIG:Release>
 		TRIVIAL_CONFIG_RELWITHDEBINFO=$<CONFIG:RelWithDebInfo>
 
 		TRIVIAL_PLATFORM_GLFW
-
-	PRIVATE
-		TRIVIAL_ENABLE_LOGGING=$<BOOL:${TRIVIAL_ENABLE_LOGGING}>
 )
 
 # -----------------------------------------------------------------------------
@@ -130,7 +126,7 @@ enable_testing()
 add_subdirectory(tests)
 
 # -----------------------------------------------------------------------------
-# Compiler warnings for Trivial itself - not used be games using
+# Compiler warnings for Trivial itself - not to be used by games using
 # -----------------------------------------------------------------------------
 
 if(MSVC)
