@@ -148,9 +148,6 @@ SortUsingDeclarations: true
 # =============================================================================
 EmptyLineBeforeAccessModifier: LogicalBlock
 FixNamespaceComments: true
-
-# Do not use clang-format's old-style `namespace a { namespace b {` compaction.
-# Prefer manually writing modern C++17 namespaces: `namespace a::b {`.
 CompactNamespaces: false
 
 # =============================================================================
