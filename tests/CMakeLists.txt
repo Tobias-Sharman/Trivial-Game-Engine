@@ -6,6 +6,7 @@ add_executable(trivial_tests
 	math/vector.cpp
 	math/matrix.cpp
 	math/transform.cpp
+	task/task_system.cpp
 )
 
 target_link_libraries(trivial_tests

@@ -34,6 +34,8 @@ set(TRIVIAL_PRIVATE_SOURCES
 	src/rhi/backend.cpp
 	src/rhi/vulkan/backend.cpp
 	src/rhi/vulkan/result.cpp
+	src/task/task_graph.cpp
+	src/task/task_system.cpp
 	src/world/world.cpp
 )
 
@@ -135,6 +137,7 @@ if(MSVC)
 		$<$<COMPILE_LANGUAGE:CXX>:/W4>
 		$<$<COMPILE_LANGUAGE:CXX>:/permissive->
 		$<$<COMPILE_LANGUAGE:CXX>:/Zc:__cplusplus>
+		$<$<COMPILE_LANGUAGE:CXX>:/EHs-c->
 	)
 else()
 	target_compile_options(trivial PRIVATE
@@ -142,5 +145,6 @@ else()
 		-Wextra
 		-Wpedantic
 		-Wshadow
+		$<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
 	)
 endif()
