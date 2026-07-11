@@ -8,8 +8,8 @@
 
 namespace trivial::task {
 
-TaskHandle TaskSystem::launch(TaskFunction function, const TaskLaunchOptions& options) noexcept {
-	const TaskCreateOutcome kCreateOutcome = m_graph.create(std::move(function), options);
+TaskHandle TaskSystem::launch(TaskPayload payload, const TaskLaunchOptions& options) noexcept {
+	const TaskCreateOutcome kCreateOutcome = m_graph.create(std::move(payload), options);
 
 	if (kCreateOutcome.result != TaskCreateResult::Success) {
 		return {};
@@ -26,10 +26,8 @@ TaskHandle TaskSystem::launch(TaskFunction function, const TaskLaunchOptions& op
 	return kCreateOutcome.handle;
 }
 
-TaskHandle TaskSystem::launch(TaskFunction function,
-                              TaskHandle prerequisite,
-                              const TaskLaunchOptions& options) noexcept {
-	const TaskCreateOutcome kCreateOutcome = m_graph.create(std::move(function), options);
+TaskHandle TaskSystem::launch(TaskPayload payload, TaskHandle prerequisite, const TaskLaunchOptions& options) noexcept {
+	const TaskCreateOutcome kCreateOutcome = m_graph.create(std::move(payload), options);
 
 	if (kCreateOutcome.result != TaskCreateResult::Success) {
 		return {};
@@ -50,18 +48,18 @@ TaskHandle TaskSystem::launch(TaskFunction function,
 	return kCreateOutcome.handle;
 }
 
-TaskHandle TaskSystem::launch(TaskFunction function,
+TaskHandle TaskSystem::launch(TaskPayload payload,
                               std::span<const TaskHandle> prerequisites,
                               const TaskLaunchOptions& options) noexcept {
 	if (prerequisites.empty()) {
-		return launch(std::move(function), options);
+		return launch(std::move(payload), options);
 	}
 
 	if (prerequisites.size() == 1) {
-		return launch(std::move(function), prerequisites[0], options);
+		return launch(std::move(payload), prerequisites[0], options);
 	}
 
-	const TaskCreateOutcome kCreateOutcome = m_graph.create(std::move(function), options);
+	const TaskCreateOutcome kCreateOutcome = m_graph.create(std::move(payload), options);
 
 	if (kCreateOutcome.result != TaskCreateResult::Success) {
 		return {};

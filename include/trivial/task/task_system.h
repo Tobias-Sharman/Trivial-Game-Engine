@@ -7,11 +7,11 @@
 #include <span>
 #include <vector>
 
-#include <trivial/task/task_function.h>
 #include <trivial/task/task_graph.h>
 #include <trivial/task/task_handle.h>
 #include <trivial/task/task_launch_options.h>
 #include <trivial/task/task_mutex.h>
+#include <trivial/task/task_payload.h>
 
 namespace trivial::task {
 
@@ -27,15 +27,15 @@ public:
 	TaskSystem(TaskSystem&&) = delete;
 	TaskSystem& operator=(const TaskSystem&&) = delete;
 
-	[[nodiscard]] TaskHandle launch(TaskFunction function, const TaskLaunchOptions& options = {}) noexcept;
+	[[nodiscard]] TaskHandle launch(TaskPayload payload, const TaskLaunchOptions& options = {}) noexcept;
 
-	[[nodiscard]] TaskHandle launch(TaskFunction function,
+	[[nodiscard]] TaskHandle launch(TaskPayload payload,
 	                                TaskHandle prerequisite,
 	                                const TaskLaunchOptions& options = {}) noexcept;
 
 	// TODO: Add more non general paths
 
-	[[nodiscard]] TaskHandle launch(TaskFunction function,
+	[[nodiscard]] TaskHandle launch(TaskPayload payload,
 	                                std::span<const TaskHandle> prerequisites,
 	                                const TaskLaunchOptions& options = {}) noexcept;
 

@@ -1,5 +1,9 @@
-#ifndef TRIVIAL_TASK_TASK_FUNCTION_H
-#define TRIVIAL_TASK_TASK_FUNCTION_H
+#ifndef TRIVIAL_TASK_TASK_PAYLOAD_H
+#define TRIVIAL_TASK_TASK_PAYLOAD_H
+
+// TODO: For trivially destructible callables and suitable result types,
+// avoid the intermediate object and write the returned value directly
+// into the reused payload storage.
 
 #include <array>
 #include <cstddef>
@@ -13,19 +17,19 @@
 
 namespace trivial::task {
 
-// Invoking a moved-from TaskFunction, or one constructed from a null function
+// Invoking a moved-from TaskPayload, or one constructed from a null function
 // pointer or an empty callable wrapper, results in undefined behavior
-class TaskFunction { // NOLINT(cppcoreguidelines-pro-type-member-init)
+class TaskPayload { // NOLINT(cppcoreguidelines-pro-type-member-init)
 public:
-	TaskFunction() noexcept = delete;
+	TaskPayload() noexcept = delete;
 
 	template <typename Callable>
-	    requires(!std::is_same_v<std::remove_cvref_t<Callable>, TaskFunction>
+	    requires(!std::is_same_v<std::remove_cvref_t<Callable>, TaskPayload>
 	             && std::is_nothrow_constructible_v<std::decay_t<Callable>, Callable &&>
 	             && std::is_nothrow_invocable_v<std::decay_t<Callable>&>
 	             && std::is_same_v<std::invoke_result_t<std::decay_t<Callable>&>, void>
 	             && std::is_nothrow_destructible_v<std::decay_t<Callable>>)
-	TaskFunction(Callable&& callable) noexcept { // NOLINT(cppcoreguidelines-pro-type-member-init)
+	TaskPayload(Callable&& callable) noexcept { // NOLINT(cppcoreguidelines-pro-type-member-init)
 		using StoredCallable = std::decay_t<Callable>;
 
 		if constexpr (kCanStoreInline<StoredCallable>) {
@@ -41,13 +45,13 @@ public:
 		}
 	}
 
-	~TaskFunction() noexcept { reset(); }
+	~TaskPayload() noexcept { reset(); }
 
-	TaskFunction(const TaskFunction&) = delete;
-	TaskFunction& operator=(const TaskFunction&) = delete;
+	TaskPayload(const TaskPayload&) = delete;
+	TaskPayload& operator=(const TaskPayload&) = delete;
 
-	TaskFunction(TaskFunction&& other) noexcept { moveFrom(other); } // NOLINT(cppcoreguidelines-pro-type-member-init)
-	TaskFunction& operator=(TaskFunction&& other) noexcept {
+	TaskPayload(TaskPayload&& other) noexcept { moveFrom(other); } // NOLINT(cppcoreguidelines-pro-type-member-init)
+	TaskPayload& operator=(TaskPayload&& other) noexcept {
 		if (this != &other) {
 			reset();
 			moveFrom(other);
@@ -168,7 +172,7 @@ private:
 		operations->destroy(m_storage.data());
 	}
 
-	void moveFrom(TaskFunction& other) noexcept {
+	void moveFrom(TaskPayload& other) noexcept {
 		if (other.m_operations == nullptr) {
 			return;
 		}
@@ -186,13 +190,13 @@ private:
 };
 
 // NOTE: If later caring about support for different pointer sizes will need adjustment
-static_assert(sizeof(TaskFunction) == 48);
-static_assert(alignof(TaskFunction) == alignof(std::max_align_t));
+static_assert(sizeof(TaskPayload) == 48);
+static_assert(alignof(TaskPayload) == alignof(std::max_align_t));
 
-static_assert(std::is_nothrow_move_constructible_v<TaskFunction>);
-static_assert(std::is_nothrow_move_assignable_v<TaskFunction>);
-static_assert(std::is_nothrow_destructible_v<TaskFunction>);
+static_assert(std::is_nothrow_move_constructible_v<TaskPayload>);
+static_assert(std::is_nothrow_move_assignable_v<TaskPayload>);
+static_assert(std::is_nothrow_destructible_v<TaskPayload>);
 
 } // namespace trivial::task
 
-#endif // TRIVIAL_TASK_TASK_FUNCTION_H
+#endif // TRIVIAL_TASK_TASK_PAYLOAD_H

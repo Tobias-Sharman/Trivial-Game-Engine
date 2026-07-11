@@ -30,7 +30,7 @@ TaskSystemTestSetup g_taskSystemTestSetup;
 TEST(TaskSystemTests, LaunchesTaskWithoutPrerequisites) {
 	bool executed = false;
 
-	const TaskHandle kTask = launch(TaskFunction{[&executed]() noexcept {
+	const TaskHandle kTask = launch(TaskPayload{[&executed]() noexcept {
 		executed = true;
 	}});
 
@@ -47,11 +47,11 @@ TEST(TaskSystemTests, LaunchesTaskWithoutPrerequisites) {
 TEST(TaskSystemTests, WaitExecutesSinglePrerequisiteBeforeDependant) {
 	std::vector<int> executionOrder;
 
-	const TaskHandle kPrerequisite = launch(TaskFunction{[&executionOrder]() noexcept {
+	const TaskHandle kPrerequisite = launch(TaskPayload{[&executionOrder]() noexcept {
 		executionOrder.push_back(1);
 	}});
 
-	const TaskHandle kDependant = launch(TaskFunction{[&executionOrder]() noexcept {
+	const TaskHandle kDependant = launch(TaskPayload{[&executionOrder]() noexcept {
 		                                     executionOrder.push_back(2);
 	                                     }},
 	                                     kPrerequisite);
@@ -74,17 +74,17 @@ TEST(TaskSystemTests, WaitExecutesMultiplePrerequisitesBeforeDependant) {
 	bool secondExecuted = false;
 	bool dependantExecuted = false;
 
-	const TaskHandle kFirst = launch(TaskFunction{[&firstExecuted]() noexcept {
+	const TaskHandle kFirst = launch(TaskPayload{[&firstExecuted]() noexcept {
 		firstExecuted = true;
 	}});
 
-	const TaskHandle kSecond = launch(TaskFunction{[&secondExecuted]() noexcept {
+	const TaskHandle kSecond = launch(TaskPayload{[&secondExecuted]() noexcept {
 		secondExecuted = true;
 	}});
 
 	const std::array<TaskHandle, 2> kPrerequisites{kFirst, kSecond};
 
-	const TaskHandle kDependant = launch(TaskFunction{[&firstExecuted, &secondExecuted, &dependantExecuted]() noexcept {
+	const TaskHandle kDependant = launch(TaskPayload{[&firstExecuted, &secondExecuted, &dependantExecuted]() noexcept {
 		                                     EXPECT_TRUE(firstExecuted);
 		                                     EXPECT_TRUE(secondExecuted);
 
@@ -111,11 +111,11 @@ TEST(TaskSystemTests, WaitForSpanWaitsForAllTasks) {
 	bool firstExecuted = false;
 	bool secondExecuted = false;
 
-	const TaskHandle kFirst = launch(TaskFunction{[&firstExecuted]() noexcept {
+	const TaskHandle kFirst = launch(TaskPayload{[&firstExecuted]() noexcept {
 		firstExecuted = true;
 	}});
 
-	const TaskHandle kSecond = launch(TaskFunction{[&secondExecuted]() noexcept {
+	const TaskHandle kSecond = launch(TaskPayload{[&secondExecuted]() noexcept {
 		secondExecuted = true;
 	}});
 
@@ -135,7 +135,7 @@ TEST(TaskSystemTests, ReleaseSucceedsAfterCompletion) {
 
 	bool executed = false;
 
-	const TaskHandle kTask = launch(TaskFunction{[&executed]() noexcept {
+	const TaskHandle kTask = launch(TaskPayload{[&executed]() noexcept {
 		                                executed = true;
 	                                }},
 	                                kOptions);
@@ -155,7 +155,7 @@ TEST(TaskSystemTests, ReleaseSucceedsAfterCompletion) {
 TEST(TaskSystemTests, ReleaseFailsBeforeCompletion) {
 	bool executed = false;
 
-	const TaskHandle kTask = launch(TaskFunction{[&executed]() noexcept {
+	const TaskHandle kTask = launch(TaskPayload{[&executed]() noexcept {
 		executed = true;
 	}});
 
@@ -179,12 +179,12 @@ TEST(TaskSystemTests, CriticalPriorityRunsBeforeNormalPriority) {
 	TaskLaunchOptions criticalOptions{};
 	criticalOptions.priority = TaskPriority::Critical;
 
-	const TaskHandle kNormal = launch(TaskFunction{[&executionOrder]() noexcept {
+	const TaskHandle kNormal = launch(TaskPayload{[&executionOrder]() noexcept {
 		                                  executionOrder.push_back(1);
 	                                  }},
 	                                  normalOptions);
 
-	const TaskHandle kCritical = launch(TaskFunction{[&executionOrder]() noexcept {
+	const TaskHandle kCritical = launch(TaskPayload{[&executionOrder]() noexcept {
 		                                    executionOrder.push_back(2);
 	                                    }},
 	                                    criticalOptions);

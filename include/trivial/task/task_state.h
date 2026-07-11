@@ -4,9 +4,9 @@
 #include <utility>
 #include <vector>
 
-#include <trivial/task/task_function.h>
 #include <trivial/task/task_handle.h>
 #include <trivial/task/task_launch_options.h>
+#include <trivial/task/task_payload.h>
 #include <trivial/task/task_status.h>
 
 namespace trivial::task {
@@ -15,8 +15,8 @@ namespace trivial::task {
 //       since now is more of a basic semantic sense (decenet for cache not optimised for size which is significant
 //       here)
 struct TaskState {
-	TaskState(TaskFunction taskFunction, const TaskLaunchOptions& options) noexcept
-	    : function(std::move(taskFunction))
+	TaskState(TaskPayload payload, const TaskLaunchOptions& options) noexcept
+	    : payload(std::move(payload))
 	    , basePriority(options.priority)
 	    , effectivePriority(options.priority)
 	    , affinity(options.affinity)
@@ -33,7 +33,7 @@ struct TaskState {
 
 	TaskStatus status = TaskStatus::Created;
 
-	TaskFunction function;
+	TaskPayload payload;
 	std::vector<TaskHandle> dependants;
 	std::vector<TaskHandle> prerequisites;
 

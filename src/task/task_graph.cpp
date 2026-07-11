@@ -30,7 +30,7 @@ TaskGraph::~TaskGraph() noexcept {
 	}
 }
 
-TaskCreateOutcome TaskGraph::create(TaskFunction function, const TaskLaunchOptions& options) noexcept {
+TaskCreateOutcome TaskGraph::create(TaskPayload payload, const TaskLaunchOptions& options) noexcept {
 	std::uint32_t taskIndex = 0;
 
 	if (!allocateTaskIndex(taskIndex)) {
@@ -51,7 +51,7 @@ TaskCreateOutcome TaskGraph::create(TaskFunction function, const TaskLaunchOptio
 
 	TRIVIAL_ASSERT(!slot->isOccupied());
 
-	slot->construct(std::move(function), options);
+	slot->construct(std::move(payload), options);
 
 	return {.result = TaskCreateResult::Success,
 	        .handle = TaskHandle{.index = taskIndex, .generation = slot->generation()}};
@@ -190,7 +190,7 @@ void TaskGraph::executeClaimed(TaskHandle handle) noexcept {
 
 	TRIVIAL_ASSERT(slot != nullptr);
 
-	TaskFunction* function = nullptr;
+	TaskPayload* payload = nullptr;
 
 	{
 		std::lock_guard<TaskSlotMutex> lock(slot->mutex());
@@ -201,12 +201,12 @@ void TaskGraph::executeClaimed(TaskHandle handle) noexcept {
 
 		TRIVIAL_ASSERT(state.status == TaskStatus::Running);
 
-		function = &state.function;
+		payload = &state.payload;
 	}
 
-	TRIVIAL_ASSERT(function != nullptr);
+	TRIVIAL_ASSERT(payload != nullptr);
 
-	(*function)();
+	(*payload)();
 }
 
 void TaskGraph::beginCompletion(TaskHandle handle, std::vector<TaskHandle>& outDependants) noexcept {

@@ -11,6 +11,7 @@
 #include <trivial/core/assert.h>
 #include <trivial/task/task_handle.h>
 #include <trivial/task/task_mutex.h>
+#include <trivial/task/task_payload.h>
 #include <trivial/task/task_state.h>
 
 namespace trivial::task {
@@ -57,11 +58,11 @@ public:
 		return *statePointer();
 	}
 
-	TaskState& construct(TaskFunction function, const TaskLaunchOptions& options) noexcept {
+	TaskState& construct(TaskPayload payload, const TaskLaunchOptions& options) noexcept {
 		TRIVIAL_ASSERT(!isOccupied());
 		TRIVIAL_ASSERT(options.priority < TaskPriority::Count);
 
-		TaskState* state = std::construct_at(rawStatePointer(), std::move(function), options);
+		TaskState* state = std::construct_at(rawStatePointer(), std::move(payload), options);
 
 		m_state = TaskSlotState::Occupied;
 

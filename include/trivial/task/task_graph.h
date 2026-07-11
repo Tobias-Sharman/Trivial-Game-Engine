@@ -7,10 +7,10 @@
 #include <vector>
 
 #include <trivial/core/config.h>
-#include <trivial/task/task_function.h>
 #include <trivial/task/task_handle.h>
 #include <trivial/task/task_launch_options.h>
 #include <trivial/task/task_mutex.h>
+#include <trivial/task/task_payload.h>
 #include <trivial/task/task_slot.h>
 #include <trivial/task/task_status.h>
 
@@ -76,7 +76,7 @@ public:
 	TaskGraph(TaskGraph&&) = delete;
 	TaskGraph& operator=(TaskGraph&&) = delete;
 
-	[[nodiscard]] TaskCreateOutcome create(TaskFunction function, const TaskLaunchOptions& options) noexcept;
+	[[nodiscard]] TaskCreateOutcome create(TaskPayload payload, const TaskLaunchOptions& options) noexcept;
 
 	[[nodiscard]] TaskPrerequisiteResult addPrerequisite(TaskHandle taskHandle, TaskHandle prerequisiteHandle) noexcept;
 

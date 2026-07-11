@@ -5,9 +5,9 @@
 #include <utility>
 
 #include <trivial/core/assert.h>
-#include <trivial/task/task_function.h>
 #include <trivial/task/task_handle.h>
 #include <trivial/task/task_launch_options.h>
+#include <trivial/task/task_payload.h>
 #include <trivial/task/task_system.h>
 
 namespace trivial::task {
@@ -31,20 +31,20 @@ inline void setActiveTaskSystem(TaskSystem* taskSystem) noexcept {
 	return *detail::g_activeTaskSystem;
 }
 
-[[nodiscard]] inline TaskHandle launch(TaskFunction function, const TaskLaunchOptions& options = {}) noexcept {
-	return activeTaskSystem().launch(std::move(function), options);
+[[nodiscard]] inline TaskHandle launch(TaskPayload payload, const TaskLaunchOptions& options = {}) noexcept {
+	return activeTaskSystem().launch(std::move(payload), options);
 }
 
-[[nodiscard]] inline TaskHandle launch(TaskFunction function,
+[[nodiscard]] inline TaskHandle launch(TaskPayload payload,
                                        TaskHandle prerequisite,
                                        const TaskLaunchOptions& options = {}) noexcept {
-	return activeTaskSystem().launch(std::move(function), prerequisite, options);
+	return activeTaskSystem().launch(std::move(payload), prerequisite, options);
 }
 
-[[nodiscard]] inline TaskHandle launch(TaskFunction function,
+[[nodiscard]] inline TaskHandle launch(TaskPayload payload,
                                        std::span<const TaskHandle> prerequisites,
                                        const TaskLaunchOptions& options = {}) noexcept {
-	return activeTaskSystem().launch(std::move(function), prerequisites, options);
+	return activeTaskSystem().launch(std::move(payload), prerequisites, options);
 }
 
 inline void wait(TaskHandle task) noexcept {
