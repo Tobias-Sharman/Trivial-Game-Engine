@@ -1,5 +1,6 @@
 #include <array>
 #include <span>
+#include <type_traits>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -26,6 +27,13 @@ public:
 };
 
 TaskSystemTestSetup g_taskSystemTestSetup;
+
+struct LargeTaskResult {
+	std::array<std::byte, 64> storage{};
+	int value = 0;
+};
+
+static_assert(sizeof(LargeTaskResult) > 40);
 
 TEST(TaskSystemTests, LaunchesTaskWithoutPrerequisites) {
 	bool executed = false;
@@ -199,6 +207,147 @@ TEST(TaskSystemTests, CriticalPriorityRunsBeforeNormalPriority) {
 	ASSERT_EQ(executionOrder.size(), 2UZ);
 	EXPECT_EQ(executionOrder[0], 2);
 	EXPECT_EQ(executionOrder[1], 1);
+}
+
+TEST(TaskSystemTests, LaunchDeducesVoidTaskType) {
+	const auto kTask = launch([]() noexcept {});
+
+	static_assert(std::is_same_v<decltype(kTask), const Task<void>>);
+
+	EXPECT_TRUE(kTask.isValid());
+
+	wait(kTask);
+
+	EXPECT_TRUE(isComplete(kTask));
+}
+
+TEST(TaskSystemTests, LaunchDeducesValueTaskType) {
+	const auto kTask = launch([]() noexcept -> int {
+		return 42;
+	});
+
+	static_assert(std::is_same_v<decltype(kTask), const Task<int>>);
+
+	EXPECT_TRUE(kTask.isValid());
+
+	wait(kTask);
+
+	EXPECT_TRUE(isComplete(kTask));
+}
+
+TEST(TaskSystemTests, GetResultWaitsForTaskAndReturnsInlineResult) {
+	bool executed = false;
+
+	auto task = launch([&executed]() noexcept -> int {
+		executed = true;
+
+		return 42;
+	});
+
+	static_assert(std::is_same_v<decltype(task), Task<int>>);
+
+	EXPECT_TRUE(task.isValid());
+	EXPECT_FALSE(executed);
+	EXPECT_FALSE(isComplete(task));
+
+	const int& kResult = task.getResult();
+
+	EXPECT_TRUE(executed);
+	EXPECT_TRUE(isComplete(task));
+	EXPECT_EQ(kResult, 42);
+}
+
+TEST(TaskSystemTests, GetResultReturnsHeapStoredResult) {
+	auto task = launch([]() noexcept -> LargeTaskResult {
+		LargeTaskResult result{};
+		result.value = 42;
+
+		return result;
+	});
+
+	static_assert(std::is_same_v<decltype(task), Task<LargeTaskResult>>);
+
+	const LargeTaskResult& kResult = task.getResult();
+
+	EXPECT_TRUE(isComplete(task));
+	EXPECT_EQ(kResult.value, 42);
+}
+
+TEST(TaskSystemTests, GetResultReturnsVector) {
+	auto task = launch([]() noexcept -> std::vector<int> {
+		return {1, 2, 3, 4};
+	});
+
+	static_assert(std::is_same_v<decltype(task), Task<std::vector<int>>>);
+
+	const std::vector<int>& kResult = task.getResult();
+
+	ASSERT_EQ(kResult.size(), 4UZ);
+	EXPECT_EQ(kResult[0], 1);
+	EXPECT_EQ(kResult[1], 2);
+	EXPECT_EQ(kResult[2], 3);
+	EXPECT_EQ(kResult[3], 4);
+}
+
+TEST(TaskSystemTests, TypedTaskCanBeUsedAsPrerequisite) {
+	std::vector<int> executionOrder;
+
+	const auto kPrerequisite = launch([&executionOrder]() noexcept -> int {
+		executionOrder.push_back(1);
+
+		return 42;
+	});
+
+	const auto kDependant = launch(
+	    [&executionOrder]() noexcept {
+		    executionOrder.push_back(2);
+	    },
+	    kPrerequisite);
+
+	static_assert(std::is_same_v<decltype(kPrerequisite), const Task<int>>);
+	static_assert(std::is_same_v<decltype(kDependant), const Task<void>>);
+
+	wait(kDependant);
+
+	ASSERT_EQ(executionOrder.size(), 2UZ);
+	EXPECT_EQ(executionOrder[0], 1);
+	EXPECT_EQ(executionOrder[1], 2);
+
+	EXPECT_TRUE(isComplete(kPrerequisite));
+	EXPECT_TRUE(isComplete(kDependant));
+	EXPECT_EQ(kPrerequisite.getResult(), 42);
+}
+
+TEST(TaskSystemTests, TypedTaskExposesUnderlyingHandle) {
+	const auto kTask = launch([]() noexcept -> int {
+		return 42;
+	});
+
+	const TaskHandle kHandle = kTask.handle();
+
+	EXPECT_TRUE(kHandle.isValid());
+	EXPECT_EQ(kHandle, static_cast<TaskHandle>(kTask));
+
+	wait(kHandle);
+
+	EXPECT_TRUE(isComplete(kTask));
+	EXPECT_EQ(kTask.getResult(), 42);
+}
+
+TEST(TaskSystemTests, TypedResultTaskCanBeReleasedAfterResultAccess) {
+	const TaskLaunchOptions kOptions{.lifetime = TaskLifetime::Manual};
+
+	auto task = launch(
+	    []() noexcept -> int {
+		    return 42;
+	    },
+	    kOptions);
+
+	EXPECT_EQ(task.getResult(), 42);
+	EXPECT_TRUE(isComplete(task));
+
+	EXPECT_EQ(release(task), TaskReleaseResult::Success);
+	EXPECT_FALSE(isComplete(task));
 }
 
 } // namespace

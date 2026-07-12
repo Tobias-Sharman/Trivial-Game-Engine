@@ -99,6 +99,8 @@ public:
 
 	[[nodiscard]] bool tryGetStatus(TaskHandle handle, TaskStatus& status) const noexcept;
 
+	[[nodiscard]] void* getResultPointer(TaskHandle handle) noexcept;
+
 private:
 	static constexpr std::uint32_t kTaskSlotsPerPage = 256;
 	static constexpr std::uint32_t kMaxTaskCount = 65'536;

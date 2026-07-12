@@ -2,6 +2,7 @@
 #define TRIVIAL_TASK_TASK_H
 
 #include <span>
+#include <type_traits>
 #include <utility>
 
 #include <trivial/core/assert.h>
@@ -31,6 +32,49 @@ inline void setActiveTaskSystem(TaskSystem* taskSystem) noexcept {
 	return *detail::g_activeTaskSystem;
 }
 
+template <typename Result>
+class Task {
+public:
+	Task() noexcept = default;
+
+	explicit constexpr Task(TaskHandle handle) noexcept
+	    : m_handle(handle) {}
+
+	[[nodiscard]] constexpr bool isValid() const noexcept { return m_handle.isValid(); }
+
+	[[nodiscard]] constexpr TaskHandle handle() const noexcept { return m_handle; }
+
+	[[nodiscard]] constexpr operator TaskHandle() const noexcept { return m_handle; }
+
+	[[nodiscard]] Result& getResult() const noexcept {
+		return *static_cast<Result*>(activeTaskSystem().getResultPointer(m_handle));
+	}
+
+private:
+	TaskHandle m_handle{};
+};
+
+template <>
+class Task<void> {
+public:
+	Task() noexcept = default;
+
+	explicit constexpr Task(TaskHandle handle) noexcept
+	    : m_handle(handle) {}
+
+	[[nodiscard]] constexpr bool isValid() const noexcept { return m_handle.isValid(); }
+
+	[[nodiscard]] constexpr TaskHandle handle() const noexcept { return m_handle; }
+
+	[[nodiscard]] constexpr operator TaskHandle() const noexcept { return m_handle; }
+
+private:
+	TaskHandle m_handle{};
+};
+
+static_assert(sizeof(Task<void>) == sizeof(TaskHandle));
+static_assert(sizeof(Task<int>) == sizeof(TaskHandle));
+
 [[nodiscard]] inline TaskHandle launch(TaskPayload payload, const TaskLaunchOptions& options = {}) noexcept {
 	return activeTaskSystem().launch(std::move(payload), options);
 }
@@ -45,6 +89,46 @@ inline void setActiveTaskSystem(TaskSystem* taskSystem) noexcept {
                                        std::span<const TaskHandle> prerequisites,
                                        const TaskLaunchOptions& options = {}) noexcept {
 	return activeTaskSystem().launch(std::move(payload), prerequisites, options);
+}
+
+template <typename Callable>
+[[nodiscard]] auto launch(Callable&& callable, const TaskLaunchOptions& options = {}) noexcept {
+	using StoredCallable = std::decay_t<Callable>;
+	using Result = std::invoke_result_t<StoredCallable&>;
+
+	static_assert(!std::is_reference_v<Result>, "Task reference results are not currently supported");
+
+	TaskHandle handle = launch(TaskPayload{std::forward<Callable>(callable)}, options);
+
+	return Task<Result>{handle};
+}
+
+template <typename Callable>
+[[nodiscard]] auto launch(Callable&& callable,
+                          TaskHandle prerequisite,
+                          const TaskLaunchOptions& options = {}) noexcept {
+	using StoredCallable = std::decay_t<Callable>;
+	using Result = std::invoke_result_t<StoredCallable&>;
+
+	static_assert(!std::is_reference_v<Result>, "Task reference results are not currently supported");
+
+	TaskHandle handle = launch(TaskPayload{std::forward<Callable>(callable)}, prerequisite, options);
+
+	return Task<Result>{handle};
+}
+
+template <typename Callable>
+[[nodiscard]] auto launch(Callable&& callable,
+                          std::span<const TaskHandle> prerequisites,
+                          const TaskLaunchOptions& options = {}) noexcept {
+	using StoredCallable = std::decay_t<Callable>;
+	using Result = std::invoke_result_t<StoredCallable&>;
+
+	static_assert(!std::is_reference_v<Result>, "Task reference results are not currently supported");
+
+	TaskHandle handle = launch(TaskPayload{std::forward<Callable>(callable)}, prerequisites, options);
+
+	return Task<Result>{handle};
 }
 
 inline void wait(TaskHandle task) noexcept {

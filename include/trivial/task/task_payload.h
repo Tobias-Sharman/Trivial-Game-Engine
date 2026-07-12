@@ -7,6 +7,7 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <new>
@@ -14,6 +15,8 @@
 #include <utility>
 
 #include <trivial/core/assert.h>
+#include <trivial/core/config.h>
+#include <trivial/core/log.h>
 
 namespace trivial::task {
 
@@ -27,7 +30,7 @@ public:
 	    requires(!std::is_same_v<std::remove_cvref_t<Callable>, TaskPayload>
 	             && std::is_nothrow_constructible_v<std::decay_t<Callable>, Callable &&>
 	             && std::is_nothrow_invocable_v<std::decay_t<Callable>&>
-	             && std::is_same_v<std::invoke_result_t<std::decay_t<Callable>&>, void>
+	             && !std::is_reference_v<std::invoke_result_t<std::decay_t<Callable>&>>
 	             && std::is_nothrow_destructible_v<std::decay_t<Callable>>)
 	TaskPayload(Callable&& callable) noexcept { // NOLINT(cppcoreguidelines-pro-type-member-init)
 		using StoredCallable = std::decay_t<Callable>;
@@ -62,18 +65,55 @@ public:
 
 	void operator()() noexcept {
 		TRIVIAL_ASSERT(m_operations != nullptr);
+		TRIVIAL_ASSERT(m_operations->invoke != nullptr);
 
-		m_operations->invoke(m_storage.data());
+		m_operations = m_operations->invoke(m_storage.data());
+	}
+
+	[[nodiscard]] void* getResultPointer() noexcept {
+		TRIVIAL_ASSERT(m_operations != nullptr);
+		TRIVIAL_ASSERT(m_operations->get != nullptr);
+
+#ifdef TRIVIAL_CONFIG_DEBUG
+		TRIVIAL_ASSERT(m_operations->kind == OperationsKind::Result);
+#endif // TRIVIAL_CONFIG_DEBUG
+
+		return m_operations->get(m_storage.data());
+	}
+
+	[[nodiscard]] const void* getResultPointer() const noexcept {
+		TRIVIAL_ASSERT(m_operations != nullptr);
+		TRIVIAL_ASSERT(m_operations->getConst != nullptr);
+
+#ifdef TRIVIAL_CONFIG_DEBUG
+		TRIVIAL_ASSERT(m_operations->kind == OperationsKind::Result);
+#endif // TRIVIAL_CONFIG_DEBUG
+
+		return m_operations->getConst(m_storage.data());
 	}
 
 private:
 	static constexpr std::size_t kInlineStorageSize = 40; // TODO: Profile and adjust
 	static constexpr std::size_t kInlineStorageAlignment = alignof(std::max_align_t);
 
+#if TRIVIAL_CONFIG_DEBUG
+	enum class OperationsKind : std::uint8_t {
+		Callable,
+		Result,
+		Empty
+	};
+#endif // TRIVIAL_CONFIG_DEBUG
+
 	struct Operations {
-		void (*invoke)(std::byte* storage) noexcept;
+#if TRIVIAL_CONFIG_DEBUG
+		OperationsKind kind;
+#endif // TRIVIAL_CONFIG_DEBUG
+
+		const Operations* (*invoke)(std::byte* storage) noexcept;
 		void (*move)(std::byte* destination, std::byte* source) noexcept;
 		void (*destroy)(std::byte* storage) noexcept;
+		void* (*get)(std::byte* storage) noexcept;
+		const void* (*getConst)(const std::byte* storage) noexcept;
 	};
 
 	template <typename Callable>
@@ -85,6 +125,12 @@ private:
 	[[nodiscard]]
 	static Object* rawStoragePointer(std::byte* storage) noexcept {
 		return reinterpret_cast<Object*>(storage); // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+	}
+
+	template <typename Object>
+	static const Object* rawStoragePointer(const std::byte* storage) noexcept {
+		// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+		return std::launder(reinterpret_cast<const Object*>(storage));
 	}
 
 	template <typename Object>
@@ -108,55 +154,250 @@ private:
 		return getStoredObject<Callable*>(storage);
 	}
 
+	[[nodiscard]] void* getStoredObject() noexcept {
+		TRIVIAL_ASSERT(m_operations != nullptr);
+		return m_operations->get(m_storage.data());
+	}
+
+	[[nodiscard]] const void* getStoredObject() const noexcept {
+		TRIVIAL_ASSERT(m_operations != nullptr);
+		return m_operations->getConst(m_storage.data());
+	}
+
+	static const Operations& getEmptyOperations() noexcept {
+		static constexpr Operations s_kOperations{
+#ifdef TRIVIAL_CONFIG_DEBUG
+		    .kind = OperationsKind::Empty,
+#endif // TRIVIAL_CONFIG_DEBUG
+
+		    .invoke = nullptr,
+
+		    .move =
+		        [](std::byte*, std::byte*) noexcept {
+			        TRIVIAL_LOG_ERROR("Task system tried to move void return type");
+		        },
+
+		    .destroy =
+		        [](std::byte*) noexcept {
+			        TRIVIAL_LOG_ERROR("Task system tried to move void return type");
+		        },
+
+		    .get = [](std::byte*) noexcept -> void* {
+			    return nullptr;
+		    },
+
+		    .getConst = [](const std::byte*) noexcept -> const void* {
+			    return nullptr;
+		    }};
+
+		return s_kOperations;
+	}
+
 	template <typename Callable>
 	static const Operations& getInlineOperations() noexcept {
-		static constexpr Operations s_kOperations
-		    = {[](std::byte* storage) noexcept {
-			       std::invoke(*getInlineObject<Callable>(storage));
-		       },
+		static constexpr Operations s_kOperations{
+#ifdef TRIVIAL_CONFIG_DEBUG
+		    .kind = OperationsKind::Callable,
+#endif // TRIVIAL_CONFIG_DEBUG
 
-		       [](std::byte* destination, std::byte* source) noexcept {
-			       Callable* sourceCallable = getInlineObject<Callable>(source);
+		    .invoke = [](std::byte* storage) noexcept -> const Operations* {
+			    using InvokeResult = std::invoke_result_t<Callable&>;
+			    using StoredResult = std::remove_cv_t<InvokeResult>;
 
-			       std::construct_at(rawStoragePointer<Callable>(destination), std::move(*sourceCallable));
+			    Callable* callable = getInlineObject<Callable>(storage);
 
-			       std::destroy_at(sourceCallable);
-		       },
+			    if constexpr (std::is_void_v<InvokeResult>) {
+				    std::invoke(*callable);
+				    std::destroy_at(callable);
 
-		       [](std::byte* storage) noexcept {
-			       std::destroy_at(getInlineObject<Callable>(storage));
-		       }};
+				    return &getEmptyOperations();
+			    } else {
+				    StoredResult result = std::invoke(*callable);
+
+				    std::destroy_at(callable);
+
+				    if constexpr (kCanStoreInline<StoredResult>) {
+					    std::construct_at(rawStoragePointer<StoredResult>(storage), std::move(result));
+
+					    return &getInlineResultOperations<StoredResult>();
+				    } else {
+					    StoredResult* resultObject = new StoredResult(std::move(result));
+
+					    std::construct_at(rawStoragePointer<StoredResult*>(storage), resultObject);
+
+					    return &getHeapResultOperations<StoredResult>();
+				    }
+			    }
+		    },
+
+		    .move =
+		        [](std::byte* destination, std::byte* source) noexcept {
+			        Callable* sourceCallable = getInlineObject<Callable>(source);
+
+			        std::construct_at(rawStoragePointer<Callable>(destination), std::move(*sourceCallable));
+
+			        std::destroy_at(sourceCallable);
+		        },
+
+		    .destroy =
+		        [](std::byte* storage) noexcept {
+			        std::destroy_at(getInlineObject<Callable>(storage));
+		        },
+
+		    .get = [](std::byte* storage) noexcept -> void* {
+			    return rawStoragePointer<Callable>(storage);
+		    },
+
+		    .getConst = [](const std::byte* storage) noexcept -> const void* {
+			    return rawStoragePointer<Callable>(storage);
+		    }};
 
 		return s_kOperations;
 	}
 
 	template <typename Callable>
 	static const Operations& getHeapOperations() noexcept {
-		static constexpr Operations s_kOperations
-		    = {[](std::byte* storage) noexcept {
-			       Callable* object = *getHeapPointerSlot<Callable>(storage);
+		static constexpr Operations s_kOperations{
+#ifdef TRIVIAL_CONFIG_DEBUG
+		    .kind = OperationsKind::Callable,
+#endif // TRIVIAL_CONFIG_DEBUG
 
-			       std::invoke(*object);
-		       },
+		    .invoke = [](std::byte* storage) noexcept -> const Operations* {
+			    using InvokeResult = std::invoke_result_t<Callable&>;
+			    using StoredResult = std::remove_cv_t<InvokeResult>;
 
-		       [](std::byte* destination, std::byte* source) noexcept {
-			       Callable** sourceSlot = getHeapPointerSlot<Callable>(source);
+			    Callable** slot = getHeapPointerSlot<Callable>(storage);
+			    Callable* callable = *slot;
 
-			       Callable* object = *sourceSlot;
+			    if constexpr (std::is_void_v<InvokeResult>) {
+				    std::invoke(*callable);
 
-			       std::construct_at(rawStoragePointer<Callable*>(destination), object);
+				    std::destroy_at(slot);
+				    delete callable;
 
-			       std::destroy_at(sourceSlot);
-		       },
+				    return &getEmptyOperations();
+			    } else {
+				    StoredResult result = std::invoke(*callable);
 
-		       [](std::byte* storage) noexcept {
-			       Callable** slot = getHeapPointerSlot<Callable>(storage);
+				    std::destroy_at(slot);
+				    delete callable;
 
-			       Callable* object = *slot;
+				    if constexpr (kCanStoreInline<StoredResult>) {
+					    std::construct_at(rawStoragePointer<StoredResult>(storage), std::move(result));
 
-			       std::destroy_at(slot);
-			       delete object; // TODO: Custom allocator
-		       }};
+					    return &getInlineResultOperations<StoredResult>();
+				    } else {
+					    StoredResult* resultObject = new StoredResult(std::move(result));
+
+					    std::construct_at(rawStoragePointer<StoredResult*>(storage), resultObject);
+
+					    return &getHeapResultOperations<StoredResult>();
+				    }
+			    }
+		    },
+
+		    .move =
+		        [](std::byte* destination, std::byte* source) noexcept {
+			        Callable** sourceSlot = getHeapPointerSlot<Callable>(source);
+
+			        Callable* object = *sourceSlot;
+
+			        std::construct_at(rawStoragePointer<Callable*>(destination), object);
+
+			        std::destroy_at(sourceSlot);
+		        },
+
+		    .destroy =
+		        [](std::byte* storage) noexcept {
+			        Callable** slot = getHeapPointerSlot<Callable>(storage);
+
+			        Callable* object = *slot;
+
+			        std::destroy_at(slot);
+			        delete object; // TODO: Custom allocator
+		        },
+
+		    .get = [](std::byte* storage) noexcept -> void* {
+			    return *rawStoragePointer<Callable*>(storage);
+		    },
+
+		    .getConst = [](const std::byte* storage) noexcept -> const void* {
+			    return *rawStoragePointer<Callable*>(storage);
+		    }};
+
+		return s_kOperations;
+	}
+
+	template <typename Result>
+	static const Operations& getInlineResultOperations() noexcept {
+		static constexpr Operations s_kOperations{
+#ifdef TRIVIAL_CONFIG_DEBUG
+		    .kind = OperationsKind::Result,
+#endif // TRIVIAL_CONFIG_DEBUG
+
+		    .invoke = nullptr,
+
+		    .move =
+		        [](std::byte* destination, std::byte* source) noexcept {
+			        Result* sourceResult = getStoredObject<Result>(source);
+
+			        std::construct_at(rawStoragePointer<Result>(destination), std::move(*sourceResult));
+
+			        std::destroy_at(sourceResult);
+		        },
+
+		    .destroy =
+		        [](std::byte* storage) noexcept {
+			        std::destroy_at(getStoredObject<Result>(storage));
+		        },
+
+		    .get = [](std::byte* storage) noexcept -> void* {
+			    return getStoredObject<Result>(storage);
+		    },
+
+		    .getConst = [](const std::byte* storage) noexcept -> const void* {
+			    return rawStoragePointer<Result>(storage);
+		    }};
+
+		return s_kOperations;
+	}
+
+	template <typename Result>
+	static const Operations& getHeapResultOperations() noexcept {
+		static constexpr Operations s_kOperations{
+#ifdef TRIVIAL_CONFIG_DEBUG
+		    .kind = OperationsKind::Result,
+#endif // TRIVIAL_CONFIG_DEBUG
+
+		    .invoke = nullptr,
+
+		    .move =
+		        [](std::byte* destination, std::byte* source) noexcept {
+			        Result** sourceSlot = getHeapPointerSlot<Result>(source);
+
+			        Result* result = *sourceSlot;
+
+			        std::construct_at(rawStoragePointer<Result*>(destination), result);
+
+			        std::destroy_at(sourceSlot);
+		        },
+
+		    .destroy =
+		        [](std::byte* storage) noexcept {
+			        Result** slot = getHeapPointerSlot<Result>(storage);
+			        Result* result = *slot;
+
+			        std::destroy_at(slot);
+			        delete result;
+		        },
+
+		    .get = [](std::byte* storage) noexcept -> void* {
+			    return *getHeapPointerSlot<Result>(storage);
+		    },
+
+		    .getConst = [](const std::byte* storage) noexcept -> const void* {
+			    return *rawStoragePointer<Result*>(storage);
+		    }};
 
 		return s_kOperations;
 	}

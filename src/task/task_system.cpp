@@ -115,6 +115,12 @@ void TaskSystem::wait(std::span<const TaskHandle> tasks) noexcept {
 	}
 }
 
+void* TaskSystem::getResultPointer(TaskHandle handle) noexcept {
+	wait(handle);
+
+	return m_graph.getResultPointer(handle);
+}
+
 bool TaskSystem::isComplete(TaskHandle task) const noexcept {
 	TaskStatus status = TaskStatus::Created;
 

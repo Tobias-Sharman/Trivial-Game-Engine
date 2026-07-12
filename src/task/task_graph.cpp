@@ -346,6 +346,24 @@ bool TaskGraph::tryGetStatus(TaskHandle handle, TaskStatus& status) const noexce
 	return true;
 }
 
+void* TaskGraph::getResultPointer(TaskHandle handle) noexcept {
+	TRIVIAL_ASSERT(handle.isValid());
+
+	TaskSlot* slot = slotAt(handle.index);
+
+	TRIVIAL_ASSERT(slot != nullptr);
+
+	std::lock_guard<TaskSlotMutex> lock(slot->mutex());
+
+	TRIVIAL_ASSERT(slot->isOccupiedBy(handle));
+
+	TaskState& state = slot->state();
+
+	TRIVIAL_ASSERT(state.status == TaskStatus::Completed);
+
+	return state.payload.getResultPointer();
+}
+
 TaskGraph::TaskPage* TaskGraph::pageAt(std::uint32_t pageIndex) noexcept {
 	if (pageIndex >= kMaxPageCount) {
 		return nullptr;

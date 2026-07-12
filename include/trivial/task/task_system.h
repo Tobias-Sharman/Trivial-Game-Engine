@@ -42,6 +42,8 @@ public:
 	void wait(TaskHandle task) noexcept;
 	void wait(std::span<const TaskHandle> tasks) noexcept; // TODO: add more general tasks
 
+	[[nodiscard]] void* getResultPointer(TaskHandle handle) noexcept;
+
 	[[nodiscard]] bool isComplete(TaskHandle task) const noexcept;
 
 	[[nodiscard]] TaskReleaseResult release(TaskHandle task) noexcept;
