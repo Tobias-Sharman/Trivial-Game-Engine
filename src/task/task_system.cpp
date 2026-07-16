@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <mutex>
 #include <utility>
+#include <vector>
 
 #include <trivial/core/assert.h>
 
@@ -185,9 +186,10 @@ bool TaskSystem::executeOneReadyTask() noexcept {
 }
 
 void TaskSystem::completeTask(TaskHandle handle) noexcept {
-	m_graph.beginCompletion(handle, m_completionDependants);
+	std::vector<TaskHandle> completionDependants; // TODO: Make thread local vectors repeat allocations are poor
+	m_graph.beginCompletion(handle, completionDependants);
 
-	for (TaskHandle dependant : m_completionDependants) {
+	for (TaskHandle dependant : completionDependants) {
 		TaskPriority readyPriority = TaskPriority::Normal;
 
 		if (m_graph.removePrerequisiteAndMarkReadyIfUnblocked(dependant, handle, readyPriority)) {

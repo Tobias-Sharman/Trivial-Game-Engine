@@ -5,7 +5,6 @@
 #include <cstddef>
 #include <deque>
 #include <span>
-#include <vector>
 
 #include <trivial/task/task_graph.h>
 #include <trivial/task/task_handle.h>
@@ -62,8 +61,6 @@ private:
 
 	using ReadyQueue = std::deque<TaskHandle>; // TODO: custom deque
 	std::array<ReadyQueue, static_cast<std::size_t>(TaskPriority::Count)> m_readyQueues;
-	// TODO: custom allocator
-	std::vector<TaskHandle> m_completionDependants;
 };
 
 } // namespace trivial::task
