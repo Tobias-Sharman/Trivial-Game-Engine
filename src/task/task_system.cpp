@@ -142,7 +142,8 @@ void TaskSystem::enqueueReadyTask(TaskHandle handle, TaskPriority priority) noex
 
 	std::lock_guard<TaskGraphMutex> lock(m_readyMutex);
 
-	m_readyQueues[static_cast<std::size_t>(priority)].push_back(handle); // Only issue for programmer error in release
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
+	m_readyQueues[static_cast<std::size_t>(priority)].push_back(handle);
 }
 
 bool TaskSystem::tryPopReadyTask(TaskHandle& handle) noexcept {
@@ -150,7 +151,8 @@ bool TaskSystem::tryPopReadyTask(TaskHandle& handle) noexcept {
 
 	for (std::size_t priorityIndex = static_cast<std::size_t>(TaskPriority::Count); priorityIndex > 0;
 	     --priorityIndex) {
-		ReadyQueue& queue = m_readyQueues[priorityIndex - 1]; // Only issue for programmer error in release
+		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
+		ReadyQueue& queue = m_readyQueues[priorityIndex - 1];
 
 		if (queue.empty()) {
 			continue;
