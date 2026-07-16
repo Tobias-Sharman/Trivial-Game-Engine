@@ -9,7 +9,9 @@ namespace trivial::task {
 enum class TaskAffinity : std::uint8_t {
 	AnyWorker,
 	MainThread,
-	RenderThread
+	RenderThread,
+
+	Count
 };
 
 enum class TaskPriority : std::uint8_t {
