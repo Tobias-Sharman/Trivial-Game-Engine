@@ -10,7 +10,6 @@ enum class TaskStatus : std::uint8_t {
 	Waiting,
 	Ready,
 	Running,
-	Completing,
 	Completed,
 	Cancelled
 };

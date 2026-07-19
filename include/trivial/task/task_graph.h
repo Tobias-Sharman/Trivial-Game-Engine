@@ -4,6 +4,7 @@
 #include <array>
 #include <atomic>
 #include <cstdint>
+#include <span>
 #include <vector>
 
 #include <trivial/core/config.h>
@@ -13,6 +14,7 @@
 #include <trivial/task/task_payload.h>
 #include <trivial/task/task_slot.h>
 #include <trivial/task/task_status.h>
+#include <trivial/task/task_wait_group.h>
 
 namespace trivial::task {
 
@@ -47,21 +49,33 @@ enum class TaskClaimResult : std::uint8_t {
 	NotReady,
 };
 
+enum class TaskAttachWaiterResult : std::uint8_t {
+	AlreadyComplete,
+	Attached,
+	InvalidHandle
+};
+
 enum class TaskReleaseResult : std::uint8_t {
 	Success,
 	InvalidHandle,
 	TaskNotComplete
 };
 
-struct TaskCreateOutcome {
-	TaskCreateResult result = TaskCreateResult::CapacityExhausted;
+struct TaskCreateDispatchOutcome {
+	TaskCreateResult createResult = TaskCreateResult::CapacityExhausted;
 	TaskHandle handle{};
-};
-
-struct TaskDispatchOutcome {
-	TaskDispatchResult result = TaskDispatchResult::InvalidHandle;
 	TaskReadiness readiness = TaskReadiness::Waiting;
 	TaskPriority priority{};
+};
+
+struct TaskWalkInfo {
+	TaskStatus status = TaskStatus::Created;
+	TaskAffinity affinity = TaskAffinity::AnyWorker;
+};
+
+struct TaskReadyInfo {
+	TaskPriority priority = TaskPriority::Normal;
+	TaskAffinity affinity = TaskAffinity::AnyWorker;
 };
 
 class TaskGraph {
@@ -76,28 +90,32 @@ public:
 	TaskGraph(TaskGraph&&) = delete;
 	TaskGraph& operator=(TaskGraph&&) = delete;
 
-	[[nodiscard]] TaskCreateOutcome create(TaskPayload payload, const TaskLaunchOptions& options) noexcept;
-
-	[[nodiscard]] TaskPrerequisiteResult addPrerequisite(TaskHandle taskHandle, TaskHandle prerequisiteHandle) noexcept;
-
-	[[nodiscard]] TaskDispatchOutcome dispatch(TaskHandle handle) noexcept;
+	[[nodiscard]] TaskCreateDispatchOutcome createDispatched(TaskPayload payload,
+	                                                         std::span<const TaskHandle> prerequisites,
+	                                                         const TaskLaunchOptions& options) noexcept;
 
 	[[nodiscard]] TaskClaimResult tryClaim(TaskHandle handle) noexcept;
 
+	[[nodiscard]] TaskAttachWaiterResult tryAttachWaiter(TaskHandle handle, TaskWaitGroup& waitGroup) noexcept;
+
 	void executeClaimed(TaskHandle handle) noexcept;
 
-	void beginCompletion(TaskHandle handle, std::vector<TaskHandle>& outDependants) noexcept;
+	void completeAndCollectDependants(TaskHandle handle, std::vector<TaskHandle>& outDependants) noexcept;
 
 	// Unideal but means that only one lock is needed. True for ready to be enqueue, false if not
 	[[nodiscard]] bool removePrerequisiteAndMarkReadyIfUnblocked(TaskHandle dependantHandle,
 	                                                             TaskHandle prerequisiteHandle,
-	                                                             TaskPriority& readyPriority) noexcept;
-
-	void finishCompletion(TaskHandle handle) noexcept;
+	                                                             TaskReadyInfo& outReadyInfo) noexcept;
 
 	[[nodiscard]] TaskReleaseResult release(TaskHandle handle) noexcept;
 
-	[[nodiscard]] bool tryGetStatus(TaskHandle handle, TaskStatus& status) const noexcept;
+	void detachWaiterIfUnclaimed(TaskHandle handle, const TaskWaitGroup& waitGroup) noexcept;
+
+	[[nodiscard]] bool tryGetStatus(TaskHandle handle, TaskStatus& outStatus) const noexcept;
+
+	[[nodiscard]] bool tryGetWalkInfo(TaskHandle handle,
+	                                  TaskWalkInfo& outInfo,
+	                                  std::vector<TaskHandle>& outPrerequisites) const noexcept;
 
 	[[nodiscard]] void* getResultPointer(TaskHandle handle) noexcept;
 
@@ -134,8 +152,13 @@ private:
 
 	void releaseTaskIndex(std::uint32_t taskIndex) noexcept;
 
+	[[nodiscard]] TaskPrerequisiteResult addPrerequisiteLocked(TaskHandle dependantHandle,
+	                                                           TaskSlot& dependantSlot,
+	                                                           TaskHandle prerequisiteHandle) noexcept;
 #if TRIVIAL_CONFIG_DEBUG
-	[[nodiscard]] bool wouldCreateCycle(TaskHandle taskHandle, TaskHandle prerequisiteHandle) const noexcept;
+	[[nodiscard]] bool wouldCreateCycle(TaskHandle taskHandle,
+	                                    const TaskSlot& taskSlot,
+	                                    TaskHandle prerequisiteHandle) const noexcept;
 #endif // TRIVIAL_CONFIG_DEBUG
 
 	std::array<std::atomic<TaskPage*>, kMaxPageCount> m_pages{};

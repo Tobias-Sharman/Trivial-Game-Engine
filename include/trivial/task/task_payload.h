@@ -1,10 +1,6 @@
 #ifndef TRIVIAL_TASK_TASK_PAYLOAD_H
 #define TRIVIAL_TASK_TASK_PAYLOAD_H
 
-// TODO: For trivially destructible callables and suitable result types,
-// avoid the intermediate object and write the returned value directly
-// into the reused payload storage.
-
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -177,10 +173,7 @@ private:
 			        TRIVIAL_LOG_ERROR("Task system tried to move void return type");
 		        },
 
-		    .destroy =
-		        [](std::byte*) noexcept {
-			        TRIVIAL_LOG_ERROR("Task system tried to move void return type");
-		        },
+		    .destroy = [](std::byte*) noexcept {},
 
 		    .get = [](std::byte*) noexcept -> void* {
 			    return nullptr;

@@ -1,6 +1,13 @@
+#include <trivial/task/task_system.h>
+
 #include <array>
+#include <atomic>
+#include <barrier>
+#include <mutex>
 #include <span>
+#include <thread>
 #include <type_traits>
+#include <unordered_set>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -11,7 +18,7 @@ namespace trivial::task {
 
 namespace {
 
-TaskSystem g_taskSystem;
+TaskSystem g_taskSystem{TaskSystemConfig{}};
 
 class TaskSystemTestSetup {
 public:
@@ -34,6 +41,15 @@ struct LargeTaskResult {
 };
 
 static_assert(sizeof(LargeTaskResult) > 40);
+
+[[nodiscard]] std::size_t testDriverThreadCount() noexcept {
+	const auto kHardware = std::thread::hardware_concurrency();
+	return kHardware > 0 ? static_cast<std::size_t>(kHardware) : 4UZ;
+}
+
+// ----------------------------------------------------------------------------
+// Single-threaded correctness
+// ----------------------------------------------------------------------------
 
 TEST(TaskSystemTests, LaunchesTaskWithoutPrerequisites) {
 	bool executed = false;
@@ -178,35 +194,24 @@ TEST(TaskSystemTests, ReleaseFailsBeforeCompletion) {
 	EXPECT_EQ(release(kTask), TaskReleaseResult::Success);
 }
 
-TEST(TaskSystemTests, CriticalPriorityRunsBeforeNormalPriority) {
-	std::vector<int> executionOrder;
+TEST(TaskPriorityQueueTests, TryPopReturnsHighestPriorityFirst) {
+	TaskPriorityQueue queue;
 
-	TaskLaunchOptions normalOptions{};
-	normalOptions.priority = TaskPriority::Normal;
+	const TaskHandle kNormalHandle{.index = 1, .generation = 0};
+	const TaskHandle kCriticalHandle{.index = 2, .generation = 0};
 
-	TaskLaunchOptions criticalOptions{};
-	criticalOptions.priority = TaskPriority::Critical;
+	queue.enqueue(kNormalHandle, TaskPriority::Normal);
+	queue.enqueue(kCriticalHandle, TaskPriority::Critical);
 
-	const TaskHandle kNormal = launch(TaskPayload{[&executionOrder]() noexcept {
-		                                  executionOrder.push_back(1);
-	                                  }},
-	                                  normalOptions);
+	TaskHandle popped{};
 
-	const TaskHandle kCritical = launch(TaskPayload{[&executionOrder]() noexcept {
-		                                    executionOrder.push_back(2);
-	                                    }},
-	                                    criticalOptions);
+	ASSERT_TRUE(queue.tryPop(popped));
+	EXPECT_EQ(popped, kCriticalHandle);
 
-	ASSERT_TRUE(kNormal.isValid());
-	ASSERT_TRUE(kCritical.isValid());
+	ASSERT_TRUE(queue.tryPop(popped));
+	EXPECT_EQ(popped, kNormalHandle);
 
-	const std::array<TaskHandle, 2> kTasks{kNormal, kCritical};
-
-	wait(std::span<const TaskHandle>{kTasks});
-
-	ASSERT_EQ(executionOrder.size(), 2UZ);
-	EXPECT_EQ(executionOrder[0], 2);
-	EXPECT_EQ(executionOrder[1], 1);
+	EXPECT_FALSE(queue.tryPop(popped));
 }
 
 TEST(TaskSystemTests, LaunchDeducesVoidTaskType) {
@@ -348,6 +353,257 @@ TEST(TaskSystemTests, TypedResultTaskCanBeReleasedAfterResultAccess) {
 
 	EXPECT_EQ(release(task), TaskReleaseResult::Success);
 	EXPECT_FALSE(isComplete(task));
+}
+
+// ----------------------------------------------------------------------------
+// Multithreading
+// ----------------------------------------------------------------------------
+
+TEST(TaskSystemMultithreadingTests, ManyIndependentTasksAllCompleteExactlyOnce) {
+	constexpr std::size_t kTaskCount = 500;
+
+	std::atomic<int> counter{0};
+	std::vector<TaskHandle> handles;
+	handles.reserve(kTaskCount);
+
+	for (std::size_t i = 0; i < kTaskCount; ++i) {
+		handles.push_back(launch(TaskPayload{[&counter]() noexcept {
+			counter.fetch_add(1, std::memory_order_relaxed);
+		}}));
+	}
+
+	for (const TaskHandle& handle : handles) {
+		EXPECT_TRUE(handle.isValid());
+	}
+
+	wait(std::span<const TaskHandle>{handles});
+
+	EXPECT_EQ(counter.load(std::memory_order_relaxed), static_cast<int>(kTaskCount));
+
+	for (const TaskHandle& handle : handles) {
+		EXPECT_TRUE(isComplete(handle));
+	}
+}
+
+TEST(TaskSystemMultithreadingTests, ConcurrentExternalThreadsLaunchAndWaitSafely) {
+	const std::size_t kThreadCount = testDriverThreadCount();
+	constexpr std::size_t kTasksPerThread = 50;
+
+	std::atomic<int> counter{0};
+	std::barrier startBarrier(static_cast<std::ptrdiff_t>(kThreadCount));
+
+	std::vector<std::thread> driverThreads;
+	driverThreads.reserve(kThreadCount);
+
+	for (std::size_t t = 0; t < kThreadCount; ++t) {
+		driverThreads.emplace_back([&counter, &startBarrier]() {
+			startBarrier.arrive_and_wait();
+
+			std::vector<TaskHandle> handles;
+			handles.reserve(kTasksPerThread);
+
+			for (std::size_t i = 0; i < kTasksPerThread; ++i) {
+				handles.push_back(launch(TaskPayload{[&counter]() noexcept {
+					counter.fetch_add(1, std::memory_order_relaxed);
+				}}));
+			}
+
+			wait(std::span<const TaskHandle>{handles});
+		});
+	}
+
+	for (std::thread& driverThread : driverThreads) {
+		driverThread.join();
+	}
+
+	EXPECT_EQ(counter.load(std::memory_order_relaxed), static_cast<int>(kThreadCount * kTasksPerThread));
+}
+
+TEST(TaskSystemMultithreadingTests, TasksAreDistributedAcrossMultipleWorkerThreads) {
+	if (std::thread::hardware_concurrency() <= 1) {
+		GTEST_SKIP() << "Single-core host - worker distribution cannot be observed";
+	}
+
+	constexpr std::size_t kTaskCount = 400;
+
+	std::mutex threadIdMutex;
+	std::unordered_set<std::thread::id> observedThreadIds;
+	std::vector<TaskHandle> handles;
+	handles.reserve(kTaskCount);
+
+	for (std::size_t i = 0; i < kTaskCount; ++i) {
+		handles.push_back(launch(TaskPayload{[&threadIdMutex, &observedThreadIds]() noexcept {
+			std::lock_guard<std::mutex> lock(threadIdMutex);
+			observedThreadIds.insert(std::this_thread::get_id());
+		}}));
+	}
+
+	wait(std::span<const TaskHandle>{handles});
+
+	EXPECT_GT(observedThreadIds.size(), 1UZ);
+}
+
+TEST(TaskSystemMultithreadingTests, LongSequentialDependencyChainPreservesOrder) {
+	constexpr int kChainLength = 100;
+
+	std::mutex orderMutex;
+	std::vector<int> executionOrder;
+	executionOrder.reserve(static_cast<std::size_t>(kChainLength));
+
+	TaskHandle previous{};
+
+	for (int i = 0; i < kChainLength; ++i) {
+		TaskPayload payload{[&orderMutex, &executionOrder, i]() noexcept {
+			std::lock_guard<std::mutex> lock(orderMutex);
+			executionOrder.push_back(i);
+		}};
+
+		previous = previous.isValid() ? launch(std::move(payload), previous) : launch(std::move(payload));
+	}
+
+	wait(previous);
+
+	ASSERT_EQ(executionOrder.size(), static_cast<std::size_t>(kChainLength));
+
+	for (int i = 0; i < kChainLength; ++i) {
+		EXPECT_EQ(executionOrder[static_cast<std::size_t>(i)], i);
+	}
+}
+
+TEST(TaskSystemMultithreadingTests, WideFanOutCompletesBeforeFanInJoinRuns) {
+	constexpr std::size_t kBranchCount = 32;
+
+	std::atomic<std::size_t> branchesCompleted{0};
+	std::vector<TaskHandle> branchHandles;
+	branchHandles.reserve(kBranchCount);
+
+	for (std::size_t i = 0; i < kBranchCount; ++i) {
+		branchHandles.push_back(launch(TaskPayload{[&branchesCompleted]() noexcept {
+			branchesCompleted.fetch_add(1, std::memory_order_acq_rel);
+		}}));
+	}
+
+	bool joinSawAllBranchesComplete = false;
+
+	const TaskHandle kJoin = launch(TaskPayload{[&branchesCompleted, &joinSawAllBranchesComplete]() noexcept {
+		                                joinSawAllBranchesComplete
+		                                    = branchesCompleted.load(std::memory_order_acquire) == kBranchCount;
+	                                }},
+	                                std::span<const TaskHandle>{branchHandles});
+
+	ASSERT_TRUE(kJoin.isValid());
+
+	wait(kJoin);
+
+	EXPECT_EQ(branchesCompleted.load(std::memory_order_acquire), kBranchCount);
+	EXPECT_TRUE(joinSawAllBranchesComplete);
+}
+
+TEST(TaskSystemMultithreadingTests, ReentrantWaitFromInsideATaskDoesNotDeadlock) {
+	bool innermostExecuted = false;
+	bool middleExecuted = false;
+	bool outerExecuted = false;
+
+	const TaskHandle kOuter = launch(TaskPayload{[&innermostExecuted, &middleExecuted, &outerExecuted]() noexcept {
+		const TaskHandle kMiddle = launch(TaskPayload{[&innermostExecuted, &middleExecuted]() noexcept {
+			const TaskHandle kInnermost = launch(TaskPayload{[&innermostExecuted]() noexcept {
+				innermostExecuted = true;
+			}});
+
+			wait(kInnermost);
+
+			middleExecuted = true;
+		}});
+
+		wait(kMiddle);
+
+		outerExecuted = true;
+	}});
+
+	ASSERT_TRUE(kOuter.isValid());
+
+	wait(kOuter);
+
+	EXPECT_TRUE(innermostExecuted);
+	EXPECT_TRUE(middleExecuted);
+	EXPECT_TRUE(outerExecuted);
+}
+
+TEST(TaskSystemMultithreadingTests, DestructorDrainsOutstandingWorkBeforeReturning) {
+	constexpr int kTaskCount = 20;
+
+	std::atomic<int> completedCount{0};
+
+	{
+		TaskSystem localSystem{TaskSystemConfig{}};
+
+		TaskHandle previous{};
+
+		for (int i = 0; i < kTaskCount; ++i) {
+			TaskPayload payload{[&completedCount]() noexcept {
+				completedCount.fetch_add(1, std::memory_order_relaxed);
+			}};
+
+			previous = previous.isValid() ? localSystem.launch(std::move(payload), previous)
+			                              : localSystem.launch(std::move(payload));
+		}
+
+		// Let destructor drain
+	}
+
+	EXPECT_EQ(completedCount.load(std::memory_order_relaxed), kTaskCount);
+}
+
+TEST(TaskSystemTests, LaunchReturnsInvalidHandleWhenCapacityExhausted) {
+	TaskSystem localSystem{TaskSystemConfig{}};
+
+	// NOTE: Needs adjusting if the max task count is increased
+	constexpr int kMaxTaskCount = 65536;
+
+	const TaskLaunchOptions kOptions{.lifetime = TaskLifetime::Manual};
+
+	std::vector<TaskHandle> handles;
+	handles.reserve(kMaxTaskCount + 1);
+
+	bool sawExhaustion = false;
+
+	for (int i = 0; i < kMaxTaskCount + 1; ++i) {
+		const TaskHandle kHandle = localSystem.launch(TaskPayload{[]() noexcept {}}, kOptions);
+
+		if (!kHandle.isValid()) {
+			sawExhaustion = true;
+			break;
+		}
+
+		handles.push_back(kHandle);
+	}
+
+	EXPECT_TRUE(sawExhaustion);
+
+	localSystem.wait(std::span<const TaskHandle>{handles});
+
+	for (TaskHandle handle : handles) {
+		EXPECT_EQ(localSystem.release(handle), TaskReleaseResult::Success);
+	}
+}
+
+TEST(TaskSystemMultithreadingTests, DestructorWaitsForSlowRunningTaskToFinish) {
+	constexpr auto kTaskDuration = std::chrono::milliseconds{100};
+
+	std::atomic<bool> taskCompleted{false};
+
+	{
+		TaskSystem localSystem{TaskSystemConfig{}};
+
+		const TaskHandle kTask = localSystem.launch(TaskPayload{[&taskCompleted, kTaskDuration]() noexcept {
+			std::this_thread::sleep_for(kTaskDuration);
+			taskCompleted.store(true, std::memory_order_release);
+		}});
+
+		ASSERT_TRUE(kTask.isValid());
+	}
+
+	EXPECT_TRUE(taskCompleted.load(std::memory_order_acquire));
 }
 
 } // namespace

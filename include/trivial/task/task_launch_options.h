@@ -9,7 +9,7 @@ namespace trivial::task {
 enum class TaskAffinity : std::uint8_t {
 	AnyWorker,
 	MainThread,
-	RenderThread,
+	// RenderThread,
 
 	Count
 };
@@ -44,7 +44,6 @@ struct TaskLaunchOptions {
 	TaskLifetime lifetime = TaskLifetime::AutoRelease;
 };
 
-// TODO: Merge affinty, priority, and lifetime into one uint8_t
 // TODO: Reduce scope handle size, should not need to have such a large amount of indices or generation
 
 } // namespace trivial::task
