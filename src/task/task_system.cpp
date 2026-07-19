@@ -4,6 +4,7 @@
 #include <utility>
 
 #include <trivial/core/assert.h>
+#include <trivial/core/profile.h>
 
 namespace {
 
@@ -298,6 +299,11 @@ std::size_t TaskSystem::tryGetCurrentWorkerIndex() const noexcept {
 void TaskSystem::runWorkerLoop(std::size_t workerIndex, const std::stop_token& stopToken) {
 	Worker& worker = m_workers[workerIndex];
 
+#if TRIVIAL_ENABLE_TRACY
+	const std::string kThreadName = worker.config.name + " " + std::to_string(workerIndex);
+	TRIVIAL_PROFILE_THREAD(kThreadName.c_str());
+#endif // TRIVIAL_ENABLE_TRACY
+
 	bool holdingSlot = m_activeSlots.try_acquire();
 
 	while (!stopToken.stop_requested()) {
@@ -452,6 +458,8 @@ bool TaskSystem::tryPopAndRunOneAnyWorkerTask() noexcept {
 }
 
 void TaskSystem::runAndCompleteClaimedTask(TaskHandle handle) noexcept {
+	TRIVIAL_PROFILE_SCOPE("Task execution");
+
 	const TaskClaimResult kClaimResult = m_graph.tryClaim(handle);
 
 	if (kClaimResult != TaskClaimResult::Success) {
