@@ -4,6 +4,7 @@
 #include <string>
 
 #include <trivial/core/graphics_api.h>
+#include <trivial/task/task_system_config.h>
 
 namespace trivial {
 
@@ -38,6 +39,8 @@ struct EngineConfig {
 	    = {}; // TODO: Later probably have this set not by the user of the engine as I going static with it
 
 	WindowConfig window = {};
+
+	task::TaskSystemConfig tasks = {};
 };
 
 } // namespace trivial

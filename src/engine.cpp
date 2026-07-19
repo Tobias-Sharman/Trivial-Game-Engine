@@ -3,6 +3,7 @@
 #include <trivial/core/assert.h>
 #include <trivial/core/config.h>
 #include <trivial/core/profile.h>
+#include <trivial/task/task.h>
 
 namespace trivial {
 
@@ -21,10 +22,14 @@ Engine::Engine(const EngineConfig* config)
     , m_frameIndex(0)
     , m_window(config)
     , m_gpu(config, &m_window)
-    , m_renderer(&m_gpu) {
+    , m_renderer(&m_gpu)
+    , m_taskSystem(config->tasks) {
+	task::setActiveTaskSystem(&m_taskSystem);
 } // TODO: Rework to integrate World/WorldContext/GameInstance
 
-Engine::~Engine() = default; // NOTE: Will later handle waiting for threads and memory freeing
+Engine::~Engine() {
+	task::setActiveTaskSystem(nullptr);
+}
 
 void Engine::tick(Application& application) {
 	TRIVIAL_PROFILE_FRAME("Frame");
