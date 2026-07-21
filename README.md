@@ -22,7 +22,7 @@ Current plan of action:
 
 The engine architecture can be seen below:
 
-![alt text](docs/Architecture.svg "Engine Architecture")
+![alt text](docs/design/Architecture.svg "Engine Architecture")
 
 As an aside to clear confusion on my, at times asinine, comment usage:
 
