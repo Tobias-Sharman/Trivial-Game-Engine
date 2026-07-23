@@ -20,8 +20,6 @@ namespace trivial::task {
 // pointer or an empty callable wrapper, results in undefined behavior
 class TaskPayload { // NOLINT(cppcoreguidelines-pro-type-member-init)
 public:
-	TaskPayload() noexcept = delete;
-
 	template <typename Callable>
 	    requires(!std::is_same_v<std::remove_cvref_t<Callable>, TaskPayload>
 	             && std::is_nothrow_constructible_v<std::decay_t<Callable>, Callable &&>

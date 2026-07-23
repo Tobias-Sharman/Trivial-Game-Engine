@@ -12,7 +12,6 @@ namespace trivial::platform {
 
 class Window {
 public:
-	Window() = delete;
 	explicit Window(const EngineConfig* config);
 
 	~Window();

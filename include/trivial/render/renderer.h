@@ -7,7 +7,6 @@ namespace trivial::render {
 
 class Renderer {
 public:
-	Renderer() = delete;
 	explicit Renderer(gpu::Context* gpu);
 
 	~Renderer();

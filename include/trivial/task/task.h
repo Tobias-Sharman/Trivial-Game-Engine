@@ -35,8 +35,6 @@ inline void setActiveTaskSystem(TaskSystem* taskSystem) noexcept {
 template <typename Result>
 class Task {
 public:
-	Task() noexcept = default;
-
 	explicit constexpr Task(TaskHandle handle) noexcept
 	    : m_handle(handle) {}
 
@@ -57,8 +55,6 @@ private:
 template <>
 class Task<void> {
 public:
-	Task() noexcept = default;
-
 	explicit constexpr Task(TaskHandle handle) noexcept
 	    : m_handle(handle) {}
 

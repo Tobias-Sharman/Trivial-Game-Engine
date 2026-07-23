@@ -11,7 +11,6 @@ namespace trivial {
 // NOTE: Need to decide if wanting to support more layers, could even be a vector of them used like a stack
 class Application {
 public:
-	Application() = delete;
 	explicit Application(std::unique_ptr<Layer> gameLayer);
 
 	virtual ~Application() = default;

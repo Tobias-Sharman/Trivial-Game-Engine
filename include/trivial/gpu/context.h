@@ -11,7 +11,6 @@ namespace trivial::gpu {
 
 class Context {
 public:
-	Context() = delete;
 	explicit Context(const EngineConfig* config, platform::Window* window);
 
 	~Context();

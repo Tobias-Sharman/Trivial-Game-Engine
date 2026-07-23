@@ -14,7 +14,6 @@ namespace trivial {
 
 class Engine {
 public:
-	Engine() = delete;
 	explicit Engine(const EngineConfig* config);
 
 	~Engine();

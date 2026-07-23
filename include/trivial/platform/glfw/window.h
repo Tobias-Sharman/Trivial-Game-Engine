@@ -14,7 +14,6 @@ namespace trivial::platform::glfw {
 
 class Window {
 public:
-	Window() = delete;
 	explicit Window(const WindowConfig* config);
 
 	~Window();
