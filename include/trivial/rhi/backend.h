@@ -1,9 +1,9 @@
-#ifndef TRIVIAL_INTERNAL_RHI_BACKEND_H
-#define TRIVIAL_INTERNAL_RHI_BACKEND_H
+#ifndef TRIVIAL_RHI_BACKEND_H
+#define TRIVIAL_RHI_BACKEND_H
 
 #include <trivial/core/graphics_api.h>
 
-namespace trivial::internal::rhi {
+namespace trivial::rhi {
 
 class Backend {
 public:
@@ -22,6 +22,6 @@ public:
 	virtual void waitIdle() = 0;
 };
 
-} // namespace trivial::internal::rhi
+} // namespace trivial::rhi
 
-#endif // TRIVIAL_INTERNAL_RHI_BACKEND_H
+#endif // TRIVIAL_RHI_BACKEND_H

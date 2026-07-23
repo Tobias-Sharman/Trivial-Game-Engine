@@ -36,7 +36,7 @@ void Engine::tick(Application& application) {
 	m_time.tick();
 	const FrameContext kFrameContext = {.deltaTime = m_time.deltaSeconds(), .frameIndex = m_frameIndex};
 
-	internal::platform::Window::pollEvents(); // TODO: Ought to change the form of this
+	platform::Window::pollEvents(); // TODO: Ought to change the form of this
 
 	{
 		TRIVIAL_PROFILE_SCOPE("Update game layer");

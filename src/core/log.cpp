@@ -4,7 +4,7 @@
 
 #include <cstdio>
 
-namespace trivial::internal::core {
+namespace trivial::core {
 
 namespace {
 
@@ -44,6 +44,6 @@ void logMessageWithPrefix(LogLevel level, const char* prefix, const char* messag
 	(void)std::fputc('\n', stderr);
 }
 
-} // namespace trivial::internal::core
+} // namespace trivial::core
 
 #endif // TRIVIAL_ENABLE_LOGGING

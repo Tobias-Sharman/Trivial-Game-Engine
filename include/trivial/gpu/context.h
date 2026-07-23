@@ -1,13 +1,13 @@
-#ifndef TRIVIAL_INTERNAL_GPU_CONTEXT_H
-#define TRIVIAL_INTERNAL_GPU_CONTEXT_H
+#ifndef TRIVIAL_GPU_CONTEXT_H
+#define TRIVIAL_GPU_CONTEXT_H
 
 #include <memory>
 
 #include <trivial/engine_config.h>
-#include <trivial/internal/platform/window.h>
-#include <trivial/internal/rhi/backend.h>
+#include <trivial/platform/window.h>
+#include <trivial/rhi/backend.h>
 
-namespace trivial::internal::gpu {
+namespace trivial::gpu {
 
 class Context {
 public:
@@ -30,6 +30,6 @@ private:
 	std::unique_ptr<rhi::Backend> m_backend;
 };
 
-} // namespace trivial::internal::gpu
+} // namespace trivial::gpu
 
-#endif // TRIVIAL_INTERNAL_GPU_CONTEXT_H
+#endif // TRIVIAL_GPU_CONTEXT_H

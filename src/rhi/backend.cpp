@@ -1,7 +1,7 @@
-#include <trivial/internal/rhi/backend.h>
+#include <trivial/rhi/backend.h>
 
-namespace trivial::internal::rhi {
+namespace trivial::rhi {
 
 Backend::~Backend() = default;
 
-} // namespace trivial::internal::rhi
+} // namespace trivial::rhi

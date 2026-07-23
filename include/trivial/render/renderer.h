@@ -1,14 +1,14 @@
 #ifndef TRIVIAL_RENDER_RENDERER_H
 #define TRIVIAL_RENDER_RENDERER_H
 
-#include <trivial/internal/gpu/context.h>
+#include <trivial/gpu/context.h>
 
 namespace trivial::render {
 
 class Renderer {
 public:
 	Renderer() = delete;
-	explicit Renderer(internal::gpu::Context* gpu);
+	explicit Renderer(gpu::Context* gpu);
 
 	~Renderer();
 
@@ -19,7 +19,7 @@ public:
 	Renderer& operator=(Renderer&&) = delete;
 
 private:
-	internal::gpu::Context* m_gpu = nullptr;
+	gpu::Context* m_gpu = nullptr;
 };
 
 } // namespace trivial::render

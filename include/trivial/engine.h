@@ -4,8 +4,8 @@
 #include <trivial/application.h>
 #include <trivial/engine_config.h>
 #include <trivial/core/graphics_api.h>
-#include <trivial/internal/gpu/context.h>
-#include <trivial/internal/platform/window.h>
+#include <trivial/gpu/context.h>
+#include <trivial/platform/window.h>
 #include <trivial/render/renderer.h>
 #include <trivial/task/task_system.h>
 #include <trivial/time/engine_time.h>
@@ -40,8 +40,8 @@ private:
 	EngineTime m_time;
 	std::uint64_t m_frameIndex;
 
-	internal::platform::Window m_window;
-	internal::gpu::Context m_gpu;
+	platform::Window m_window;
+	gpu::Context m_gpu;
 	render::Renderer m_renderer;
 
 	task::TaskSystem m_taskSystem;

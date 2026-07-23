@@ -1,6 +1,6 @@
-#include <trivial/internal/rhi/vulkan/result.h>
+#include "rhi/vulkan/result.h"
 
-namespace trivial::internal::rhi::vulkan {
+namespace trivial::rhi::vulkan {
 
 const char* resultName(VkResult result) {
 	switch (result) {
@@ -74,4 +74,4 @@ const char* resultName(VkResult result) {
 	}
 }
 
-} // namespace trivial::internal::rhi::vulkan
+} // namespace trivial::rhi::vulkan

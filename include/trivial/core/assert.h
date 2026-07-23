@@ -9,7 +9,7 @@
 #include <iostream>
 #include <source_location>
 
-namespace trivial::core::internal {
+namespace trivial::core {
 
 inline void reportAssertionFailure(const char* expression,
                                    std::source_location location = std::source_location::current()) {
@@ -21,12 +21,12 @@ inline void reportAssertionFailure(const char* expression,
 	std::abort();
 }
 
-} // namespace trivial::core::internal
+} // namespace trivial::core
 
-#define TRIVIAL_INTERNAL_ASSERT_IMPLEMENTATION(expr)                                                                   \
+#define TRIVIAL_ASSERT_IMPLEMENTATION(expr)                                                                            \
 	do {                                                                                                               \
 		if (!(expr)) {                                                                                                 \
-			::trivial::core::internal::reportAssertionFailure(#expr);                                                  \
+			::trivial::core::reportAssertionFailure(#expr);                                                            \
 		}                                                                                                              \
 	} while (false)
 
@@ -34,7 +34,7 @@ inline void reportAssertionFailure(const char* expression,
 
 #if TRIVIAL_ENABLE_ASSERTS
 
-#define TRIVIAL_ASSERT(expr) TRIVIAL_INTERNAL_ASSERT_IMPLEMENTATION(expr) // NOLINT(cppcoreguidelines-macro-usage)
+#define TRIVIAL_ASSERT(expr) TRIVIAL_ASSERT_IMPLEMENTATION(expr) // NOLINT(cppcoreguidelines-macro-usage)
 
 #else
 
@@ -44,7 +44,7 @@ inline void reportAssertionFailure(const char* expression,
 
 #if TRIVIAL_ENABLE_SLOW_ASSERTS
 
-#define TRIVIAL_SLOW_ASSERT(expr) TRIVIAL_INTERNAL_ASSERT_IMPLEMENTATION(expr) // NOLINT(cppcoreguidelines-macro-usage)
+#define TRIVIAL_SLOW_ASSERT(expr) TRIVIAL_ASSERT_IMPLEMENTATION(expr) // NOLINT(cppcoreguidelines-macro-usage)
 
 #else
 

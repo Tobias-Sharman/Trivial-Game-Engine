@@ -4,7 +4,7 @@
 
 namespace trivial::render {
 
-Renderer::Renderer(internal::gpu::Context* gpu)
+Renderer::Renderer(gpu::Context* gpu)
     : m_gpu(gpu) {
 	TRIVIAL_ASSERT(m_gpu != nullptr);
 }

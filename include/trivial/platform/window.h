@@ -1,14 +1,14 @@
-#ifndef TRIVIAL_INTERNAL_PLATFORM_WINDOW_H
-#define TRIVIAL_INTERNAL_PLATFORM_WINDOW_H
+#ifndef TRIVIAL_PLATFORM_WINDOW_H
+#define TRIVIAL_PLATFORM_WINDOW_H
 
 #include <span>
 
 #include <vulkan/vulkan.h>
 
 #include <trivial/engine_config.h>
-#include <trivial/internal/platform/window_backend.h>
+#include <trivial/platform/window_backend.h>
 
-namespace trivial::internal::platform {
+namespace trivial::platform {
 
 class Window {
 public:
@@ -40,6 +40,6 @@ private:
 	WindowBackend m_backend;
 };
 
-} // namespace trivial::internal::platform
+} // namespace trivial::platform
 
-#endif // TRIVIAL_INTERNAL_PLATFORM_WINDOW_H
+#endif // TRIVIAL_PLATFORM_WINDOW_H

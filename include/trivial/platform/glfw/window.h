@@ -1,5 +1,5 @@
-#ifndef TRIVIAL_INTERNAL_PLATFORM_GLFW_WINDOW_H
-#define TRIVIAL_INTERNAL_PLATFORM_GLFW_WINDOW_H
+#ifndef TRIVIAL_PLATFORM_GLFW_WINDOW_H
+#define TRIVIAL_PLATFORM_GLFW_WINDOW_H
 
 #include <span>
 
@@ -10,7 +10,7 @@
 
 #include <trivial/engine_config.h>
 
-namespace trivial::internal::platform::glfw {
+namespace trivial::platform::glfw {
 
 class Window {
 public:
@@ -37,6 +37,6 @@ private:
 	GLFWwindow* m_handle = nullptr;
 };
 
-} // namespace trivial::internal::platform::glfw
+} // namespace trivial::platform::glfw
 
-#endif // TRIVIAL_INTERNAL_PLATFORM_GLFW_WINDOW_H
+#endif // TRIVIAL_PLATFORM_GLFW_WINDOW_H

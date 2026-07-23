@@ -1,12 +1,13 @@
-#include <trivial/internal/platform/glfw/window.h>
+#include <trivial/platform/glfw/window.h>
 
 #include <cstdint>
 
 #include <trivial/core/assert.h>
 #include <trivial/core/log.h>
-#include <trivial/internal/rhi/vulkan/result.h>
 
-namespace trivial::internal::platform::glfw {
+#include "rhi/vulkan/result.h"
+
+namespace trivial::platform::glfw {
 
 namespace {
 
@@ -89,4 +90,4 @@ VkSurfaceKHR Window::createVulkanSurface(VkInstance instance) const {
 	return surface;
 }
 
-} // namespace trivial::internal::platform::glfw
+} // namespace trivial::platform::glfw

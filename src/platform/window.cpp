@@ -1,8 +1,8 @@
-#include <trivial/internal/platform/window.h>
+#include <trivial/platform/window.h>
 
 #include <trivial/core/assert.h>
 
-namespace trivial::internal::platform {
+namespace trivial::platform {
 
 namespace {
 
@@ -25,4 +25,4 @@ Window::Window(const EngineConfig* config)
 // Expected to get more complex so this is going here
 Window::~Window() = default;
 
-} // namespace trivial::internal::platform
+} // namespace trivial::platform

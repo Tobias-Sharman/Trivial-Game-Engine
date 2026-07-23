@@ -1,15 +1,15 @@
-#ifndef TRIVIAL_INTERNAL_RHI_VULKAN_BACKEND_H
-#define TRIVIAL_INTERNAL_RHI_VULKAN_BACKEND_H
+#ifndef TRIVIAL_RHI_VULKAN_BACKEND_H
+#define TRIVIAL_RHI_VULKAN_BACKEND_H
 
 #include <cstdint>
 
 #include <vulkan/vulkan.h>
 
 #include <trivial/engine_config.h>
-#include <trivial/internal/platform/window.h>
-#include <trivial/internal/rhi/backend.h>
+#include <trivial/platform/window.h>
+#include <trivial/rhi/backend.h>
 
-namespace trivial::internal::rhi::vulkan {
+namespace trivial::rhi::vulkan {
 
 class Backend final : public rhi::Backend {
 public:
@@ -44,6 +44,6 @@ private:
 	std::uint32_t m_presentFamily = 0;
 };
 
-} // namespace trivial::internal::rhi::vulkan
+} // namespace trivial::rhi::vulkan
 
-#endif // TRIVIAL_INTERNAL_RHI_VULKAN_BACKEND_H
+#endif // TRIVIAL_RHI_VULKAN_BACKEND_H

@@ -1,4 +1,4 @@
-#include <trivial/internal/rhi/vulkan/backend.h>
+#include <trivial/rhi/vulkan/backend.h>
 
 #include <cstring>
 #include <span>
@@ -7,9 +7,10 @@
 #include <trivial/core/assert.h>
 #include <trivial/core/config.h>
 #include <trivial/core/log.h>
-#include <trivial/internal/rhi/vulkan/result.h>
 
-namespace trivial::internal::rhi::vulkan {
+#include "rhi/vulkan/result.h"
+
+namespace trivial::rhi::vulkan {
 
 namespace {
 
@@ -265,7 +266,7 @@ VkInstance createInstance(const EngineConfig* config) {
 	TRIVIAL_ASSERT(config != nullptr);
 
 	const std::span<const char* const> kRequiredExtensions
-	    = trivial::internal::platform::Window::requiredVulkanInstanceExtensions();
+	    = trivial::platform::Window::requiredVulkanInstanceExtensions();
 
 	TRIVIAL_ASSERT(!kRequiredExtensions.empty());
 
@@ -855,4 +856,4 @@ void Backend::waitIdle() {
 	TRIVIAL_ASSERT(kResult == VK_SUCCESS);
 }
 
-} // namespace trivial::internal::rhi::vulkan
+} // namespace trivial::rhi::vulkan
