@@ -13,7 +13,6 @@ namespace trivial::rhi::vulkan {
 
 class Backend final : public rhi::Backend {
 public:
-	Backend() = delete;
 	explicit Backend(const EngineConfig* config, platform::Window* window);
 
 	~Backend() override;
@@ -24,9 +23,9 @@ public:
 	Backend(Backend&&) = delete;
 	Backend& operator=(Backend&&) = delete;
 
-	[[nodiscard]] GraphicsApi graphicsApi() const override;
+	[[nodiscard]] GraphicsApi graphicsApi() const noexcept override;
 
-	void waitIdle() override;
+	void waitIdle() noexcept override;
 
 private:
 	VkInstance m_instance = VK_NULL_HANDLE;
@@ -45,5 +44,9 @@ private:
 };
 
 } // namespace trivial::rhi::vulkan
+
+// TODO: Physical device selection, best device initially and later allow for user to switch
+//       Queue family selection, for stuff like parallel upload alongside graphics/compute (transfer queue etc.)
+//       Compute only mode for headless uses of the engine
 
 #endif // TRIVIAL_RHI_VULKAN_BACKEND_H

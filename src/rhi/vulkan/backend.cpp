@@ -71,23 +71,18 @@ Backend::~Backend() {
 	}
 }
 
-GraphicsApi Backend::graphicsApi() const {
+GraphicsApi Backend::graphicsApi() const noexcept {
 	return GraphicsApi::Vulkan;
 }
 
-void Backend::waitIdle() {
+void Backend::waitIdle() noexcept {
 	if (m_device == VK_NULL_HANDLE) {
 		return;
 	}
 
 	const VkResult kResult = vkDeviceWaitIdle(m_device);
 
-	if (kResult != VK_SUCCESS) {
-		TRIVIAL_LOG_ERROR("vkDeviceWaitIdle failed");
-		TRIVIAL_LOG_ERROR(resultName(kResult));
-	}
-
-	TRIVIAL_ASSERT(kResult == VK_SUCCESS);
+	TRIVIAL_VK_CHECK("vkDeviceWaitIdle failed", kResult);
 }
 
 } // namespace trivial::rhi::vulkan

@@ -7,7 +7,7 @@
 
 namespace trivial::rhi::vulkan {
 
-VkInstance createInstance(const EngineConfig* config);
+VkInstance createInstance(const EngineConfig* config) noexcept;
 
 }
 

@@ -79,4 +79,14 @@ constexpr const char* resultName(VkResult result) {
 
 } // namespace trivial::rhi::vulkan
 
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define TRIVIAL_VK_CHECK(message, result)                                                                              \
+	do {                                                                                                               \
+		if ((result) != VK_SUCCESS) {                                                                                  \
+			TRIVIAL_LOG_ERROR(message);                                                                                \
+			TRIVIAL_LOG_ERROR(::trivial::rhi::vulkan::resultName(result));                                             \
+		}                                                                                                              \
+		TRIVIAL_ASSERT((result) == VK_SUCCESS);                                                                        \
+	} while (0)
+
 #endif // TRIVIAL_SRC_RHI_VULKAN_RESULT_H

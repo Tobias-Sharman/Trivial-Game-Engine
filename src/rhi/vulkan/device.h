@@ -7,8 +7,8 @@
 
 namespace trivial::rhi::vulkan {
 
-VkDevice createDevice(VkPhysicalDevice physicalDevice, const QueueFamilySelection* queueFamilies);
-VkQueue getDeviceQueue(VkDevice device, std::uint32_t queueFamily);
+VkDevice createDevice(VkPhysicalDevice physicalDevice, const QueueFamilySelection* queueFamilies) noexcept;
+VkQueue getDeviceQueue(VkDevice device, std::uint32_t queueFamily) noexcept;
 
 } // namespace trivial::rhi::vulkan
 

@@ -1,5 +1,7 @@
 #include "rhi/vulkan/physical_device.h"
 
+#include <cstring>
+
 #include <trivial/core/assert.h>
 #include <trivial/core/log.h>
 
@@ -7,7 +9,7 @@
 
 namespace {
 
-std::vector<VkQueueFamilyProperties> enumerateQueueFamilies(VkPhysicalDevice physicalDevice) {
+std::vector<VkQueueFamilyProperties> enumerateQueueFamilies(VkPhysicalDevice physicalDevice) noexcept {
 	TRIVIAL_ASSERT(physicalDevice != VK_NULL_HANDLE);
 
 	std::uint32_t queueFamilyCount = 0;
@@ -23,7 +25,9 @@ std::vector<VkQueueFamilyProperties> enumerateQueueFamilies(VkPhysicalDevice phy
 	return queueFamilies;
 }
 
-bool hasQueueFamilyPresentSupport(VkPhysicalDevice physicalDevice, std::uint32_t queueFamily, VkSurfaceKHR surface) {
+bool hasQueueFamilyPresentSupport(VkPhysicalDevice physicalDevice,
+                                  std::uint32_t queueFamily,
+                                  VkSurfaceKHR surface) noexcept {
 	TRIVIAL_ASSERT(physicalDevice != VK_NULL_HANDLE);
 	TRIVIAL_ASSERT(surface != VK_NULL_HANDLE);
 
@@ -32,24 +36,18 @@ bool hasQueueFamilyPresentSupport(VkPhysicalDevice physicalDevice, std::uint32_t
 	const VkResult kResult
 	    = vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, queueFamily, surface, &supportsPresent);
 
-	if (kResult != VK_SUCCESS) {
-		TRIVIAL_LOG_ERROR("vkGetPhysicalDeviceSurfaceSupportKHR failed");
-		TRIVIAL_LOG_ERROR(trivial::rhi::vulkan::resultName(kResult));
-	}
-
-	TRIVIAL_ASSERT(kResult == VK_SUCCESS);
+	TRIVIAL_VK_CHECK("vkGetPhysicalDeviceSurfaceSupportKHR failed", kResult);
 
 	return supportsPresent == VK_TRUE;
 }
 
-bool supportsRequiredDeviceExtensions(std::span<const VkExtensionProperties> availableExtensions) {
+bool supportsRequiredDeviceExtensions(std::span<const VkExtensionProperties> availableExtensions) noexcept {
 	return trivial::rhi::vulkan::hasDeviceExtension(availableExtensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 }
 
-// TODO: More rigourous selection once I understand how I want my queues split
 trivial::rhi::vulkan::QueueFamilySelection selectQueueFamilies(VkPhysicalDevice physicalDevice,
                                                                std::span<const VkQueueFamilyProperties> queueFamilies,
-                                                               VkSurfaceKHR surface) {
+                                                               VkSurfaceKHR surface) noexcept {
 	trivial::rhi::vulkan::QueueFamilySelection selection = {};
 
 	for (std::uint32_t index = 0; index < queueFamilies.size(); ++index) {
@@ -88,7 +86,7 @@ trivial::rhi::vulkan::QueueFamilySelection selectQueueFamilies(VkPhysicalDevice 
 	return selection;
 }
 
-void initialiseDeviceFeatures(trivial::rhi::vulkan::DeviceFeatures* features) {
+void initialiseDeviceFeatures(trivial::rhi::vulkan::DeviceFeatures* features) noexcept {
 	TRIVIAL_ASSERT(features != nullptr);
 
 	*features = {};
@@ -99,7 +97,7 @@ void initialiseDeviceFeatures(trivial::rhi::vulkan::DeviceFeatures* features) {
 	features->vulkan13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
 }
 
-trivial::rhi::vulkan::DeviceFeatures queryDeviceFeatures(VkPhysicalDevice physicalDevice) {
+trivial::rhi::vulkan::DeviceFeatures queryDeviceFeatures(VkPhysicalDevice physicalDevice) noexcept {
 	TRIVIAL_ASSERT(physicalDevice != VK_NULL_HANDLE);
 
 	trivial::rhi::vulkan::DeviceFeatures features = {};
@@ -111,11 +109,11 @@ trivial::rhi::vulkan::DeviceFeatures queryDeviceFeatures(VkPhysicalDevice physic
 }
 
 bool supportsRequiredVulkan13Features(const VkPhysicalDeviceVulkan13Features* supportedFeatures,
-                                      const VkPhysicalDeviceVulkan13Features* requiredFeatures) {
+                                      const VkPhysicalDeviceVulkan13Features* requiredFeatures) noexcept {
 	TRIVIAL_ASSERT(supportedFeatures != nullptr);
 	TRIVIAL_ASSERT(requiredFeatures != nullptr);
 
-	// TODO: Expand for all options
+	// NOTE: Expand for all options as needed later when caring about more support to save complexity
 	if (requiredFeatures->synchronization2 == VK_TRUE && supportedFeatures->synchronization2 != VK_TRUE) {
 		return false;
 	}
@@ -127,7 +125,7 @@ bool supportsRequiredVulkan13Features(const VkPhysicalDeviceVulkan13Features* su
 }
 
 bool supportsRequiredDeviceFeatures(const trivial::rhi::vulkan::DeviceFeatures* supportedFeatures,
-                                    const trivial::rhi::vulkan::DeviceFeatures* requiredFeatures) {
+                                    const trivial::rhi::vulkan::DeviceFeatures* requiredFeatures) noexcept {
 	TRIVIAL_ASSERT(supportedFeatures != nullptr);
 	TRIVIAL_ASSERT(requiredFeatures != nullptr);
 
@@ -138,36 +136,27 @@ bool supportsRequiredDeviceFeatures(const trivial::rhi::vulkan::DeviceFeatures* 
 
 namespace trivial::rhi::vulkan {
 
-std::vector<VkPhysicalDevice> enumeratePhysicalDevices(VkInstance instance) {
+std::vector<VkPhysicalDevice> enumeratePhysicalDevices(VkInstance instance) noexcept {
 	TRIVIAL_ASSERT(instance != VK_NULL_HANDLE);
 
 	std::uint32_t physicalDeviceCount = 0;
 
 	VkResult result = vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
 
-	if (result != VK_SUCCESS) {
-		TRIVIAL_LOG_ERROR("vkEnumeratePhysicalDevices failed");
-		TRIVIAL_LOG_ERROR(resultName(result));
-	}
-
-	TRIVIAL_ASSERT(result == VK_SUCCESS);
+	TRIVIAL_VK_CHECK("vkEnumeratePhysicalDevices failed", result);
 	TRIVIAL_ASSERT(physicalDeviceCount > 0);
 
 	std::vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
 
 	result = vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, physicalDevices.data());
 
-	if (result != VK_SUCCESS) {
-		TRIVIAL_LOG_ERROR("vkEnumeratePhysicalDevices failed");
-		TRIVIAL_LOG_ERROR(resultName(result));
-	}
-
-	TRIVIAL_ASSERT(result == VK_SUCCESS);
+	TRIVIAL_VK_CHECK("vkEnumeratePhysicalDevices failed", result);
 
 	return physicalDevices;
 }
 
-bool hasDeviceExtension(std::span<const VkExtensionProperties> availableExtensions, const char* extensionName) {
+bool hasDeviceExtension(std::span<const VkExtensionProperties> availableExtensions,
+                        const char* extensionName) noexcept {
 	TRIVIAL_ASSERT(extensionName != nullptr);
 
 	for (const VkExtensionProperties& availableExtension : availableExtensions) {
@@ -179,19 +168,14 @@ bool hasDeviceExtension(std::span<const VkExtensionProperties> availableExtensio
 	return false;
 }
 
-std::vector<VkExtensionProperties> enumerateDeviceExtensions(VkPhysicalDevice physicalDevice) {
+std::vector<VkExtensionProperties> enumerateDeviceExtensions(VkPhysicalDevice physicalDevice) noexcept {
 	TRIVIAL_ASSERT(physicalDevice != VK_NULL_HANDLE);
 
 	std::uint32_t extensionCount = 0;
 
 	VkResult result = vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
 
-	if (result != VK_SUCCESS) {
-		TRIVIAL_LOG_ERROR("vkEnumerateDeviceExtensionProperties failed");
-		TRIVIAL_LOG_ERROR(resultName(result));
-	}
-
-	TRIVIAL_ASSERT(result == VK_SUCCESS);
+	TRIVIAL_VK_CHECK("vkEnumerateDeviceExtensionProperties failed", result);
 
 	std::vector<VkExtensionProperties> extensions(extensionCount);
 
@@ -201,17 +185,12 @@ std::vector<VkExtensionProperties> enumerateDeviceExtensions(VkPhysicalDevice ph
 
 	result = vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, extensions.data());
 
-	if (result != VK_SUCCESS) {
-		TRIVIAL_LOG_ERROR("vkEnumerateDeviceExtensionProperties failed");
-		TRIVIAL_LOG_ERROR(resultName(result));
-	}
-
-	TRIVIAL_ASSERT(result == VK_SUCCESS);
+	TRIVIAL_VK_CHECK("vkEnumerateDeviceExtensionProperties failed", result);
 
 	return extensions;
 }
 
-DeviceFeatures makeRequiredDeviceFeatures() {
+DeviceFeatures makeRequiredDeviceFeatures() noexcept {
 	DeviceFeatures features = {};
 	initialiseDeviceFeatures(&features);
 
@@ -221,8 +200,8 @@ DeviceFeatures makeRequiredDeviceFeatures() {
 	return features;
 }
 
-// TODO: Later add a proper selection for the best physicalDevice available and maybe allow for user switching and setting this
-PhysicalDeviceSelection selectPhysicalDevice(std::span<const VkPhysicalDevice> physicalDevices, VkSurfaceKHR surface) {
+PhysicalDeviceSelection selectPhysicalDevice(std::span<const VkPhysicalDevice> physicalDevices,
+                                             VkSurfaceKHR surface) noexcept {
 	TRIVIAL_ASSERT(surface != VK_NULL_HANDLE);
 
 	const DeviceFeatures kRequiredFeatures = makeRequiredDeviceFeatures();

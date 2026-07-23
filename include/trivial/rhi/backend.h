@@ -17,9 +17,9 @@ public:
 	Backend(Backend&&) = delete;
 	Backend& operator=(Backend&&) = delete;
 
-	[[nodiscard]] virtual GraphicsApi graphicsApi() const = 0;
+	[[nodiscard]] virtual GraphicsApi graphicsApi() const noexcept = 0;
 
-	virtual void waitIdle() = 0;
+	virtual void waitIdle() noexcept = 0;
 };
 
 } // namespace trivial::rhi

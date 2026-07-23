@@ -1,5 +1,8 @@
 #include "rhi/vulkan/device.h"
 
+#include <span>
+#include <vector>
+
 #include <trivial/core/assert.h>
 #include <trivial/core/log.h>
 
@@ -15,7 +18,7 @@ struct DeviceSelection {
 
 void requireDeviceExtension(DeviceSelection* selection,
                             std::span<const VkExtensionProperties> availableExtensions,
-                            const char* extensionName) {
+                            const char* extensionName) noexcept {
 	TRIVIAL_ASSERT(selection != nullptr);
 	TRIVIAL_ASSERT(extensionName != nullptr);
 
@@ -33,7 +36,7 @@ void requireDeviceExtension(DeviceSelection* selection,
 
 bool enableOptionalDeviceExtension(DeviceSelection* selection,
                                    std::span<const VkExtensionProperties> availableExtensions,
-                                   const char* extensionName) {
+                                   const char* extensionName) noexcept {
 	TRIVIAL_ASSERT(selection != nullptr);
 	TRIVIAL_ASSERT(extensionName != nullptr);
 
@@ -45,7 +48,7 @@ bool enableOptionalDeviceExtension(DeviceSelection* selection,
 	return true;
 }
 
-DeviceSelection makeDeviceSelection(std::span<const VkExtensionProperties> availableExtensions) {
+DeviceSelection makeDeviceSelection(std::span<const VkExtensionProperties> availableExtensions) noexcept {
 	DeviceSelection selection = {};
 
 	requireDeviceExtension(&selection, availableExtensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
@@ -55,30 +58,54 @@ DeviceSelection makeDeviceSelection(std::span<const VkExtensionProperties> avail
 	return selection;
 }
 
-VkDeviceQueueCreateInfo makeDeviceQueueCreateInfo(std::uint32_t queueFamily) {
+VkDeviceQueueCreateInfo makeDeviceQueueCreateInfo(std::uint32_t queueFamily) noexcept {
 	static constexpr float s_kQueuePriority = 1.0F;
 
-	VkDeviceQueueCreateInfo createInfo = {.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-	                                      .queueFamilyIndex = queueFamily,
-	                                      .queueCount = 1, // TODO: Will want to change this later
-	                                      .pQueuePriorities = &s_kQueuePriority};
+	VkDeviceQueueCreateInfo createInfo
+	    = {.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+	       .pNext = nullptr,
+	       .flags = 0,
+	       .queueFamilyIndex = queueFamily,
+	       .queueCount = 1, // Multiple queues -> mutex anyway so just use my own later as needed
+	       .pQueuePriorities = &s_kQueuePriority};
 
 	return createInfo;
 }
 
-VkDeviceCreateInfo makeDeviceCreateInfo(const VkDeviceQueueCreateInfo* queueCreateInfo,
+std::vector<VkDeviceQueueCreateInfo> makeDeviceQueueCreateInfos(
+    const trivial::rhi::vulkan::QueueFamilySelection* queueFamilies) noexcept {
+	TRIVIAL_ASSERT(queueFamilies != nullptr);
+	TRIVIAL_ASSERT(queueFamilies->hasGraphicsFamily);
+	TRIVIAL_ASSERT(queueFamilies->hasPresentFamily);
+
+	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+
+	queueCreateInfos.push_back(makeDeviceQueueCreateInfo(queueFamilies->graphicsFamily));
+
+	if (queueFamilies->presentFamily != queueFamilies->graphicsFamily) {
+		queueCreateInfos.push_back(makeDeviceQueueCreateInfo(queueFamilies->presentFamily));
+	}
+
+	return queueCreateInfos;
+}
+
+VkDeviceCreateInfo makeDeviceCreateInfo(std::span<const VkDeviceQueueCreateInfo> queueCreateInfos,
                                         const trivial::rhi::vulkan::DeviceFeatures* requiredFeatures,
-                                        const DeviceSelection* selection) {
-	TRIVIAL_ASSERT(queueCreateInfo != nullptr);
+                                        const DeviceSelection* selection) noexcept {
+	TRIVIAL_ASSERT(!queueCreateInfos.empty());
 	TRIVIAL_ASSERT(requiredFeatures != nullptr);
 	TRIVIAL_ASSERT(selection != nullptr);
 
 	VkDeviceCreateInfo createInfo = {.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
 	                                 .pNext = &requiredFeatures->vulkan13,
-	                                 .queueCreateInfoCount = 1,
-	                                 .pQueueCreateInfos = queueCreateInfo,
+	                                 .flags = 0,
+	                                 .queueCreateInfoCount = static_cast<std::uint32_t>(queueCreateInfos.size()),
+	                                 .pQueueCreateInfos = queueCreateInfos.data(),
+	                                 .enabledLayerCount = 0,
+	                                 .ppEnabledLayerNames = nullptr,
 	                                 .enabledExtensionCount = static_cast<std::uint32_t>(selection->extensions.size()),
-	                                 .ppEnabledExtensionNames = selection->extensions.data()};
+	                                 .ppEnabledExtensionNames = selection->extensions.data(),
+	                                 .pEnabledFeatures = nullptr};
 
 	return createInfo;
 }
@@ -87,44 +114,39 @@ VkDeviceCreateInfo makeDeviceCreateInfo(const VkDeviceQueueCreateInfo* queueCrea
 
 namespace trivial::rhi::vulkan {
 
-// TODO: change later to support just compute gpu
-VkDevice createDevice(VkPhysicalDevice physicalDevice, const QueueFamilySelection* queueFamilies) {
+VkDevice createDevice(VkPhysicalDevice physicalDevice, const QueueFamilySelection* queueFamilies) noexcept {
 	TRIVIAL_ASSERT(physicalDevice != VK_NULL_HANDLE);
 	TRIVIAL_ASSERT(queueFamilies != nullptr);
 	TRIVIAL_ASSERT(queueFamilies->hasGraphicsFamily);
 	TRIVIAL_ASSERT(queueFamilies->hasPresentFamily);
-	TRIVIAL_ASSERT(queueFamilies->graphicsFamily == queueFamilies->presentFamily);
 
 	const DeviceFeatures kRequiredFeatures = makeRequiredDeviceFeatures();
 
-	const VkDeviceQueueCreateInfo kQueueCreateInfo = makeDeviceQueueCreateInfo(queueFamilies->graphicsFamily);
+	const std::vector<VkDeviceQueueCreateInfo> kQueueCreateInfos = makeDeviceQueueCreateInfos(queueFamilies);
 
 	const std::vector<VkExtensionProperties> kAvailableExtensions = enumerateDeviceExtensions(physicalDevice);
 	const DeviceSelection kSelection = makeDeviceSelection(kAvailableExtensions);
 
-	const VkDeviceCreateInfo kCreateInfo = makeDeviceCreateInfo(&kQueueCreateInfo, &kRequiredFeatures, &kSelection);
+	const VkDeviceCreateInfo kCreateInfo = makeDeviceCreateInfo(kQueueCreateInfos, &kRequiredFeatures, &kSelection);
 
 	VkDevice device = VK_NULL_HANDLE;
 
 	const VkResult kResult = vkCreateDevice(physicalDevice, &kCreateInfo, nullptr, &device);
 
-	if (kResult != VK_SUCCESS) {
-		TRIVIAL_LOG_ERROR("vkCreateDevice failed");
-		TRIVIAL_LOG_ERROR(resultName(kResult));
-	}
+	TRIVIAL_VK_CHECK("vkCreateDevice failed", kResult);
 
-	TRIVIAL_ASSERT(kResult == VK_SUCCESS);
 	TRIVIAL_ASSERT(device != VK_NULL_HANDLE);
 
 	return device;
 }
 
-VkQueue getDeviceQueue(VkDevice device, std::uint32_t queueFamily) {
+VkQueue getDeviceQueue(VkDevice device, std::uint32_t queueFamily) noexcept {
 	TRIVIAL_ASSERT(device != VK_NULL_HANDLE);
 
 	VkQueue queue = VK_NULL_HANDLE;
 
-	vkGetDeviceQueue(device, queueFamily, 0, &queue); // TODO: Migrate from queueIndex of 0
+	// Having a single queue so just taking hardcoded first index is fine
+	vkGetDeviceQueue(device, queueFamily, 0, &queue);
 
 	TRIVIAL_ASSERT(queue != VK_NULL_HANDLE);
 
