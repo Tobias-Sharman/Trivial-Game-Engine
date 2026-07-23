@@ -1,6 +1,7 @@
 #ifndef TRIVIAL_ENGINE_CONFIG_H
 #define TRIVIAL_ENGINE_CONFIG_H
 
+#include <cstdint>
 #include <string>
 
 #include <trivial/core/graphics_api.h>
@@ -9,9 +10,9 @@
 namespace trivial {
 
 struct Version {
-	int major = 0;
-	int minor = 1;
-	int patch = 0;
+	std::uint32_t major = 0;
+	std::uint32_t minor = 1;
+	std::uint32_t patch = 0;
 };
 
 // TODO: add general config file that would allow for easily switching between standard resolution sizes
@@ -35,8 +36,7 @@ struct EngineConfig {
 	Version applicationVersion = {};
 
 	std::string engineName = "Trivial";
-	Version engineVersion
-	    = {}; // TODO: Later probably have this set not by the user of the engine as I going static with it
+	Version engineVersion = {}; // TODO: Later don't expose this as user config
 
 	WindowConfig window = {};
 
