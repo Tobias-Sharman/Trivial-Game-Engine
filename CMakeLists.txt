@@ -33,7 +33,10 @@ set(TRIVIAL_PRIVATE_SOURCES
 	src/render/renderer.cpp
 	src/rhi/backend.cpp
 	src/rhi/vulkan/backend.cpp
-	src/rhi/vulkan/result.cpp
+	src/rhi/vulkan/debug_messenger.cpp
+	src/rhi/vulkan/device.cpp
+	src/rhi/vulkan/instance.cpp
+	src/rhi/vulkan/physical_device.cpp
 	src/task/task_graph.cpp
 	src/task/task_system.cpp
 	src/world/world.cpp
