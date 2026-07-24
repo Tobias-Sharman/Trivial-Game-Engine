@@ -1,4 +1,3 @@
-
 #ifndef TRIVIAL_CORE_MATH_AFFINE2_H
 #define TRIVIAL_CORE_MATH_AFFINE2_H
 
@@ -82,7 +81,7 @@ struct Affine2 {
 		T dd = d > rhs.d ? d - rhs.d : rhs.d - d;
 		T dty = ty > rhs.ty ? ty - rhs.ty : rhs.ty - ty;
 
-		return da <= epsilon && db <= epsilon && dtx <= epsilon && dc <= epsilon && dd <= epsilon && ty <= epsilon;
+		return da <= epsilon && db <= epsilon && dtx <= epsilon && dc <= epsilon && dd <= epsilon && dty <= epsilon;
 	}
 };
 
