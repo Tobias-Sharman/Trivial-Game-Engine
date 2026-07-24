@@ -3,12 +3,15 @@
 
 #include <array>
 #include <cstddef>
-#include <cstdint>
 #include <functional>
 #include <memory>
 #include <new>
 #include <type_traits>
 #include <utility>
+
+#if TRIVIAL_CONFIG_DEBUG
+#include <cstdint>
+#endif // TRIVIAL_CONFIG_DEBUG
 
 #include <trivial/core/assert.h>
 #include <trivial/core/config.h>
@@ -68,7 +71,7 @@ public:
 		TRIVIAL_ASSERT(m_operations != nullptr);
 		TRIVIAL_ASSERT(m_operations->get != nullptr);
 
-#ifdef TRIVIAL_CONFIG_DEBUG
+#if TRIVIAL_CONFIG_DEBUG
 		TRIVIAL_ASSERT(m_operations->kind == OperationsKind::Result);
 #endif // TRIVIAL_CONFIG_DEBUG
 
@@ -79,7 +82,7 @@ public:
 		TRIVIAL_ASSERT(m_operations != nullptr);
 		TRIVIAL_ASSERT(m_operations->getConst != nullptr);
 
-#ifdef TRIVIAL_CONFIG_DEBUG
+#if TRIVIAL_CONFIG_DEBUG
 		TRIVIAL_ASSERT(m_operations->kind == OperationsKind::Result);
 #endif // TRIVIAL_CONFIG_DEBUG
 
@@ -160,7 +163,7 @@ private:
 
 	static const Operations& getEmptyOperations() noexcept {
 		static constexpr Operations s_kOperations{
-#ifdef TRIVIAL_CONFIG_DEBUG
+#if TRIVIAL_CONFIG_DEBUG
 		    .kind = OperationsKind::Empty,
 #endif // TRIVIAL_CONFIG_DEBUG
 
@@ -187,7 +190,7 @@ private:
 	template <typename Callable>
 	static const Operations& getInlineOperations() noexcept {
 		static constexpr Operations s_kOperations{
-#ifdef TRIVIAL_CONFIG_DEBUG
+#if TRIVIAL_CONFIG_DEBUG
 		    .kind = OperationsKind::Callable,
 #endif // TRIVIAL_CONFIG_DEBUG
 
@@ -249,7 +252,7 @@ private:
 	template <typename Callable>
 	static const Operations& getHeapOperations() noexcept {
 		static constexpr Operations s_kOperations{
-#ifdef TRIVIAL_CONFIG_DEBUG
+#if TRIVIAL_CONFIG_DEBUG
 		    .kind = OperationsKind::Callable,
 #endif // TRIVIAL_CONFIG_DEBUG
 
@@ -322,7 +325,7 @@ private:
 	template <typename Result>
 	static const Operations& getInlineResultOperations() noexcept {
 		static constexpr Operations s_kOperations{
-#ifdef TRIVIAL_CONFIG_DEBUG
+#if TRIVIAL_CONFIG_DEBUG
 		    .kind = OperationsKind::Result,
 #endif // TRIVIAL_CONFIG_DEBUG
 
@@ -356,7 +359,7 @@ private:
 	template <typename Result>
 	static const Operations& getHeapResultOperations() noexcept {
 		static constexpr Operations s_kOperations{
-#ifdef TRIVIAL_CONFIG_DEBUG
+#if TRIVIAL_CONFIG_DEBUG
 		    .kind = OperationsKind::Result,
 #endif // TRIVIAL_CONFIG_DEBUG
 
