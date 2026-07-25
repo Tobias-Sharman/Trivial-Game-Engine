@@ -1,5 +1,6 @@
 #include "rhi/vulkan/swapchain.h"
 
+#include <algorithm>
 #include <span>
 
 #include <trivial/core/assert.h>
