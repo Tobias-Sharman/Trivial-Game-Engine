@@ -12,7 +12,7 @@ namespace trivial::platform {
 
 class Window {
 public:
-	explicit Window(const EngineConfig* config);
+	explicit Window(const EngineConfig* config) noexcept;
 
 	~Window();
 
@@ -22,15 +22,17 @@ public:
 	Window(Window&&) = delete;
 	Window& operator=(Window&&) = delete;
 
-	static void pollEvents() { WindowBackend::pollEvents(); }
+	static void pollEvents() noexcept { WindowBackend::pollEvents(); }
 
-	[[nodiscard]] bool shouldClose() const { return m_backend.shouldClose(); }
+	[[nodiscard]] bool shouldClose() const noexcept { return m_backend.shouldClose(); }
 
-	[[nodiscard]] static std::span<const char* const> requiredVulkanInstanceExtensions() {
+	[[nodiscard]] WindowSize framebufferSize() const noexcept { return m_backend.framebufferSize(); }
+
+	[[nodiscard]] static std::span<const char* const> requiredVulkanInstanceExtensions() noexcept {
 		return WindowBackend::requiredVulkanInstanceExtensions();
 	}
 
-	[[nodiscard]] VkSurfaceKHR createVulkanSurface(VkInstance instance) const {
+	[[nodiscard]] VkSurfaceKHR createVulkanSurface(VkInstance instance) const noexcept {
 		return m_backend.createVulkanSurface(instance);
 	}
 

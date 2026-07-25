@@ -10,6 +10,7 @@
 namespace {
 
 const char* debugMessageTypePrefix(VkDebugUtilsMessageTypeFlagsEXT messageType) noexcept {
+	// NOTE: Address binding needs toggling on if wanting to use, apparently VK_EXT_device_address_binding_report
 	static constexpr std::array<const char*, 16> s_kPrefixes
 	    = {"[unknown] ",
 	       "[general] ",
@@ -64,19 +65,18 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBits
 }
 
 VkDebugUtilsMessengerCreateInfoEXT makeDebugMessengerCreateInfo() noexcept {
-	VkDebugUtilsMessengerCreateInfoEXT createInfo
+	static constexpr VkDebugUtilsMessengerCreateInfoEXT s_kCreateInfo
 	    = {.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
 	       .pNext = nullptr,
 	       .flags = 0,
 	       .messageSeverity
 	       = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
 	       .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
-	                      | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT
-	                      | VK_DEBUG_UTILS_MESSAGE_TYPE_DEVICE_ADDRESS_BINDING_BIT_EXT,
+	                      | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
 	       .pfnUserCallback = debugCallback,
 	       .pUserData = nullptr};
 
-	return createInfo;
+	return s_kCreateInfo;
 }
 
 } // namespace

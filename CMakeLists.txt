@@ -31,12 +31,18 @@ set(TRIVIAL_PRIVATE_SOURCES
 	src/platform/window.cpp
 	src/platform/glfw/window.cpp
 	src/render/renderer.cpp
-	src/rhi/backend.cpp
+	src/render/shapes.cpp
+	src/rhi/vulkan/allocator.cpp
 	src/rhi/vulkan/backend.cpp
+	src/rhi/vulkan/command.cpp
 	src/rhi/vulkan/debug_messenger.cpp
 	src/rhi/vulkan/device.cpp
 	src/rhi/vulkan/instance.cpp
+	src/rhi/vulkan/mesh.cpp
+	src/rhi/vulkan/pipeline.cpp
 	src/rhi/vulkan/physical_device.cpp
+	src/rhi/vulkan/swapchain.cpp
+	src/rhi/vulkan/sync.cpp
 	src/task/task_graph.cpp
 	src/task/task_system.cpp
 	src/world/world.cpp
@@ -89,17 +95,42 @@ target_compile_definitions(trivial
 		TRIVIAL_PLATFORM_GLFW
 )
 
+target_compile_definitions(trivial PRIVATE TRIVIAL_SHADER_DIR="${CMAKE_BINARY_DIR}/shaders/")
+
 # -----------------------------------------------------------------------------
 # Dependencies
 # -----------------------------------------------------------------------------
 
+set(FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/.dependencies" CACHE PATH "Shared FetchContent download/build cache")
+
+include(FetchContent)
+
 find_package(Vulkan REQUIRED)
-find_package(glfw3 CONFIG REQUIRED)
+
+FetchContent_Declare(
+	glfw
+	GIT_REPOSITORY https://github.com/glfw/glfw.git
+	GIT_TAG 3.4
+)
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(glfw)
+
+FetchContent_Declare(
+	vma
+	GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
+	GIT_TAG v3.4.0
+)
+FetchContent_MakeAvailable(vma)
 
 target_link_libraries(trivial
-	PRIVATE
+	PUBLIC
 		Vulkan::Vulkan
 		glfw
+	PRIVATE
+		GPUOpen::VulkanMemoryAllocator
 )
 
 if(TRIVIAL_ENABLE_TRACY)
@@ -121,6 +152,40 @@ else()
 			TRIVIAL_ENABLE_TRACY=0
 	)
 endif()
+
+# -----------------------------------------------------------------------------
+# Slang shader compilation
+# -----------------------------------------------------------------------------
+
+find_program(SLANGC_EXECUTABLE slangc REQUIRED)
+
+function(compile_slang_shader TARGET SOURCE ENTRY STAGE OUTPUT)
+	get_filename_component(OUTPUT_DIR "${OUTPUT}" DIRECTORY)
+	file(MAKE_DIRECTORY "${OUTPUT_DIR}")
+
+	add_custom_command(
+		OUTPUT ${OUTPUT}
+		COMMAND ${SLANGC_EXECUTABLE} -matrix-layout-row-major ${SOURCE} -target
+		spirv -entry ${ENTRY} -stage ${STAGE} -o ${OUTPUT}
+		DEPENDS ${SOURCE}
+		COMMENT "Compiling ${SOURCE} (${STAGE}:${ENTRY}) to SPIR-V"
+		VERBATIM
+	)
+
+	target_sources(${TARGET} PRIVATE ${OUTPUT})
+endfunction()
+compile_slang_shader(trivial
+	${CMAKE_SOURCE_DIR}/shaders/flat_colour.slang
+	vertexMain
+	vertex
+	${CMAKE_BINARY_DIR}/shaders/flat_colour.vert.spv
+)
+compile_slang_shader(trivial
+	${CMAKE_SOURCE_DIR}/shaders/flat_colour.slang
+	fragmentMain
+	fragment
+	${CMAKE_BINARY_DIR}/shaders/flat_colour.frag.spv
+)
 
 # -----------------------------------------------------------------------------
 # Tests
@@ -155,5 +220,24 @@ else()
 		-Wpedantic
 		-Wshadow
 		$<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
+	)
+endif()
+
+# -----------------------------------------------------------------------------
+# Relax warnings for files that transitively include VMA's header
+# -----------------------------------------------------------------------------
+
+set(TRIVIAL_VMA_TOUCHING_SOURCES
+	src/rhi/vulkan/allocator.cpp
+	src/rhi/vulkan/backend.cpp
+	src/rhi/vulkan/mesh.cpp
+	src/gpu/context.cpp
+)
+
+if(MSVC)
+	set_source_files_properties(${TRIVIAL_VMA_TOUCHING_SOURCES} PROPERTIES COMPILE_OPTIONS "/w")
+else()
+	set_source_files_properties(${TRIVIAL_VMA_TOUCHING_SOURCES} PROPERTIES
+		COMPILE_OPTIONS "-Wno-nullability-completeness;-Wno-nullability-extension;-Wno-unused-parameter;-Wno-missing-field-initializers;-Wno-unused-variable;-Wno-unused-private-field"
 	)
 endif()

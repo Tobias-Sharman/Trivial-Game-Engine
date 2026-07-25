@@ -6,7 +6,7 @@ namespace trivial::platform {
 
 namespace {
 
-WindowConfig readWindowConfig(const EngineConfig* config) {
+WindowConfig readWindowConfig(const EngineConfig* config) noexcept {
 	TRIVIAL_ASSERT(config != nullptr);
 	TRIVIAL_ASSERT(config->window.size.height > 0);
 	TRIVIAL_ASSERT(config->window.size.width > 0);
@@ -17,7 +17,7 @@ WindowConfig readWindowConfig(const EngineConfig* config) {
 
 } // namespace
 
-Window::Window(const EngineConfig* config)
+Window::Window(const EngineConfig* config) noexcept
     : m_config(readWindowConfig(config))
     , m_backend(&m_config) {
 }

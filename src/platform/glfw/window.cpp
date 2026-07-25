@@ -11,7 +11,7 @@ namespace trivial::platform::glfw {
 
 namespace {
 
-void initializeGlfw() {
+void initializeGlfw() noexcept {
 	const int kResult = glfwInit();
 
 	TRIVIAL_ASSERT(kResult == GLFW_TRUE);
@@ -19,7 +19,7 @@ void initializeGlfw() {
 
 } // namespace
 
-Window::Window(const WindowConfig* config) {
+Window::Window(const WindowConfig* config) noexcept {
 	TRIVIAL_ASSERT(config != nullptr);
 	TRIVIAL_ASSERT(config->size.height > 0);
 	TRIVIAL_ASSERT(config->size.width > 0);
@@ -27,15 +27,18 @@ Window::Window(const WindowConfig* config) {
 
 	initializeGlfw();
 
-	// TODO: Good for vulkan need to look to adjust when adding more apis
+	// NOTE: Good for vulkan need to look to adjust when adding more apis
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-	m_handle = glfwCreateWindow(config->size.width, config->size.height, config->title.c_str(), nullptr, nullptr);
+	m_handle = glfwCreateWindow(static_cast<int>(config->size.width),
+	                            static_cast<int>(config->size.height),
+	                            config->title.c_str(),
+	                            nullptr,
+	                            nullptr);
 
 	TRIVIAL_ASSERT(m_handle != nullptr);
 }
 
-// TODO: Move GLFW init/terminate into a GLFW runtime object for multiple window support
 Window::~Window() {
 	if (m_handle != nullptr) {
 		glfwDestroyWindow(m_handle);
@@ -45,19 +48,24 @@ Window::~Window() {
 	glfwTerminate();
 }
 
-// TODO: Move event polling to a platform window system/runtime for multiple window support
-// NOTE: Keeping here in case of changes or added asserts
-void Window::pollEvents() {
-	glfwPollEvents();
-}
-
-bool Window::shouldClose() const {
+bool Window::shouldClose() const noexcept {
 	TRIVIAL_ASSERT(m_handle != nullptr);
 
 	return glfwWindowShouldClose(m_handle) == GLFW_TRUE;
 }
 
-std::span<const char* const> Window::requiredVulkanInstanceExtensions() {
+WindowSize Window::framebufferSize() const noexcept {
+	int width = 0;
+	int height = 0;
+	glfwGetFramebufferSize(m_handle, &width, &height);
+
+	TRIVIAL_ASSERT(width >= 0);
+	TRIVIAL_ASSERT(height >= 0);
+
+	return {.height = static_cast<std::uint32_t>(width), .width = static_cast<std::uint32_t>(height)};
+}
+
+std::span<const char* const> Window::requiredVulkanInstanceExtensions() noexcept {
 	const int kVulkanSupported = glfwVulkanSupported();
 
 	TRIVIAL_ASSERT(kVulkanSupported == GLFW_TRUE);
@@ -71,7 +79,7 @@ std::span<const char* const> Window::requiredVulkanInstanceExtensions() {
 	return {extensions, static_cast<std::size_t>(extensionCount)};
 }
 
-VkSurfaceKHR Window::createVulkanSurface(VkInstance instance) const {
+VkSurfaceKHR Window::createVulkanSurface(VkInstance instance) const noexcept {
 	TRIVIAL_ASSERT(instance != VK_NULL_HANDLE);
 	TRIVIAL_ASSERT(m_handle != nullptr);
 

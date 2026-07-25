@@ -2,16 +2,19 @@
 #define TRIVIAL_APPLICATION_H
 
 #include <memory>
+#include <vector>
 
 #include <trivial/layers.h>
 #include <trivial/core/config.h>
 #include <trivial/frame/frame_context.h>
+#include <trivial/gpu/context.h>
+#include <trivial/render/renderer.h>
 
 namespace trivial {
 // NOTE: Need to decide if wanting to support more layers, could even be a vector of them used like a stack
 class Application {
 public:
-	explicit Application(std::unique_ptr<Layer> gameLayer);
+	explicit Application(std::unique_ptr<Layer> gameLayer) noexcept;
 
 	virtual ~Application() = default;
 
@@ -22,16 +25,18 @@ public:
 	Application& operator=(Application&&) = delete;
 
 #if TRIVIAL_CONFIG_DEBUG
-	void attachDebugLayer(std::unique_ptr<Layer> debugLayer);
+	void attachDebugLayer(std::unique_ptr<Layer> debugLayer) noexcept;
 #endif // TRIVIAL_CONFIG_DEBUG
 
-	void onStart();
-	void onEnd();
+	void onStart(gpu::Context* gpu) noexcept;
+	void onEnd() noexcept;
 
-	void updateGame(const FrameContext& frameContext);
+	void updateGame(const FrameContext& frameContext) noexcept;
 #if TRIVIAL_CONFIG_DEBUG
-	void updateDebug(const FrameContext& frameContext);
+	void updateDebug(const FrameContext& frameContext) noexcept;
 #endif // TRIVIAL_CONFIG_DEBUG
+
+	[[nodiscard]] std::vector<render::Drawable> collectDrawables() const noexcept;
 
 private:
 	std::unique_ptr<Layer> m_gameLayer;
@@ -44,7 +49,7 @@ private:
 } // namespace trivial
 
 #if TRIVIAL_CONFIG_DEBUG
-#define TRIVIAL_ATTACH_DEBUG_LAYER(app, expr) (app).attachDebugLayer(expr)
+#define TRIVIAL_ATTACH_DEBUG_LAYER(app, expr) (app).attachDebugLayer(expr) // NOLINT(cppcoreguidelines-macro-usage)
 #else
 #define TRIVIAL_ATTACH_DEBUG_LAYER(app, exp) ((void)0)
 #endif // TRIVIAL_CONFIG_DEBUG

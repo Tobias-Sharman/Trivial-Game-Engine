@@ -14,8 +14,9 @@ namespace trivial::platform::glfw {
 
 class Window {
 public:
-	explicit Window(const WindowConfig* config);
+	explicit Window(const WindowConfig* config) noexcept;
 
+	// TODO: Move GLFW init/terminate into a GLFW runtime object for multiple window support
 	~Window();
 
 	Window(const Window&) = delete;
@@ -24,13 +25,16 @@ public:
 	Window(Window&&) = delete;
 	Window& operator=(Window&&) = delete;
 
-	static void pollEvents();
+	// TODO: Move event polling to a platform window system/runtime for multiple window support
+	static void pollEvents() noexcept { glfwPollEvents(); }
 
-	[[nodiscard]] bool shouldClose() const;
+	[[nodiscard]] bool shouldClose() const noexcept;
 
-	[[nodiscard]] static std::span<const char* const> requiredVulkanInstanceExtensions();
+	[[nodiscard]] WindowSize framebufferSize() const noexcept;
 
-	[[nodiscard]] VkSurfaceKHR createVulkanSurface(VkInstance instance) const;
+	[[nodiscard]] static std::span<const char* const> requiredVulkanInstanceExtensions() noexcept;
+
+	[[nodiscard]] VkSurfaceKHR createVulkanSurface(VkInstance instance) const noexcept;
 
 private:
 	GLFWwindow* m_handle = nullptr;

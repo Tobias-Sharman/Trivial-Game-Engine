@@ -2,7 +2,8 @@
 
 #include <trivial/core/assert.h>
 #include <trivial/core/log.h>
-#include <trivial/rhi/vulkan/backend.h>
+
+#include "rhi/vulkan/backend.h"
 
 namespace {
 

@@ -3,6 +3,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include <trivial/core/log.h>
+
 namespace trivial::rhi::vulkan {
 
 constexpr const char* resultName(VkResult result) {

@@ -14,7 +14,7 @@ namespace trivial {
 
 class Engine {
 public:
-	explicit Engine(const EngineConfig* config);
+	explicit Engine(const EngineConfig* config) noexcept;
 
 	~Engine();
 
@@ -24,14 +24,14 @@ public:
 	Engine(Engine&&) = delete;
 	Engine& operator=(Engine&&) = delete;
 
-	void tick(Application& application);
-	void run(Application& application);
+	void tick(Application& application) noexcept;
+	void run(Application& application) noexcept;
 
-	[[nodiscard]] GraphicsApi requestedGraphicsApi() const { return m_requestedGraphicsApi; }
-	[[nodiscard]] GraphicsApi activeGraphicsApi() const { return m_gpu.activeGraphicsApi(); }
+	[[nodiscard]] GraphicsApi requestedGraphicsApi() const noexcept { return m_requestedGraphicsApi; }
+	[[nodiscard]] GraphicsApi activeGraphicsApi() const noexcept { return m_gpu.activeGraphicsApi(); }
 
-	[[nodiscard]] render::Renderer& renderer() { return m_renderer; }
-	[[nodiscard]] const render::Renderer& renderer() const { return m_renderer; }
+	[[nodiscard]] render::Renderer& renderer() noexcept { return m_renderer; }
+	[[nodiscard]] const render::Renderer& renderer() const noexcept { return m_renderer; }
 
 private:
 	// TODO: Once form of what objects engine actually owns is explicit then update this

@@ -17,7 +17,7 @@ GraphicsApi readRequestedGraphicsApi(const EngineConfig* config) {
 
 } // namespace
 
-Engine::Engine(const EngineConfig* config)
+Engine::Engine(const EngineConfig* config) noexcept
     : m_requestedGraphicsApi(readRequestedGraphicsApi(config))
     , m_frameIndex(0)
     , m_window(config)
@@ -31,7 +31,7 @@ Engine::~Engine() {
 	task::setActiveTaskSystem(nullptr);
 }
 
-void Engine::tick(Application& application) {
+void Engine::tick(Application& application) noexcept {
 	TRIVIAL_PROFILE_FRAME("Frame");
 	m_time.tick();
 	const FrameContext kFrameContext = {.deltaTime = m_time.deltaSeconds(), .frameIndex = m_frameIndex};
@@ -47,26 +47,30 @@ void Engine::tick(Application& application) {
 #if TRIVIAL_CONFIG_DEBUG
 	{
 		TRIVIAL_PROFILE_SCOPE("Update debug layer");
-		// Not really needed but will want debug layer to be decent quality later
 
 		application.updateDebug(kFrameContext);
 	}
 #endif // TRIVIAL_CONFIG_DEBUG
 
-	// have a prepare render function first to keep distinct from update game for clean minimise implementation later
-	// rendering
+	{
+		TRIVIAL_PROFILE_SCOPE("Render"); // TODO: Look to do two render passes to profile game and debug separately
+
+		// TODO: Move to world function on ecs
+		const std::vector<render::Drawable> kDrawables = application.collectDrawables();
+		m_renderer.drawFrame(m_frameIndex, kDrawables);
+	}
 
 	++m_frameIndex;
 }
 
-void Engine::run(Application& application) {
+void Engine::run(Application& application) noexcept {
 	TRIVIAL_PROFILE_THREAD("Main Thread");
 
 	m_time.reset();
 
 	{
 		TRIVIAL_PROFILE_SCOPE("Application Start");
-		application.onStart();
+		application.onStart(&m_gpu);
 	}
 
 	while (!m_window.shouldClose()) {

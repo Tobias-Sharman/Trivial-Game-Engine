@@ -1,7 +1,11 @@
 #ifndef TRIVIAL_LAYERS_H
 #define TRIVIAL_LAYERS_H
 
+#include <vector>
+
 #include <trivial/frame/frame_context.h>
+#include <trivial/gpu/context.h>
+#include <trivial/render/renderer.h>
 
 namespace trivial {
 
@@ -17,9 +21,11 @@ public:
 	Layer(Layer&&) = delete;
 	Layer& operator=(Layer&&) = delete;
 
-	virtual void onStart() {};
-	virtual void onUpdate(const FrameContext& frameContext) {};
-	virtual void onEnd() {};
+	virtual void onStart(gpu::Context* gpu) noexcept {};
+	virtual void onUpdate(const FrameContext& frameContext) noexcept {};
+	virtual void onEnd() noexcept {};
+
+	[[nodiscard]] virtual std::vector<render::Drawable> collectDrawables() const noexcept = 0;
 };
 
 } // namespace trivial

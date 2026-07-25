@@ -15,13 +15,9 @@ struct Version {
 	std::uint32_t patch = 0;
 };
 
-// TODO: add general config file that would allow for easily switching between standard resolution sizes
-//           this is to come back to once the window system is in place in case of api changes
-//           maybe add to the build command options
-//       Do with J
 struct WindowSize {
-	int height = 720;
-	int width = 1280;
+	std::uint32_t height = 720;
+	std::uint32_t width = 1280;
 };
 
 struct WindowConfig {

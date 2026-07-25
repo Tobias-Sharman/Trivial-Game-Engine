@@ -9,6 +9,16 @@ Renderer::Renderer(gpu::Context* gpu)
 	TRIVIAL_ASSERT(m_gpu != nullptr);
 }
 
-Renderer::~Renderer() = default;
+void Renderer::drawFrame(std::uint64_t frameIndex, std::span<const Drawable> drawables) noexcept {
+	if (!m_gpu->beginFrame(frameIndex)) {
+		return;
+	}
+
+	for (const Drawable& drawable : drawables) {
+		m_gpu->drawMesh(drawable.mesh, drawable.transform, drawable.tint);
+	}
+
+	m_gpu->endFrame();
+}
 
 } // namespace trivial::render
