@@ -11,5 +11,5 @@ struct FrameContext {
 };
 
 } // namespace trivial
-//
+
 #endif // TRIVIAL_FRAME_FRAME_CONTEXT_H
