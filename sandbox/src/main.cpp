@@ -193,7 +193,9 @@ class DebugLayer final : public trivial::Layer {
 } // namespace
 
 int main() {
-	trivial::EngineConfig config{.window.size{.height = 720, .width = 1280}, .window.title{"Trivial Test"}};
+	trivial::EngineConfig config{};
+	config.window.size = {.height = 720, .width = 1280};
+	config.window.title = "Trivial Test";
 	trivial::Engine engine(&config);
 
 	trivial::Application game{std::make_unique<GameLayer>()};
