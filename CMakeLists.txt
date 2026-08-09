@@ -27,6 +27,7 @@ set(TRIVIAL_PRIVATE_SOURCES
 	src/application.cpp
 	src/core/log.cpp
 	src/core/math/mat4.cpp
+	src/core/memory/page_allocator.cpp
 	src/gpu/context.cpp
 	src/platform/window.cpp
 	src/platform/glfw/window.cpp
@@ -124,14 +125,6 @@ FetchContent_Declare(
 	GIT_TAG v3.4.0
 )
 FetchContent_MakeAvailable(vma)
-
-FetchContent_Declare(
-	googletest
-	GIT_REPOSITORY https://github.com/google/googletest.git
-	GIT_TAG v1.15.2
-)
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE) # On Windows, prevent gtest from overriding the parent project's compiler/linker settings
-FetchContent_MakeAvailable(googletest)
 
 target_link_libraries(trivial
 	PUBLIC

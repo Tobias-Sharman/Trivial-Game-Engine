@@ -29,6 +29,8 @@
 
 #endif // Platform check
 
+#define TRIVIAL_PLATFORM_POSIX (TRIVIAL_PLATFORM_LINUX || TRIVIAL_PLATFORM_MACOS)
+
 #if defined(_M_X64) || defined(__x86_64__)
 #define TRIVIAL_ARCH_X86_64 1
 #define TRIVIAL_ARCH_ARM64 0
@@ -41,5 +43,7 @@
 #error "Unsupported CPU architecture"
 
 #endif // Cpu architecture check
+
+static_assert(sizeof(void*) == 8, "Trivial targets 64-bit platforms only");
 
 #endif // TRIVIAL_CORE_PLATFORM_H

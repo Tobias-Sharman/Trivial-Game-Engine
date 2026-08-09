@@ -44,6 +44,17 @@ void logMessageWithPrefix(LogLevel level, const char* prefix, const char* messag
 	(void)std::fputc('\n', stderr);
 }
 
+void logOomFailure(const char* prefix, const char* context, std::size_t requestedSize, int osErrorCode) {
+	// TODO: replace with proper logging system — this is a stopgap, needed proper system anyway for multithreading impact
+	(void)std::fprintf(stderr,
+	                   "Trivial %s: %s: %s (requested %zu bytes, os error %d)\n",
+	                   logLevelName(LogLevel::Fatal),
+	                   prefix,
+	                   context,
+	                   requestedSize,
+	                   osErrorCode);
+}
+
 } // namespace trivial::core
 
 #endif // TRIVIAL_ENABLE_LOGGING
