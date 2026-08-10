@@ -32,6 +32,7 @@ public:
 #endif // TRIVIAL_ENABLE_MEMORY_DEBUG_STATS
 
 	PageAllocator() noexcept = default;
+
 	~PageAllocator() { shutdown(); };
 
 	PageAllocator(const PageAllocator&) = delete;
@@ -40,22 +41,24 @@ public:
 	PageAllocator(PageAllocator&&) = delete;
 	PageAllocator& operator=(PageAllocator&&) = delete;
 
-	bool init(std::size_t reserveSize) noexcept;
+	[[nodiscard]] bool init(std::size_t reserveSize) noexcept;
 	void shutdown() noexcept;
 
-	void* getMoreMemory(std::size_t bytes) noexcept;
-	bool decommit(void* addr, std::size_t bytes) const noexcept;
+	[[nodiscard]] bool commit(void* addr, std::size_t bytes, int& outOsErrorCode) const noexcept;
+	[[nodiscard]] bool decommit(void* addr, std::size_t bytes) const noexcept;
 
-	std::size_t pageSize() const noexcept { return m_pageSize; }
+	[[nodiscard]] void* getMoreMemory(std::size_t bytes) noexcept;
+
+	[[nodiscard]] std::size_t pageSize() const noexcept { return m_pageSize; }
 
 #if TRIVIAL_ENABLE_MEMORY_DEBUG_STATS
-	Stats getStats() const noexcept;
+	[[nodiscard]] Stats getStats() const noexcept;
 #endif
 
 	void setOomHandler(OomHandler handler) noexcept { m_oomHandler = handler; }
 
 private:
-	void reportOom(std::size_t requestedSize, const char* context, int osErrorCode) noexcept;
+	void handleOom(std::size_t requestedSize, const char* context, int osErrorCode) noexcept;
 
 	mutable std::mutex m_stateMutex;
 	std::mutex m_oomMutex;

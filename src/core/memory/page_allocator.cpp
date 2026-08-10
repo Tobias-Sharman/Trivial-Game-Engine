@@ -24,7 +24,7 @@
 
 namespace {
 
-std::size_t queryOsPageSize() {
+[[nodiscard]] std::size_t queryOsPageSize() noexcept {
 #if TRIVIAL_PLATFORM_WINDOWS
 	SYSTEM_INFO info;
 	GetSystemInfo(&info);
@@ -41,7 +41,7 @@ std::size_t queryOsPageSize() {
 #endif // Platform check
 }
 
-std::size_t roundUpToPageSize(std::size_t bytes, std::size_t pageSize) {
+[[nodiscard]] std::size_t roundUpToPageSize(std::size_t bytes, std::size_t pageSize) noexcept {
 	TRIVIAL_ASSERT(pageSize > 0);
 	TRIVIAL_ASSERT((pageSize & (pageSize - 1)) == 0);
 	TRIVIAL_ASSERT(bytes <= SIZE_MAX - (pageSize - 1));
@@ -53,9 +53,11 @@ std::size_t roundUpToPageSize(std::size_t bytes, std::size_t pageSize) {
 
 namespace trivial::memory {
 
-bool PageAllocator::init(std::size_t reserveSize) noexcept {
+[[nodiscard]] bool PageAllocator::init(std::size_t reserveSize) noexcept {
 	TRIVIAL_ASSERT(reserveSize > 0);
 
+	// Need for temporary variables is to have distinct locks for state and OOM
+	// handler, not relevant in the same manner as
 	bool needsOomReport = false;
 	std::size_t oomRequestedSize = 0;
 	const char* oomContext = nullptr;
@@ -100,7 +102,7 @@ bool PageAllocator::init(std::size_t reserveSize) noexcept {
 	}
 
 	if (needsOomReport) {
-		reportOom(oomRequestedSize, oomContext, oomErrorCode);
+		handleOom(oomRequestedSize, oomContext, oomErrorCode);
 	}
 
 	return succeeded;
@@ -128,11 +130,16 @@ void PageAllocator::shutdown() noexcept {
 	m_usedBytes = 0;
 }
 
-void* PageAllocator::getMoreMemory(std::size_t bytes) noexcept {
+[[nodiscard]] void* PageAllocator::getMoreMemory(std::size_t bytes) noexcept {
 	TRIVIAL_PROFILE_FUNCTION();
 	TRIVIAL_ASSERT(bytes > 0);
 	TRIVIAL_ASSERT(bytes % m_pageSize == 0);
 
+	// Need for temporary variables is to have distinct locks for state and OOM
+	// handler since failure on the first allocation need not mean the next one
+	// fail, further for a clear up before program abort due to an irrecovarable
+	// OOM error then the OOM handler needs to handle this cleanly whilst the
+	// rest of the program is allowed to continue
 	bool needsOomReport = false;
 	const char* oomContext = nullptr;
 	int oomErrorCode = 0;
@@ -145,41 +152,18 @@ void* PageAllocator::getMoreMemory(std::size_t bytes) noexcept {
 		if (newUsedBytes <= m_reservedSize) {
 			// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 			void* commitAddr = static_cast<char*>(m_base) + m_usedBytes;
+			int commitErrorCode = 0;
 
-#if TRIVIAL_PLATFORM_WINDOWS
-			const void* kCommitResult = VirtualAlloc(commitAddr, bytes, MEM_COMMIT, PAGE_READWRITE);
-			if (kCommitResult == nullptr) {
+			// Saving temp variable by doing commit in place is not a meaningful
+			// gain for the safety loss
+			if (!commit(commitAddr, bytes, commitErrorCode)) {
 				needsOomReport = true;
 				oomContext = "PageAllocator::getMoreMemory commit failed";
-				oomErrorCode = static_cast<int>(GetLastError());
-			} else {
-				m_usedBytes = newUsedBytes;
-				result = kCommitResult;
-			}
-
-#elif TRIVIAL_PLATFORM_POSIX
-			const int kCommitResult = mprotect(commitAddr, bytes, PROT_READ | PROT_WRITE);
-
-			if (kCommitResult != 0) {
-				needsOomReport = true;
-				oomContext = "PageAllocator::getMoreMemory commit failed";
-				oomErrorCode = errno;
+				oomErrorCode = commitErrorCode;
 			} else {
 				m_usedBytes = newUsedBytes;
 				result = commitAddr;
 			}
-
-#endif // Platform check
-
-#if TRIVIAL_ENABLE_MEMORY_DEBUG_STATS
-			if (result != nullptr) {
-				std::size_t currentCommitted = m_debugCommittedBytes.fetch_add(bytes) + bytes;
-				std::size_t currentPeak = m_debugPeakCommittedBytes.load();
-				if (currentCommitted > currentPeak) {
-					m_debugPeakCommittedBytes.store(currentCommitted);
-				}
-			}
-#endif // TRIVIAL_ENABLE_MEMORY_DEBUG_STATS
 		} else {
 			needsOomReport = true;
 			oomContext = "PageAllocator::getMoreMemory exceeds reservation";
@@ -187,13 +171,49 @@ void* PageAllocator::getMoreMemory(std::size_t bytes) noexcept {
 	}
 
 	if (needsOomReport) {
-		reportOom(bytes, oomContext, oomErrorCode);
+		handleOom(bytes, oomContext, oomErrorCode);
 	}
 
 	return result;
 }
 
-bool PageAllocator::decommit(void* addr, std::size_t bytes) const noexcept {
+[[nodiscard]] bool PageAllocator::commit(void* addr, std::size_t bytes, int& outOsErrorCode) const noexcept {
+	TRIVIAL_PROFILE_FUNCTION();
+	TRIVIAL_ASSERT(addr != nullptr);
+	TRIVIAL_ASSERT(bytes > 0);
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+	TRIVIAL_ASSERT(reinterpret_cast<std::uintptr_t>(addr) % m_pageSize == 0);
+	TRIVIAL_ASSERT(bytes % m_pageSize == 0);
+
+#if TRIVIAL_PLATFORM_WINDOWS
+	void* result = VirtualAlloc(addr, bytes, MEM_COMMIT, PAGE_READWRITE);
+	if (result == nullptr) {
+		outOsErrorCode = static_cast<int>(GetLastError());
+		return false;
+	}
+
+#elif TRIVIAL_PLATFORM_POSIX
+	int result = mprotect(addr, bytes, PROT_READ | PROT_WRITE);
+	if (result != 0) {
+		outOsErrorCode = errno;
+		return false;
+	}
+
+#endif // Platform check
+
+#if TRIVIAL_ENABLE_MEMORY_DEBUG_STATS
+	std::size_t currentCommitted = m_debugCommittedBytes.fetch_add(bytes) + bytes;
+	std::size_t currentPeak = m_debugPeakCommittedBytes.load();
+
+	if (currentCommitted > currentPeak) {
+		m_debugPeakCommittedBytes.store(currentCommitted);
+	}
+#endif // TRIVIAL_ENABLE_MEMORY_DEBUG_STATS
+
+	return true;
+}
+
+[[nodiscard]] bool PageAllocator::decommit(void* addr, std::size_t bytes) const noexcept {
 	TRIVIAL_PROFILE_FUNCTION();
 	TRIVIAL_ASSERT(addr != nullptr);
 	TRIVIAL_ASSERT(bytes > 0);
@@ -223,8 +243,9 @@ bool PageAllocator::decommit(void* addr, std::size_t bytes) const noexcept {
 
 	return true;
 }
+
 #if TRIVIAL_ENABLE_MEMORY_DEBUG_STATS
-PageAllocator::Stats PageAllocator::getStats() const noexcept {
+[[nodiscard]] PageAllocator::Stats PageAllocator::getStats() const noexcept {
 	std::lock_guard<std::mutex> lock(m_stateMutex);
 
 	std::size_t committed = m_debugCommittedBytes.load();
@@ -239,7 +260,7 @@ PageAllocator::Stats PageAllocator::getStats() const noexcept {
 }
 #endif // TRIVIAL_ENABLE_MEMORY_DEBUG_STATS
 
-void PageAllocator::reportOom(std::size_t requestedSize, const char* context, int osErrorCode) noexcept {
+void PageAllocator::handleOom(std::size_t requestedSize, const char* context, int osErrorCode) noexcept {
 	TRIVIAL_LOG_OOM_FAILURE("PageAllocator", context, requestedSize, osErrorCode);
 
 	std::lock_guard<std::mutex> lock(m_oomMutex);
