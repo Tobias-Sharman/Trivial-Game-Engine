@@ -2,6 +2,7 @@
 #define TRIVIAL_CORE_MATH_MATH_CONFIG_H
 
 #include <trivial/core/compiler.h>
+#include <trivial/core/config.h>
 #include <trivial/core/platform.h>
 
 #ifndef TRIVIAL_MATH_DISABLE_SIMD_BACKEND
@@ -13,11 +14,14 @@
 #endif
 
 #if (TRIVIAL_MATH_DISABLE_SIMD_BACKEND != 0) && (TRIVIAL_MATH_DISABLE_SIMD_BACKEND != 1)
-#error "TRIVIAL_MATH_FORCE_SCALAR must be 0 or 1"
+#error "TRIVIAL_MATH_DISABLE_SIMD_BACKEND must be 0 or 1"
 #endif
 
 #if (TRIVIAL_MATH_DISABLE_FMA != 0) && (TRIVIAL_MATH_DISABLE_FMA != 1)
 #error "TRIVIAL_MATH_DISABLE_FMA must be 0 or 1"
 #endif
+
+#define TRIVIAL_MATH_USE_SIMD (TRIVIAL_ENABLE_SIMD && !TRIVIAL_MATH_DISABLE_SIMD_BACKEND)
+#define TRIVIAL_MATH_USE_FMA (TRIVIAL_MATH_USE_SIMD && !TRIVIAL_MATH_DISABLE_FMA)
 
 #endif // TRIVIAL_CORE_MATH_MATH_CONFIG_H

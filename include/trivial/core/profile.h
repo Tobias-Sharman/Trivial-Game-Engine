@@ -13,6 +13,9 @@
 #define TRIVIAL_PROFILE_THREAD(name) tracy::SetThreadName(name)
 #define TRIVIAL_PROFILE_VALUE(name, value) TracyPlot(name, value)
 
+#define TRIVIAL_PROFILE_ALLOC(pool, ptr, size) TracyAllocN(ptr, size, pool)
+#define TRIVIAL_PROFILE_FREE(pool, ptr) TracyFreeN(ptr, pool)
+
 #else
 
 #define TRIVIAL_PROFILE_SCOPE(name) ((void)0)
@@ -20,6 +23,9 @@
 #define TRIVIAL_PROFILE_FRAME(name) ((void)0)
 #define TRIVIAL_PROFILE_THREAD(name) ((void)0)
 #define TRIVIAL_PROFILE_VALUE(name, value) ((void)0)
+
+#define TRIVIAL_PROFILE_ALLOC(pool, ptr, size) ((void)0)
+#define TRIVIAL_PROFILE_FREE(pool, ptr) ((void)0)
 
 #endif // TRIVIAL_ENABLE_TRACY
 

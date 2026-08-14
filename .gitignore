@@ -10,6 +10,3 @@ build/
 */build/
 cmake-build-*/
 compile_commands.json
-
-# Dependency installation
-*.dependencies

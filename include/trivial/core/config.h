@@ -1,6 +1,12 @@
 #ifndef TRIVIAL_CORE_CONFIG_H
 #define TRIVIAL_CORE_CONFIG_H
 
+#if defined(TRIVIAL_USER_CONFIG)
+#include TRIVIAL_USER_CONFIG
+#elif __has_include(<trivial_user_config.h>)
+#include <trivial_user_config.h>
+#endif // User config
+
 #ifndef TRIVIAL_ENABLE_ASSERTS
 #define TRIVIAL_ENABLE_ASSERTS 1
 #endif
@@ -35,6 +41,26 @@
 
 #ifndef TRIVIAL_CONFIG_RELWITHDEBINFO
 #define TRIVIAL_CONFIG_RELWITHDEBINFO 0
+#endif
+
+#if (TRIVIAL_CONFIG_DEBUG + TRIVIAL_CONFIG_RELEASE + TRIVIAL_CONFIG_RELWITHDEBINFO) != 1
+#error "Exactly one of TRIVIAL_CONFIG_DEBUG, TRIVIAL_CONFIG_RELEASE, TRIVIAL_CONFIG_RELWITHDEBINFO must be 1"
+#endif // Build configuration check
+
+#if (TRIVIAL_ENABLE_ASSERTS != 0) && (TRIVIAL_ENABLE_ASSERTS != 1)
+#error "TRIVIAL_ENABLE_ASSERTS must be 0 or 1"
+#endif
+
+#if (TRIVIAL_ENABLE_SLOW_ASSERTS != 0) && (TRIVIAL_ENABLE_SLOW_ASSERTS != 1)
+#error "TRIVIAL_ENABLE_SLOW_ASSERTS must be 0 or 1"
+#endif
+
+#if (TRIVIAL_ENABLE_LOGGING != 0) && (TRIVIAL_ENABLE_LOGGING != 1)
+#error "TRIVIAL_ENABLE_LOGGING must be 0 or 1"
+#endif
+
+#if (TRIVIAL_ENABLE_SIMD != 0) && (TRIVIAL_ENABLE_SIMD != 1)
+#error "TRIVIAL_ENABLE_SIMD must be 0 or 1"
 #endif
 
 #endif // TRIVIAL_CORE_CONFIG_H

@@ -39,4 +39,18 @@
 
 #endif // Force inline macro
 
+#if TRIVIAL_COMPILER_MSVC || TRIVIAL_COMPILER_CLANG_CL
+#define TRIVIAL_DEBUG_BREAK() __debugbreak()
+
+#elif (TRIVIAL_COMPILER_CLANG || TRIVIAL_COMPILER_GCC) && (defined(__i386__) || defined(__x86_64__))
+#define TRIVIAL_DEBUG_BREAK() __asm__ volatile("int3")
+
+#elif (TRIVIAL_COMPILER_CLANG || TRIVIAL_COMPILER_GCC) && defined(__aarch64__)
+#define TRIVIAL_DEBUG_BREAK() __asm__ volatile("brk #0")
+
+#else
+#define TRIVIAL_DEBUG_BREAK() __builtin_trap()
+
+#endif // Debug break
+
 #endif // TRIVIAL_CORE_COMPILER_H

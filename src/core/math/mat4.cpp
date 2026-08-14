@@ -3,7 +3,7 @@
 #include <trivial/core/math/math_config.h>
 #include <trivial/core/platform.h>
 
-#if !TRIVIAL_MATH_DISABLE_SIMD_BACKEND
+#if TRIVIAL_MATH_USE_SIMD
 #if TRIVIAL_ARCH_X86_64
 #include <immintrin.h>
 
@@ -17,7 +17,7 @@
 namespace trivial::math::detail {
 
 Vec4f multiplyMat4Vec4(const Mat4f& matrix, const Vec4f& vector) noexcept {
-#if TRIVIAL_MATH_DISABLE_SIMD_BACKEND
+#if !TRIVIAL_MATH_USE_SIMD
 	return (matrix.col0 * vector.x + matrix.col1 * vector.y) + (matrix.col2 * vector.z + matrix.col3 * vector.w);
 	// Weird braces to match non-FMA SIMD style
 
@@ -48,7 +48,7 @@ Vec4f multiplyMat4Vec4(const Mat4f& matrix, const Vec4f& vector) noexcept {
 	const float32x4_t kC3 = vld1q_f32(&matrix.col3.x);
 	const float32x4_t kInput = vld1q_f32(&vector.x);
 
-#if TRIVIAL_MATH_DISABLE_FMA
+#if !TRIVIAL_MATH_USE_FMA
 	const float32x4_t kXY = vaddq_f32(vmulq_laneq_f32(kC0, kInput, 0), vmulq_laneq_f32(kC1, kInput, 1));
 	const float32x4_t kZW = vaddq_f32(vmulq_laneq_f32(kC2, kInput, 2), vmulq_laneq_f32(kC3, kInput, 3));
 	const float32x4_t kResult = vaddq_f32(kXY, kZW);
@@ -72,7 +72,7 @@ Vec4f multiplyMat4Vec4(const Mat4f& matrix, const Vec4f& vector) noexcept {
 }
 
 Mat4f multiplyMat4Mat4(const Mat4f& lhs, const Mat4f& rhs) noexcept {
-#if TRIVIAL_MATH_DISABLE_SIMD_BACKEND
+#if !TRIVIAL_MATH_USE_SIMD
 	return {(lhs.col0 * rhs.col0.x + lhs.col1 * rhs.col0.y) + (lhs.col2 * rhs.col0.z + lhs.col3 * rhs.col0.w),
 	        (lhs.col0 * rhs.col1.x + lhs.col1 * rhs.col1.y) + (lhs.col2 * rhs.col1.z + lhs.col3 * rhs.col1.w),
 	        (lhs.col0 * rhs.col2.x + lhs.col1 * rhs.col2.y) + (lhs.col2 * rhs.col2.z + lhs.col3 * rhs.col2.w),
@@ -152,7 +152,7 @@ Mat4f multiplyMat4Mat4(const Mat4f& lhs, const Mat4f& rhs) noexcept {
 
 	Mat4f output;
 
-#if TRIVIAL_MATH_DISABLE_FMA
+#if !TRIVIAL_MATH_USE_FMA
 	{
 		const float32x4_t kR = vld1q_f32(&rhs.col0.x);
 

@@ -19,13 +19,15 @@ const char* logLevelName(LogLevel logLevel) {
 		case LogLevel::Error:
 			return "error";
 		case LogLevel::Fatal:
-			return "Fatal";
+			return "fatal";
 		default:
-			return "unkown";
+			return "unknown";
 	}
 }
 
 } // namespace
+
+// TODO: proper logging system safe under multithreading
 
 void logMessage(LogLevel level, const char* message) {
 	(void)std::fputs("Trivial ", stderr);
@@ -38,16 +40,16 @@ void logMessage(LogLevel level, const char* message) {
 void logMessageWithPrefix(LogLevel level, const char* prefix, const char* message) {
 	(void)std::fputs("Trivial ", stderr);
 	(void)std::fputs(logLevelName(level), stderr);
-	(void)std::fputs(": ", stderr);
+	(void)std::fputs(" [", stderr);
 	(void)std::fputs(prefix, stderr);
+	(void)std::fputs("]: ", stderr);
 	(void)std::fputs(message, stderr);
 	(void)std::fputc('\n', stderr);
 }
 
 void logOomFailure(const char* prefix, const char* context, std::size_t requestedSize, int osErrorCode) {
-	// TODO: replace with proper logging system — this is a stopgap, needed proper system anyway for multithreading impact
 	(void)std::fprintf(stderr,
-	                   "Trivial %s: %s: %s (requested %zu bytes, os error %d)\n",
+	                   "Trivial %s [%s]: %s (requested %zu bytes, os error %d)\n",
 	                   logLevelName(LogLevel::Fatal),
 	                   prefix,
 	                   context,

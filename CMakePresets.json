@@ -17,11 +17,13 @@
 				"TRIVIAL_ENABLE_ASSERTS": "ON",
 				"TRIVIAL_ENABLE_SLOW_ASSERTS": "OFF",
 				"TRIVIAL_ENABLE_LOGGING": "ON",
-				"TRIVIAL_ENABLE_SIMD": "ON",
 				"TRIVIAL_ENABLE_VULKAN_VALIDATION": "ON",
 				"TRIVIAL_ENABLE_TRACY": "OFF",
 				"TRIVIAL_MATH_DISABLE_SIMD_BACKEND": "OFF",
-				"TRIVIAL_MATH_DISABLE_FMA": "OFF"
+				"TRIVIAL_MATH_DISABLE_FMA": "OFF",
+				"TRIVIAL_MEMORY_DEBUG": "AUTO",
+				"TRIVIAL_MEMORY_DEBUG_STATS": "AUTO",
+				"TRIVIAL_ENABLE_SIMD": "ON"
 			}
 		},
 		{
@@ -53,11 +55,13 @@
 				"TRIVIAL_ENABLE_ASSERTS": "OFF",
 				"TRIVIAL_ENABLE_SLOW_ASSERTS": "OFF",
 				"TRIVIAL_ENABLE_LOGGING": "OFF",
-				"TRIVIAL_ENABLE_SIMD": "ON",
 				"TRIVIAL_ENABLE_VULKAN_VALIDATION": "OFF",
 				"TRIVIAL_ENABLE_TRACY": "OFF",
 				"TRIVIAL_MATH_DISABLE_SIMD_BACKEND": "OFF",
-				"TRIVIAL_MATH_DISABLE_FMA": "OFF"
+				"TRIVIAL_MATH_DISABLE_FMA": "OFF",
+				"TRIVIAL_MEMORY_DEBUG": "AUTO",
+				"TRIVIAL_MEMORY_DEBUG_STATS": "AUTO",
+				"TRIVIAL_ENABLE_SIMD": "ON"
 			}
 		},
 		{
@@ -70,12 +74,14 @@
 				"CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
 				"TRIVIAL_ENABLE_ASSERTS": "OFF",
 				"TRIVIAL_ENABLE_SLOW_ASSERTS": "OFF",
-				"TRIVIAL_ENABLE_SIMD": "ON",
 				"TRIVIAL_ENABLE_LOGGING": "ON",
 				"TRIVIAL_ENABLE_VULKAN_VALIDATION": "OFF",
 				"TRIVIAL_ENABLE_TRACY": "OFF",
 				"TRIVIAL_MATH_DISABLE_SIMD_BACKEND": "OFF",
-				"TRIVIAL_MATH_DISABLE_FMA": "OFF"
+				"TRIVIAL_MATH_DISABLE_FMA": "OFF",
+				"TRIVIAL_MEMORY_DEBUG": "AUTO",
+				"TRIVIAL_MEMORY_DEBUG_STATS": "AUTO",
+				"TRIVIAL_ENABLE_SIMD": "ON"
 			}
 		},
 		{
@@ -85,6 +91,17 @@
 			"binaryDir": "${sourceDir}/build/relwithdebinfo-tracy",
 			"cacheVariables": {
 				"TRIVIAL_ENABLE_TRACY": "ON"
+			}
+		},
+		{
+			"name": "relwithdebinfo-memdebug",
+			"displayName": "Release With Debug Info + Memory Debugging",
+			"inherits": "relwithdebinfo",
+			"binaryDir": "${sourceDir}/build/relwithdebinfo-memdebug",
+			"cacheVariables": {
+				"TRIVIAL_ENABLE_ASSERTS": "ON",
+				"TRIVIAL_MEMORY_DEBUG": "ON",
+				"TRIVIAL_MEMORY_DEBUG_STATS": "ON"
 			}
 		}
 	],
@@ -112,6 +129,10 @@
 		{
 			"name": "relwithdebinfo-tracy",
 			"configurePreset": "relwithdebinfo-tracy"
+		},
+		{
+			"name": "relwithdebinfo-memdebug",
+			"configurePreset": "relwithdebinfo-memdebug"
 		}
 	]
 }

@@ -15,8 +15,15 @@ option(TRIVIAL_ENABLE_SLOW_ASSERTS "Enable expensive engine assertions" OFF)
 option(TRIVIAL_ENABLE_LOGGING "Enable engine logging" ON)
 option(TRIVIAL_ENABLE_VULKAN_VALIDATION "Enable Vulkan validation layers" ON)
 option(TRIVIAL_ENABLE_TRACY "Enable Tracy profiling" OFF)
+option(TRIVIAL_ENABLE_SIMD "Enable SIMD code paths engine wide" ON)
 option(TRIVIAL_MATH_DISABLE_SIMD_BACKEND "Disable explicit SIMD math backends" OFF)
 option(TRIVIAL_MATH_DISABLE_FMA "Disable explicit FMA in math backends" OFF)
+
+set(TRIVIAL_MEMORY_DEBUG "AUTO" CACHE STRING "Allocation level memory debugging (AUTO/ON/OFF)")
+set_property(CACHE TRIVIAL_MEMORY_DEBUG PROPERTY STRINGS AUTO ON OFF)
+
+set(TRIVIAL_MEMORY_DEBUG_STATS "AUTO" CACHE STRING "Segment level memory statistics (AUTO/ON/OFF)")
+set_property(CACHE TRIVIAL_MEMORY_DEBUG_STATS PROPERTY STRINGS AUTO ON OFF)
 
 # -----------------------------------------------------------------------------
 # Source files
@@ -25,9 +32,10 @@ option(TRIVIAL_MATH_DISABLE_FMA "Disable explicit FMA in math backends" OFF)
 set(TRIVIAL_PRIVATE_SOURCES
 	src/engine.cpp
 	src/application.cpp
+	src/core/assert.cpp
 	src/core/log.cpp
 	src/core/math/mat4.cpp
-	src/core/memory/page_allocator.cpp
+	src/core/memory/segment_allocator.cpp
 	src/gpu/context.cpp
 	src/platform/window.cpp
 	src/platform/glfw/window.cpp
@@ -85,24 +93,43 @@ target_compile_definitions(trivial
 		TRIVIAL_ENABLE_SLOW_ASSERTS=$<BOOL:${TRIVIAL_ENABLE_SLOW_ASSERTS}>
 		TRIVIAL_ENABLE_LOGGING=$<BOOL:${TRIVIAL_ENABLE_LOGGING}>
 		TRIVIAL_ENABLE_VULKAN_VALIDATION=$<BOOL:${TRIVIAL_ENABLE_VULKAN_VALIDATION}>
-		TRIVIAL_ENABLE_TRACY=$<BOOL:${TRIVIAL_ENABLE_TRACY}>
+		TRIVIAL_ENABLE_SIMD=$<BOOL:${TRIVIAL_ENABLE_SIMD}>
 		TRIVIAL_MATH_DISABLE_SIMD_BACKEND=$<BOOL:${TRIVIAL_MATH_DISABLE_SIMD_BACKEND}>
 		TRIVIAL_MATH_DISABLE_FMA=$<BOOL:${TRIVIAL_MATH_DISABLE_FMA}>
-
-		TRIVIAL_CONFIG_DEBUG=$<CONFIG:Debug>
-		TRIVIAL_CONFIG_RELEASE=$<CONFIG:Release>
-		TRIVIAL_CONFIG_RELWITHDEBINFO=$<CONFIG:RelWithDebInfo>
+		TRIVIAL_ENABLE_TRACY=$<BOOL:${TRIVIAL_ENABLE_TRACY}>
+		$<$<BOOL:${TRIVIAL_ENABLE_TRACY}>:TRACY_ENABLE>
 
 		TRIVIAL_PLATFORM_GLFW
 )
 
 target_compile_definitions(trivial PRIVATE TRIVIAL_SHADER_DIR="${CMAKE_BINARY_DIR}/shaders/")
 
+if(NOT TRIVIAL_MEMORY_DEBUG STREQUAL "AUTO")
+	target_compile_definitions(trivial PUBLIC TRIVIAL_ENABLE_MEMORY_DEBUG=$<BOOL:${TRIVIAL_MEMORY_DEBUG}>)
+endif()
+
+if(NOT TRIVIAL_MEMORY_DEBUG_STATS STREQUAL "AUTO")
+	target_compile_definitions(trivial PUBLIC TRIVIAL_ENABLE_MEMORY_DEBUG_STATS=$<BOOL:${TRIVIAL_MEMORY_DEBUG_STATS}>)
+endif()
+
+# -----------------------------------------------------------------------------
+# Platform definitions
+# -----------------------------------------------------------------------------
+
+if(WIN32)
+	target_compile_definitions(trivial
+		PUBLIC
+			_WIN32_WINNT=0x0A00
+			WIN32_LEAN_AND_MEAN
+			NOMINMAX
+	)
+endif()
+
 # -----------------------------------------------------------------------------
 # Dependencies
 # -----------------------------------------------------------------------------
 
-set(FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/.dependencies" CACHE PATH "Shared FetchContent download/build cache")
+set(FETCHCONTENT_TRY_FIND_PACKAGE_MODE NEVER)
 
 include(FetchContent)
 
@@ -111,7 +138,10 @@ find_package(Vulkan REQUIRED)
 FetchContent_Declare(
 	glfw
 	GIT_REPOSITORY https://github.com/glfw/glfw.git
-	GIT_TAG 3.4
+	GIT_TAG 3.5.1
+	GIT_SHALLOW TRUE
+	SYSTEM
+	EXCLUDE_FROM_ALL
 )
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -123,36 +153,45 @@ FetchContent_Declare(
 	vma
 	GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
 	GIT_TAG v3.4.0
+	GIT_SHALLOW TRUE
+	SYSTEM
+	EXCLUDE_FROM_ALL
 )
 FetchContent_MakeAvailable(vma)
+
+FetchContent_Declare(
+	tracy
+	GIT_REPOSITORY https://github.com/wolfpld/tracy.git
+	GIT_TAG v0.13.0
+	GIT_SHALLOW TRUE
+	SYSTEM
+	EXCLUDE_FROM_ALL
+)
+FetchContent_MakeAvailable(tracy)
+
+if(NOT MSVC)
+	target_compile_options(TracyClient PRIVATE -Wno-deprecated-declarations)
+endif()
 
 target_link_libraries(trivial
 	PUBLIC
 		Vulkan::Vulkan
 		glfw
+		Tracy::TracyClient
 	PRIVATE
 		GPUOpen::VulkanMemoryAllocator
 )
 
-if(TRIVIAL_ENABLE_TRACY)
-	find_package(Tracy CONFIG REQUIRED)
+# -----------------------------------------------------------------------------
+# Build configuration
+# -----------------------------------------------------------------------------
 
-	target_link_libraries(trivial
-		PUBLIC
-			Tracy::TracyClient
-	)
-
-	target_compile_definitions(trivial
-		PUBLIC
-			TRACY_ENABLE
-			TRIVIAL_ENABLE_TRACY=1
-	)
-else()
-	target_compile_definitions(trivial
-		PUBLIC
-			TRIVIAL_ENABLE_TRACY=0
-	)
-endif()
+target_compile_definitions(trivial
+	PUBLIC
+		TRIVIAL_CONFIG_DEBUG=$<CONFIG:Debug>
+		TRIVIAL_CONFIG_RELEASE=$<CONFIG:Release>
+		TRIVIAL_CONFIG_RELWITHDEBINFO=$<CONFIG:RelWithDebInfo>
+)
 
 # -----------------------------------------------------------------------------
 # Slang shader compilation
@@ -221,24 +260,5 @@ else()
 		-Wpedantic
 		-Wshadow
 		$<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
-	)
-endif()
-
-# -----------------------------------------------------------------------------
-# Relax warnings for files that transitively include VMA's header
-# -----------------------------------------------------------------------------
-
-set(TRIVIAL_VMA_TOUCHING_SOURCES
-	src/rhi/vulkan/allocator.cpp
-	src/rhi/vulkan/backend.cpp
-	src/rhi/vulkan/mesh.cpp
-	src/gpu/context.cpp
-)
-
-if(MSVC)
-	set_source_files_properties(${TRIVIAL_VMA_TOUCHING_SOURCES} PROPERTIES COMPILE_OPTIONS "/w")
-else()
-	set_source_files_properties(${TRIVIAL_VMA_TOUCHING_SOURCES} PROPERTIES
-		COMPILE_OPTIONS "-Wno-nullability-completeness;-Wno-nullability-extension;-Wno-unused-parameter;-Wno-missing-field-initializers;-Wno-unused-variable;-Wno-unused-private-field"
 	)
 endif()
