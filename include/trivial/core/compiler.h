@@ -30,7 +30,7 @@
 #endif // For Clang on windows
 
 #if defined(_MSC_VER)
-#define TRIVIAL_FORCE_INLINE __forceinline
+#define TRIVIAL_FORCE_INLINE inline __forceinline
 #define TRIVIAL_NO_INLINE __declspec(noinline)
 
 #elif TRIVIAL_COMPILER_CLANG || TRIVIAL_COMPILER_GCC

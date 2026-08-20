@@ -24,6 +24,8 @@ add_executable(trivial_tests
 	math/transform.cpp
 	memory/segment_allocator_single_thread.cpp
 	memory/segment_allocator_multi_thread.cpp
+	sync/spin_lock_single_thread.cpp
+	sync/spin_lock_multi_thread.cpp
 	task/task_system.cpp
 )
 
