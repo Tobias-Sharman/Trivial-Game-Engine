@@ -35,12 +35,6 @@ enum class SegmentKind : std::uint8_t {
 	External = 64,
 };
 
-enum class DecommitMode : std::uint8_t {
-	Disabled,
-	Eager,
-	Lazy,
-};
-
 [[nodiscard]] constexpr bool isGeneralAllocatorKind(SegmentKind kind) noexcept {
 	const std::uint8_t kValue = static_cast<std::uint8_t>(kind);
 	return kValue != 0 && kValue <= g_kLastGeneralKind;
@@ -78,32 +72,6 @@ enum class DecommitMode : std::uint8_t {
 			return "unknown";
 	}
 }
-
-struct MemoryCapabilities {
-#if TRIVIAL_PLATFORM_PAGE_SIZE_KNOWN
-	// NOLINTNEXTLINE(readability-identifier-naming)
-	static constexpr std::size_t pageSize = core::g_kPageSize;
-	// NOLINTNEXTLINE(readability-identifier-naming)
-	static constexpr std::size_t allocationGranularity = core::g_kAllocationGranularity;
-#else
-	std::size_t pageSize = 0;
-	std::size_t allocationGranularity = 0;
-#endif // TRIVIAL_PLATFORM_PAGE_SIZE_KNOWN
-
-#if TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
-	std::size_t largePageSize = 0;
-#endif // TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
-
-#if !TRIVIAL_MEMORY_ENABLE_DECOMMIT
-	static constexpr DecommitMode decommitMode = DecommitMode::Disabled;
-#elif TRIVIAL_PLATFORM_WINDOWS
-	// VirtualFree has no lazy equivalent, so the mode is never in question
-	static constexpr DecommitMode decommitMode = DecommitMode::Eager;
-#else
-	// Eager or lazy depending on what the MADV_FREE probe found
-	DecommitMode decommitMode = DecommitMode::Eager;
-#endif // Decommit mode
-};
 
 struct SegmentRecord {
 #if TRIVIAL_MEMORY_ENABLE_DECOMMIT
