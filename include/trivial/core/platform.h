@@ -84,7 +84,6 @@
 
 #endif // Cache line size
 
-// Adjacent line prefetcher safety
 #define TRIVIAL_PLATFORM_FALSE_SHARING_ALIGNMENT 128
 
 #if TRIVIAL_PLATFORM_WINDOWS
@@ -109,6 +108,14 @@
 
 #endif // MADV_FREE availability
 
+#if TRIVIAL_PLATFORM_LINUX || TRIVIAL_PLATFORM_WINDOWS
+#define TRIVIAL_PLATFORM_HAS_CPU_AFFINITY 1
+
+#else
+#define TRIVIAL_PLATFORM_HAS_CPU_AFFINITY 0
+
+#endif // CPU affinity availability
+
 namespace trivial::core {
 
 inline constexpr std::size_t g_kPageSize = TRIVIAL_PLATFORM_PAGE_SIZE;
@@ -122,6 +129,6 @@ static_assert(g_kFalseSharingAlignment >= g_kCacheLineSize, "False sharing align
 
 } // namespace trivial::core
 
-static_assert(sizeof(void*) == 8, "Trivial targets 64-bit platforms only");
+static_assert(sizeof(void*) == 8, "Trivial targets 64-bit platforms only"); // NOLINT(readability-magic-numbers)
 
 #endif // TRIVIAL_CORE_PLATFORM_H

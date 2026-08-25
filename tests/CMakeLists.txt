@@ -27,6 +27,7 @@ add_executable(trivial_tests
 	sync/spin_lock_single_thread.cpp
 	sync/spin_lock_multi_thread.cpp
 	task/task_system.cpp
+	thread/thread.cpp
 )
 
 target_link_libraries(trivial_tests
