@@ -32,10 +32,12 @@
 #if defined(_MSC_VER)
 #define TRIVIAL_FORCE_INLINE inline __forceinline
 #define TRIVIAL_NO_INLINE __declspec(noinline)
+#define TRIVIAL_COLD
 
 #elif TRIVIAL_COMPILER_CLANG || TRIVIAL_COMPILER_GCC
 #define TRIVIAL_FORCE_INLINE inline __attribute__((always_inline))
 #define TRIVIAL_NO_INLINE __attribute__((noinline))
+#define TRIVIAL_COLD __attribute__((cold))
 
 #endif // Force inline macro
 
@@ -52,5 +54,20 @@
 #define TRIVIAL_DEBUG_BREAK() __builtin_trap()
 
 #endif // Debug break
+
+#if defined(__SANITIZE_THREAD__)
+#define TRIVIAL_THREAD_SANITIZER_ENABLED 1
+
+#elif defined(__has_feature)
+#if __has_feature(thread_sanitizer)
+#define TRIVIAL_THREAD_SANITIZER_ENABLED 1
+#endif // __has_feature(thread_sanitizer)
+
+#endif // defined(__has_feature)
+
+#ifndef TRIVIAL_THREAD_SANITIZER_ENABLED
+#define TRIVIAL_THREAD_SANITIZER_ENABLED 0
+
+#endif // TRIVIAL_THREAD_SANITIZER_ENABLED
 
 #endif // TRIVIAL_CORE_COMPILER_H
