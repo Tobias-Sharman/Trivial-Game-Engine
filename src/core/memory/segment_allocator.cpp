@@ -211,8 +211,8 @@ namespace trivial::memory {
 		const std::size_t kPageSize = kSystemInfo.pageSize;
 
 #if TRIVIAL_PLATFORM_PAGE_SIZE_KNOWN
-		TRIVIAL_ASSERT(kPageSize == core::g_kPageSize);
-		TRIVIAL_ASSERT(kSystemInfo.allocationGranularity == core::g_kAllocationGranularity);
+		TRIVIAL_ASSERT(kPageSize == TRIVIAL_PLATFORM_PAGE_SIZE);
+		TRIVIAL_ASSERT(kSystemInfo.allocationGranularity == TRIVIAL_PLATFORM_ALLOCATION_GRANULARITY);
 #else
 		m_capabilities.pageSize = kPageSize;
 		m_capabilities.allocationGranularity = kSystemInfo.allocationGranularity;

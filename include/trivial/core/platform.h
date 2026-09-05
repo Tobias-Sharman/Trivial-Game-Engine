@@ -1,12 +1,20 @@
 #ifndef TRIVIAL_CORE_PLATFORM_H
 #define TRIVIAL_CORE_PLATFORM_H
 
-#include <cstddef>
-
 #if defined(_WIN32)
 #define TRIVIAL_PLATFORM_WINDOWS 1
 #define TRIVIAL_PLATFORM_LINUX 0
 #define TRIVIAL_PLATFORM_MACOS 0
+
+#define TRIVIAL_PLATFORM_WINDOWS_MIN_VERSION 0x0A00 // Windows 10
+
+#if !defined(_WIN32_WINNT) || _WIN32_WINNT < TRIVIAL_PLATFORM_WINDOWS_MIN_VERSION
+#error "Target Windows SDK version is below TRIVIAL_PLATFORM_WINDOWS_MIN_VERSION"
+#endif
+
+// Record of all minimums for reference for future changes:
+//     VirtualAlloc2 - 0x0A00 (Windows 10, 1803+)
+//     WaitOnAddress - 0x0602 (Windows 8)
 
 #elif defined(__APPLE__)
 #include <TargetConditionals.h>
@@ -25,6 +33,9 @@
 #define TRIVIAL_PLATFORM_WINDOWS 0
 #define TRIVIAL_PLATFORM_LINUX 1
 #define TRIVIAL_PLATFORM_MACOS 0
+
+// Record of all minimums for reference for future changes:
+//     MADV_FREE - Linux 4.5 -> currently implemented here as a runtime probe
 
 #else
 #error "Unsupported platform"
@@ -86,19 +97,13 @@
 
 #define TRIVIAL_PLATFORM_FALSE_SHARING_ALIGNMENT 128
 
-#if TRIVIAL_PLATFORM_WINDOWS
-#if defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0A00)
+#if TRIVIAL_PLATFORM_WINDOWS && (TRIVIAL_PLATFORM_WINDOWS_MIN_VERSION >= 0x0A00)
 #define TRIVIAL_PLATFORM_SDK_HAS_VIRTUAL_ALLOC2 1
 
 #else
 #define TRIVIAL_PLATFORM_SDK_HAS_VIRTUAL_ALLOC2 0
 
-#endif // Windows version check
-
-#else
-#define TRIVIAL_PLATFORM_SDK_HAS_VIRTUAL_ALLOC2 0
-
-#endif // TRIVIAL_PLATFORM_WINDOWS
+#endif // TRIVIAL_PLATFORM_SDK_HAS_VIRTUAL_ALLOC2
 
 #if TRIVIAL_PLATFORM_LINUX || TRIVIAL_PLATFORM_MACOS
 #define TRIVIAL_PLATFORM_SDK_HAS_MADV_FREE 1
@@ -116,18 +121,11 @@
 
 #endif // CPU affinity availability
 
-namespace trivial::core {
-
-inline constexpr std::size_t g_kPageSize = TRIVIAL_PLATFORM_PAGE_SIZE;
-inline constexpr std::size_t g_kAllocationGranularity = TRIVIAL_PLATFORM_ALLOCATION_GRANULARITY;
-inline constexpr std::size_t g_kCacheLineSize = TRIVIAL_PLATFORM_CACHE_LINE_SIZE;
-inline constexpr std::size_t g_kFalseSharingAlignment = TRIVIAL_PLATFORM_FALSE_SHARING_ALIGNMENT;
-
-static_assert((g_kPageSize & (g_kPageSize - 1)) == 0, "Page size must be a power of two");
-static_assert((g_kCacheLineSize & (g_kCacheLineSize - 1)) == 0, "Cache line size must be a power of two");
-static_assert(g_kFalseSharingAlignment >= g_kCacheLineSize, "False sharing alignment must cover a cache line");
-
-} // namespace trivial::core
+static_assert((TRIVIAL_PLATFORM_PAGE_SIZE & (TRIVIAL_PLATFORM_PAGE_SIZE - 1)) == 0, "Page size must be a power of two");
+static_assert((TRIVIAL_PLATFORM_CACHE_LINE_SIZE & (TRIVIAL_PLATFORM_CACHE_LINE_SIZE - 1)) == 0,
+              "Cache line size must be a power of two");
+static_assert(TRIVIAL_PLATFORM_FALSE_SHARING_ALIGNMENT >= TRIVIAL_PLATFORM_CACHE_LINE_SIZE,
+              "False sharing alignment must cover a cache line");
 
 static_assert(sizeof(void*) == 8, "Trivial targets 64-bit platforms only"); // NOLINT(readability-magic-numbers)
 

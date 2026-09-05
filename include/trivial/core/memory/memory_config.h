@@ -157,9 +157,9 @@ static_assert(g_kPurgeFraction > 0, "Purge fraction must be non zero");
 static_assert(g_kMaxPurgePerTick >= g_kMinPurgePerTick, "Purge ceiling below its floor");
 
 #if TRIVIAL_PLATFORM_PAGE_SIZE_KNOWN
-static_assert(g_kSegmentSize % core::g_kPageSize == 0, "Segment size must be a whole number of pages");
-static_assert(g_kSmallPageSize % core::g_kPageSize == 0, "Small page size must be a whole number of OS pages");
-static_assert(g_kSegmentSize >= core::g_kAllocationGranularity,
+static_assert(g_kSegmentSize % TRIVIAL_PLATFORM_PAGE_SIZE == 0, "Segment size must be a whole number of pages");
+static_assert(g_kSmallPageSize % TRIVIAL_PLATFORM_PAGE_SIZE == 0, "Small page size must be a whole number of OS pages");
+static_assert(g_kSegmentSize >= TRIVIAL_PLATFORM_ALLOCATION_GRANULARITY,
               "Segments must be at least the reservation granularity");
 #endif // TRIVIAL_PLATFORM_PAGE_SIZE_KNOWN
 
@@ -172,9 +172,9 @@ enum class DecommitMode : std::uint8_t {
 struct MemoryCapabilities {
 #if TRIVIAL_PLATFORM_PAGE_SIZE_KNOWN
 	// NOLINTNEXTLINE(readability-identifier-naming)
-	static constexpr std::size_t pageSize = core::g_kPageSize;
+	static constexpr std::size_t pageSize = TRIVIAL_PLATFORM_PAGE_SIZE;
 	// NOLINTNEXTLINE(readability-identifier-naming)
-	static constexpr std::size_t allocationGranularity = core::g_kAllocationGranularity;
+	static constexpr std::size_t allocationGranularity = TRIVIAL_PLATFORM_ALLOCATION_GRANULARITY;
 #else
 	std::size_t pageSize = 0;
 	std::size_t allocationGranularity = 0;
