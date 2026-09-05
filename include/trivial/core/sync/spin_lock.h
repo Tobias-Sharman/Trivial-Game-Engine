@@ -26,7 +26,7 @@ public:
 	TRIVIAL_FORCE_INLINE void lock() noexcept {
 		std::uint32_t spinCount = 0;
 
-		while (!tryLock()) {
+		while (m_state.load(std::memory_order_relaxed) || !tryLock()) {
 			spinWaitForever(spinCount);
 		}
 	}
