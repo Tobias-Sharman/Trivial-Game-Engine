@@ -49,7 +49,7 @@ private:
 } // namespace trivial
 
 #if TRIVIAL_CONFIG_DEBUG
-#define TRIVIAL_ATTACH_DEBUG_LAYER(app, expr) (app).attachDebugLayer(expr) // NOLINT(cppcoreguidelines-macro-usage)
+#define TRIVIAL_ATTACH_DEBUG_LAYER(app, expr) (app).attachDebugLayer(expr)
 #else
 #define TRIVIAL_ATTACH_DEBUG_LAYER(app, exp) ((void)0)
 #endif // TRIVIAL_CONFIG_DEBUG

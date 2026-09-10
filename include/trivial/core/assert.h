@@ -15,7 +15,6 @@ namespace trivial::core {
 
 } // namespace trivial::core
 
-// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define TRIVIAL_ASSERT_IMPLEMENTATION(expr)                                                                            \
 	do {                                                                                                               \
 		if (!(expr)) [[unlikely]] {                                                                                    \
@@ -26,18 +25,18 @@ namespace trivial::core {
 #endif // TRIVIAL_ENABLE_ASSERTS || TRIVIAL_ENABLE_SLOW_ASSERTS
 
 #if TRIVIAL_ENABLE_ASSERTS
-#define TRIVIAL_ASSERT(expr) TRIVIAL_ASSERT_IMPLEMENTATION(expr) // NOLINT(cppcoreguidelines-macro-usage)
+#define TRIVIAL_ASSERT(expr) TRIVIAL_ASSERT_IMPLEMENTATION(expr)
 
 #else
-#define TRIVIAL_ASSERT(expr) ((void)0) // NOLINT(cppcoreguidelines-macro-usage)
+#define TRIVIAL_ASSERT(expr) ((void)0)
 
 #endif // TRIVIAL_ENABLE_ASSERTS
 
 #if TRIVIAL_ENABLE_SLOW_ASSERTS
-#define TRIVIAL_SLOW_ASSERT(expr) TRIVIAL_ASSERT_IMPLEMENTATION(expr) // NOLINT(cppcoreguidelines-macro-usage)
+#define TRIVIAL_SLOW_ASSERT(expr) TRIVIAL_ASSERT_IMPLEMENTATION(expr)
 
 #else
-#define TRIVIAL_SLOW_ASSERT(expr) ((void)0) // NOLINT(cppcoreguidelines-macro-usage)
+#define TRIVIAL_SLOW_ASSERT(expr) ((void)0)
 
 #endif // TRIVIAL_ENABLE_SLOW_ASSERTS
 

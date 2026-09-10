@@ -13,7 +13,7 @@ enum class LogLevel : uint8_t {
 	Info,
 	Warning,
 	Error,
-	Fatal
+	Fatal,
 };
 
 #if TRIVIAL_ENABLE_LOGGING
@@ -28,7 +28,6 @@ void logOomFailure(const char* prefix, const char* context, std::size_t requeste
 
 #if TRIVIAL_ENABLE_LOGGING
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage)
 #define TRIVIAL_LOG_DEBUG(message) ::trivial::core::logMessage(::trivial::core::LogLevel::Debug, (message))
 #define TRIVIAL_LOG_INFO(message) ::trivial::core::logMessage(::trivial::core::LogLevel::Info, (message))
 #define TRIVIAL_LOG_WARNING(message) ::trivial::core::logMessage(::trivial::core::LogLevel::Warning, (message))
@@ -48,11 +47,9 @@ void logOomFailure(const char* prefix, const char* context, std::size_t requeste
 
 #define TRIVIAL_LOG_OOM_FAILURE(prefix, context, requestedSize, osErrorCode)                                           \
 	::trivial::core::logOomFailure((prefix), (context), (requestedSize), (osErrorCode))
-// NOLINTEND(cppcoreguidelines-macro-usage)
 
 #else
 
-// NOLINTBEGIN(cppcoreguidelines-macro-usage)
 #define TRIVIAL_LOG_DEBUG(message) ((void)0)
 #define TRIVIAL_LOG_INFO(message) ((void)0)
 #define TRIVIAL_LOG_WARNING(message) ((void)0)
@@ -66,7 +63,6 @@ void logOomFailure(const char* prefix, const char* context, std::size_t requeste
 #define TRIVIAL_LOG_FATAL_PREFIX(prefix, message) ((void)0)
 
 #define TRIVIAL_LOG_OOM_FAILURE(prefix, context, requestedSize, osErrorCode) ((void)0)
-// NOLINTEND(cppcoreguidelines-macro-usage)
 
 #endif // TRIVIAL_ENABLE_LOGGING
 
