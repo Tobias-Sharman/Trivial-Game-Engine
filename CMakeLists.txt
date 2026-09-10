@@ -37,6 +37,8 @@ set(TRIVIAL_PRIVATE_SOURCES
 	src/core/log.cpp
 	src/core/math/mat4.cpp
 	src/core/memory/segment_allocator.cpp
+	src/core/sync/escalating_lock.cpp
+	src/core/sync/parker.cpp
 	src/core/thread/thread.cpp
 	src/core/thread/thread_stack_allocator.cpp
 	src/gpu/context.cpp
