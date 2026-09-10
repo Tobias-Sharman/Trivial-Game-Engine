@@ -45,6 +45,15 @@
 			}
 		},
 		{
+			"name": "debug-tsan",
+			"displayName": "Debug + ThreadSanitizer",
+			"inherits": "debug",
+			"binaryDir": "${sourceDir}/build/debug-tsan",
+			"cacheVariables": {
+				"TRIVIAL_ENABLE_TSAN": "ON"
+			}
+		},
+		{
 			"name": "release",
 			"displayName": "Release",
 			"generator": "Ninja",
@@ -117,6 +126,10 @@
 		{
 			"name": "debug-tracy",
 			"configurePreset": "debug-tracy"
+		},
+		{
+			"name": "debug-tsan",
+			"configurePreset": "debug-tsan"
 		},
 		{
 			"name": "release",

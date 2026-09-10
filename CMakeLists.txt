@@ -18,6 +18,7 @@ option(TRIVIAL_ENABLE_TRACY "Enable Tracy profiling" OFF)
 option(TRIVIAL_ENABLE_SIMD "Enable SIMD code paths engine wide" ON)
 option(TRIVIAL_MATH_DISABLE_SIMD_BACKEND "Disable explicit SIMD math backends" OFF)
 option(TRIVIAL_MATH_DISABLE_FMA "Disable explicit FMA in math backends" OFF)
+option(TRIVIAL_ENABLE_TSAN "Enable ThreadSanitizer" OFF)
 
 set(TRIVIAL_MEMORY_DEBUG "AUTO" CACHE STRING "Allocation level memory debugging (AUTO/ON/OFF)")
 set_property(CACHE TRIVIAL_MEMORY_DEBUG PROPERTY STRINGS AUTO ON OFF)
@@ -103,6 +104,11 @@ target_compile_definitions(trivial
 
 		TRIVIAL_PLATFORM_GLFW
 )
+
+if(TRIVIAL_ENABLE_TSAN AND NOT MSVC)
+	target_compile_options(trivial PUBLIC -fsanitize=thread)
+	target_link_options(trivial PUBLIC -fsanitize=thread)
+endif()
 
 target_compile_definitions(trivial PRIVATE TRIVIAL_SHADER_DIR="${CMAKE_BINARY_DIR}/shaders/")
 
