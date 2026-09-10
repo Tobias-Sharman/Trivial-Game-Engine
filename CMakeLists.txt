@@ -42,6 +42,7 @@ set(TRIVIAL_PRIVATE_SOURCES
 	src/core/sync/latch.cpp
 	src/core/sync/mutex.cpp
 	src/core/sync/parker.cpp
+	src/core/sync/semaphore.cpp
 	src/core/thread/thread.cpp
 	src/core/thread/thread_stack_allocator.cpp
 	src/gpu/context.cpp
