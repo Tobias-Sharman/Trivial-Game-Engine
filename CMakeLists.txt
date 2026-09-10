@@ -39,6 +39,7 @@ set(TRIVIAL_PRIVATE_SOURCES
 	src/core/memory/segment_allocator.cpp
 	src/core/sync/escalating_lock.cpp
 	src/core/sync/event.cpp
+	src/core/sync/latch.cpp
 	src/core/sync/parker.cpp
 	src/core/thread/thread.cpp
 	src/core/thread/thread_stack_allocator.cpp
