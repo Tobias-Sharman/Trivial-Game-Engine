@@ -145,7 +145,19 @@ void Parker::prepare() noexcept {
 #elif TRIVIAL_PLATFORM_MACOS
 
 void Parker::prepare() noexcept {
+#if TRIVIAL_ENABLE_ASSERTS
+	TRIVIAL_ASSERT(pthread_mutex_lock(&m_state.mutex) == 0);
+#else
+	pthread_mutex_lock(&m_state.mutex);
+#endif
+
 	m_state.notified = false;
+
+#if TRIVIAL_ENABLE_ASSERTS
+	TRIVIAL_ASSERT(pthread_mutex_unlock(&m_state.mutex) == 0);
+#else
+	pthread_mutex_unlock(&m_state.mutex);
+#endif
 }
 
 #endif // Platform-specific Parker::prepare
