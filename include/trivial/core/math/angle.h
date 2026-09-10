@@ -2,7 +2,7 @@
 #define TRIVIAL_CORE_MATH_ANGLE_H
 
 #include <trivial/core/math/concepts.h>
-#include <trivial/core/math/constants.h>
+#include <trivial/core/math/math_constants.h>
 
 namespace trivial::math {
 

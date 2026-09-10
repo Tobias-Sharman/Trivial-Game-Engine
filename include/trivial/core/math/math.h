@@ -4,7 +4,7 @@
 #include <trivial/core/math/affine2.h>
 #include <trivial/core/math/angle.h>
 #include <trivial/core/math/concepts.h>
-#include <trivial/core/math/constants.h>
+#include <trivial/core/math/math_constants.h>
 #include <trivial/core/math/mat4.h>
 #include <trivial/core/math/transform2.h>
 #include <trivial/core/math/vec2.h>

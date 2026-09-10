@@ -1,5 +1,5 @@
-#ifndef TRIVIAL_CORE_MATH_CONSTANTS_H
-#define TRIVIAL_CORE_MATH_CONSTANTS_H
+#ifndef TRIVIAL_CORE_MATH_MATH_CONSTANTS_H
+#define TRIVIAL_CORE_MATH_MATH_CONSTANTS_H
 
 #include <numbers>
 
@@ -30,4 +30,4 @@ inline constexpr T g_kRadiansToDegrees = T{180} / g_kPi<T>;
 
 } // namespace trivial::math::constants
 
-#endif // TRIVIAL_CORE_MATH_CONSTANTS_H
+#endif // TRIVIAL_CORE_MATH_MATH_CONSTANTS_H

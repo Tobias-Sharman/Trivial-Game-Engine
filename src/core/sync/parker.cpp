@@ -5,7 +5,7 @@
 
 #include <trivial/core/assert.h>
 #include <trivial/core/platform.h>
-#include <trivial/core/time/time_config.h>
+#include <trivial/core/time/time_constants.h>
 
 #if TRIVIAL_PLATFORM_WINDOWS
 #include <atomic>
