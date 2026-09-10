@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <trivial/core/assert.h>
+#include <trivial/core/compiler.h>
 #include <trivial/core/thread/thread.h>
 
 #include "core/sync/parking_lot_slot.h"
@@ -50,13 +51,13 @@ public:
 	ParkingLot& operator=(ParkingLot&&) = delete;
 
 	template <typename Validate>
-	[[nodiscard]] ParkResult park(std::uintptr_t address, Validate&& validate) noexcept {
+	[[nodiscard]] TRIVIAL_FORCE_INLINE ParkResult park(std::uintptr_t address, Validate&& validate) noexcept {
 		ParkingLotSlot& slot = slotForCurrentThread();
 		TRIVIAL_ASSERT(slot.key.load(std::memory_order_relaxed) == 0);
 		slot.parker.prepare();
 		slot.key.store(address, std::memory_order_release);
 
-		if (!std::forward<Validate>(validate)()) {
+		if (!std::forward<Validate>(validate)()) [[unlikely]] {
 			slot.key.store(0, std::memory_order_relaxed);
 			return ParkResult::Invalidated;
 		}
@@ -67,13 +68,15 @@ public:
 	}
 
 	template <typename Validate, typename BeforeSleep>
-	[[nodiscard]] ParkResult park(std::uintptr_t address, Validate&& validate, BeforeSleep&& beforeSleep) noexcept {
+	[[nodiscard]] TRIVIAL_FORCE_INLINE ParkResult park(std::uintptr_t address,
+	                                                   Validate&& validate,
+	                                                   BeforeSleep&& beforeSleep) noexcept {
 		ParkingLotSlot& slot = slotForCurrentThread();
 		TRIVIAL_ASSERT(slot.key.load(std::memory_order_relaxed) == 0);
 		slot.parker.prepare();
 		slot.key.store(address, std::memory_order_release);
 
-		if (!std::forward<Validate>(validate)()) {
+		if (!std::forward<Validate>(validate)()) [[unlikely]] {
 			slot.key.store(0, std::memory_order_relaxed);
 			return ParkResult::Invalidated;
 		}
@@ -85,15 +88,15 @@ public:
 	}
 
 	template <typename Validate>
-	[[nodiscard]] ParkResult parkFor(std::uintptr_t address,
-	                                 std::chrono::nanoseconds timeout,
-	                                 Validate&& validate) noexcept {
+	[[nodiscard]] TRIVIAL_FORCE_INLINE ParkResult parkFor(std::uintptr_t address,
+	                                                      std::chrono::nanoseconds timeout,
+	                                                      Validate&& validate) noexcept {
 		ParkingLotSlot& slot = slotForCurrentThread();
 		TRIVIAL_ASSERT(slot.key.load(std::memory_order_relaxed) == 0);
 		slot.parker.prepare();
 		slot.key.store(address, std::memory_order_release);
 
-		if (!std::forward<Validate>(validate)()) {
+		if (!std::forward<Validate>(validate)()) [[unlikely]] {
 			slot.key.store(0, std::memory_order_relaxed);
 			return ParkResult::Invalidated;
 		}
@@ -108,16 +111,16 @@ public:
 	}
 
 	template <typename Validate, typename BeforeSleep>
-	[[nodiscard]] ParkResult parkFor(std::uintptr_t address,
-	                                 std::chrono::nanoseconds timeout,
-	                                 Validate&& validate,
-	                                 BeforeSleep&& beforeSleep) noexcept {
+	[[nodiscard]] TRIVIAL_FORCE_INLINE ParkResult parkFor(std::uintptr_t address,
+	                                                      std::chrono::nanoseconds timeout,
+	                                                      Validate&& validate,
+	                                                      BeforeSleep&& beforeSleep) noexcept {
 		ParkingLotSlot& slot = slotForCurrentThread();
 		TRIVIAL_ASSERT(slot.key.load(std::memory_order_relaxed) == 0);
 		slot.parker.prepare();
 		slot.key.store(address, std::memory_order_release);
 
-		if (!std::forward<Validate>(validate)()) {
+		if (!std::forward<Validate>(validate)()) [[unlikely]] {
 			slot.key.store(0, std::memory_order_relaxed);
 			return ParkResult::Invalidated;
 		}
@@ -173,7 +176,7 @@ public:
 	}
 
 private:
-	[[nodiscard]] ParkingLotSlot& slotForCurrentThread() noexcept {
+	[[nodiscard]] TRIVIAL_FORCE_INLINE ParkingLotSlot& slotForCurrentThread() noexcept {
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 		return m_slots[trivial::thread::Thread::current()->index()];
 	}
