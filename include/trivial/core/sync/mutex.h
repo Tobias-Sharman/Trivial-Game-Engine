@@ -6,8 +6,7 @@
 
 #include <trivial/core/compiler.h>
 
-// TODO: When implementing hash table backed parking lot update mutex to have
-//       fair unparking
+// TODO: Fairness deferred until a timer-free design can be figured out
 
 namespace trivial::sync {
 
@@ -24,11 +23,8 @@ public:
 	Mutex& operator=(Mutex&&) = delete;
 
 	TRIVIAL_FORCE_INLINE void lock() noexcept {
-		std::uint8_t expected = kUnlocked;
-		if (m_state.compare_exchange_strong(expected,
-		                                    kLockedUncontended,
-		                                    std::memory_order_acquire,
-		                                    std::memory_order_relaxed)) {
+		std::uint8_t expected = 0;
+		if (m_state.compare_exchange_weak(expected, kLockedBit, std::memory_order_acquire, std::memory_order_relaxed)) {
 			return;
 		}
 
@@ -36,20 +32,22 @@ public:
 	}
 
 	TRIVIAL_FORCE_INLINE void unlock() noexcept {
-		if (m_state.fetch_sub(1, std::memory_order_release) != kLockedUncontended) {
-			unlockSlow();
+		std::uint8_t expected = kLockedBit;
+		if (m_state.compare_exchange_strong(expected, 0, std::memory_order_release, std::memory_order_relaxed)) {
+			return;
 		}
+
+		unlockSlow();
 	}
 
 private:
 	TRIVIAL_COLD void lockSlow() noexcept;
 	TRIVIAL_COLD void unlockSlow() noexcept;
 
-	static constexpr std::uint8_t kUnlocked = 0;
-	static constexpr std::uint8_t kLockedUncontended = 1;
-	static constexpr std::uint8_t kLockedContended = 2;
+	static constexpr std::uint8_t kLockedBit = 0b01;
+	static constexpr std::uint8_t kParkedBit = 0b10;
 
-	std::atomic<std::uint8_t> m_state{kUnlocked};
+	std::atomic<std::uint8_t> m_state{0};
 };
 
 } // namespace trivial::sync

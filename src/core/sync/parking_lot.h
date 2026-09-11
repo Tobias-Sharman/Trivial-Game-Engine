@@ -35,6 +35,11 @@ public:
 		TimedOut,
 	};
 
+	struct UnparkOneResult {
+		bool woke;
+		bool hasMoreWaiters;
+	};
+
 	explicit ParkingLot(const std::size_t kCapacity) noexcept
 	    : m_slots(kCapacity)
 	    , m_buckets(bucketCountFor(kCapacity))
@@ -246,6 +251,59 @@ public:
 
 		bucket.lock.unlock();
 		return false;
+	}
+
+	template <typename Callback>
+	void unparkOne(const std::uintptr_t kAddress, Callback&& callback) noexcept {
+		Bucket& bucket = bucketFor(kAddress);
+		bucket.lock.lock();
+
+		std::size_t* link = &bucket.queueHead;
+		std::size_t previousIndex = g_kInvalidParkingLotSlotIndex;
+		std::size_t currentIndex = bucket.queueHead;
+
+		while (currentIndex != g_kInvalidParkingLotSlotIndex) {
+			// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+			ParkingLotSlot& current = m_slots[currentIndex];
+
+			if (current.key.load(std::memory_order_relaxed) != kAddress) {
+				link = &current.nextInQueue;
+				previousIndex = currentIndex;
+				currentIndex = *link;
+				continue;
+			}
+
+			const std::size_t kNextIndex = current.nextInQueue;
+			*link = kNextIndex;
+
+			bool hasMoreWaiters = false;
+			if (currentIndex == bucket.queueTail) {
+				bucket.queueTail = previousIndex;
+			} else {
+				std::size_t scanIndex = kNextIndex;
+				while (scanIndex != g_kInvalidParkingLotSlotIndex) {
+					// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+					ParkingLotSlot& scan = m_slots[scanIndex];
+					if (scan.key.load(std::memory_order_relaxed) == kAddress) {
+						hasMoreWaiters = true;
+						break;
+					}
+					scanIndex = scan.nextInQueue;
+				}
+			}
+
+			current.nextInQueue = g_kInvalidParkingLotSlotIndex;
+			current.key.store(0, std::memory_order_relaxed);
+
+			std::forward<Callback>(callback)(UnparkOneResult{.woke = true, .hasMoreWaiters = hasMoreWaiters});
+
+			current.parker.beginUnpark().wake();
+			bucket.lock.unlock();
+			return;
+		}
+
+		std::forward<Callback>(callback)(UnparkOneResult{.woke = false, .hasMoreWaiters = false});
+		bucket.lock.unlock();
 	}
 
 	void unparkAll(const std::uintptr_t kAddress) noexcept {

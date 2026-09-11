@@ -10,9 +10,9 @@
 
 namespace {
 
-[[nodiscard]] std::uintptr_t keyFor(const trivial::sync::Mutex* mutex) noexcept {
+[[nodiscard]] std::uintptr_t keyFor(const trivial::sync::Mutex* const kMutex) noexcept {
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-	return reinterpret_cast<std::uintptr_t>(mutex);
+	return reinterpret_cast<std::uintptr_t>(kMutex);
 }
 
 } // namespace
@@ -24,20 +24,34 @@ void Mutex::lockSlow() noexcept {
 	std::uint8_t state = m_state.load(std::memory_order_relaxed);
 
 	for (;;) {
-		if (state == kLockedUncontended && spinCount < TRIVIAL_SYNC_MAX_SPIN_COUNT) {
+		if ((state & kLockedBit) == 0) {
+			if (m_state.compare_exchange_weak(state,
+			                                  static_cast<std::uint8_t>(state | kLockedBit),
+			                                  std::memory_order_acquire,
+			                                  std::memory_order_relaxed)) {
+				return;
+			}
+
+			continue;
+		}
+
+		if ((state & kParkedBit) == 0 && spinCount < TRIVIAL_SYNC_MAX_SPIN_COUNT) {
 			spinWaitForever(spinCount);
 			state = m_state.load(std::memory_order_relaxed);
 			continue;
 		}
 
-		state = m_state.exchange(kLockedContended, std::memory_order_acquire);
-
-		if (state == kUnlocked) {
-			return;
+		if ((state & kParkedBit) == 0) {
+			if (!m_state.compare_exchange_weak(state,
+			                                   static_cast<std::uint8_t>(state | kParkedBit),
+			                                   std::memory_order_relaxed,
+			                                   std::memory_order_relaxed)) {
+				continue;
+			}
 		}
 
 		(void)activeParkingLot().park(keyFor(this), [this] {
-			return m_state.load(std::memory_order_relaxed) == kLockedContended;
+			return m_state.load(std::memory_order_relaxed) == (kLockedBit | kParkedBit);
 		});
 
 		spinCount = 0;
@@ -46,8 +60,13 @@ void Mutex::lockSlow() noexcept {
 }
 
 void Mutex::unlockSlow() noexcept {
-	m_state.store(kUnlocked, std::memory_order_release);
-	(void)activeParkingLot().unparkOne(keyFor(this));
+	activeParkingLot().unparkOne(keyFor(this), [this](const ParkingLot::UnparkOneResult kResult) {
+		if (kResult.hasMoreWaiters) {
+			m_state.store(kParkedBit, std::memory_order_release);
+		} else {
+			m_state.store(0, std::memory_order_release);
+		}
+	});
 }
 
 } // namespace trivial::sync
