@@ -19,4 +19,9 @@
 static_assert(TRIVIAL_SYNC_SPIN_COUNT_BEFORE_YIELD < TRIVIAL_SYNC_MAX_SPIN_COUNT,
               "Must escalate to yielding before hitting the spin limit");
 
+// Default from parking_lot.rs in the parking_lot_core crate - checked 10-09-2026
+#ifndef TRIVIAL_SYNC_PARKING_LOT_LOAD_FACTOR
+#define TRIVIAL_SYNC_PARKING_LOT_LOAD_FACTOR 3
+#endif
+
 #endif // TRIVIAL_CORE_SYNC_SYNC_CONFIG_H
