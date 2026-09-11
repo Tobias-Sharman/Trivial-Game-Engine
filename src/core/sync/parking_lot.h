@@ -40,6 +40,11 @@ public:
 		bool hasMoreWaiters;
 	};
 
+	struct UnparkAllRequeueResult {
+		bool handledAny;
+		bool anyRequeued;
+	};
+
 	explicit ParkingLot(const std::size_t kCapacity) noexcept
 	    : m_slots(kCapacity)
 	    , m_buckets(bucketCountFor(kCapacity))
@@ -403,9 +408,9 @@ public:
 	}
 
 	template <typename ShouldRequeue>
-	[[nodiscard]] bool unparkAllRequeue(const std::uintptr_t kFromAddress,
-	                                    const std::uintptr_t kToAddress,
-	                                    ShouldRequeue&& shouldRequeue) noexcept {
+	[[nodiscard]] UnparkAllRequeueResult unparkAllRequeue(const std::uintptr_t kFromAddress,
+	                                                      const std::uintptr_t kToAddress,
+	                                                      ShouldRequeue&& shouldRequeue) noexcept {
 		Bucket& fromBucket = bucketFor(kFromAddress);
 		Bucket& toBucket = bucketFor(kToAddress);
 		const bool kSameBucket = (&fromBucket == &toBucket);
@@ -418,6 +423,7 @@ public:
 		const bool kRequeueAll = std::forward<ShouldRequeue>(shouldRequeue)();
 
 		bool handledAny = false;
+		bool anyRequeued = false;
 		std::size_t* link = &fromBucket.queueHead;
 		std::size_t previousIndex = g_kInvalidParkingLotSlotIndex;
 		std::size_t currentIndex = fromBucket.queueHead;
@@ -457,6 +463,7 @@ public:
 				if (!kSameBucket) {
 					pushToQueue(toBucket, currentIndex);
 				}
+				anyRequeued = true;
 			}
 
 			currentIndex = kNextIndex;
@@ -467,7 +474,7 @@ public:
 		}
 		fromBucket.lock.unlock();
 
-		return handledAny;
+		return UnparkAllRequeueResult{.handledAny = handledAny, .anyRequeued = anyRequeued};
 	}
 
 private:

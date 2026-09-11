@@ -40,6 +40,26 @@ public:
 		unlockSlow();
 	}
 
+	// For condition variable not general use
+	[[nodiscard]] TRIVIAL_FORCE_INLINE bool markParkedIfLocked() noexcept {
+		std::uint8_t state = m_state.load(std::memory_order_relaxed);
+
+		for (;;) {
+			if ((state & kLockedBit) == 0) {
+				return false;
+			}
+
+			if (m_state.compare_exchange_weak(state,
+			                                  static_cast<std::uint8_t>(state | kParkedBit),
+			                                  std::memory_order_relaxed,
+			                                  std::memory_order_relaxed)) {
+				return true;
+			}
+		}
+	}
+
+	TRIVIAL_FORCE_INLINE void markParked() noexcept { m_state.fetch_or(kParkedBit, std::memory_order_relaxed); }
+
 private:
 	TRIVIAL_COLD void lockSlow() noexcept;
 	TRIVIAL_COLD void unlockSlow() noexcept;

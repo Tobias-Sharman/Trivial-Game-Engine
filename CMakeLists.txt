@@ -37,6 +37,7 @@ set(TRIVIAL_PRIVATE_SOURCES
 	src/core/log.cpp
 	src/core/math/mat4.cpp
 	src/core/memory/segment_allocator.cpp
+	src/core/sync/condition_variable.cpp
 	src/core/sync/escalating_lock.cpp
 	src/core/sync/event.cpp
 	src/core/sync/latch.cpp
