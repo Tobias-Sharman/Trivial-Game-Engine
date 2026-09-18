@@ -1,9 +1,10 @@
 #include <cstddef>
-#include <support/helpers.h>
 
 #include <gtest/gtest.h>
 
 #include <trivial/core/sync/mutex.h>
+
+#include "support/helpers.h"
 
 namespace {
 
