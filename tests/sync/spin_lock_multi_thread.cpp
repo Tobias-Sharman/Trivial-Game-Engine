@@ -1,80 +1,60 @@
 #include <cstddef>
-#include <span>
-#include <vector>
 
 #include <gtest/gtest.h>
 
 #include <trivial/core/sync/spin_lock.h>
-#include <trivial/task/task_system.h>
-#include <trivial/task/task_system_config.h>
+
+#include <support/helpers.h>
 
 namespace {
 
-constexpr std::size_t g_kConcurrentTasks = 8;
+constexpr std::size_t g_kConcurrentThreads = 8;
 constexpr std::size_t g_kConcurrentIterations = 10000;
-constexpr std::uint32_t g_kConcurrentWorkers = 4;
 
-[[nodiscard]] trivial::task::TaskSystemConfig concurrentConfig() {
-	trivial::task::TaskSystemConfig config;
-	config.workers.count = g_kConcurrentWorkers;
-	config.workers.thread.name = "Spin lock test worker";
+struct LockCounterContext {
+	trivial::sync::SpinLock* lock;
+	std::size_t* counter;
+};
 
-	return config;
-}
+void lockWorker(void* arg) {
+	auto* context = static_cast<LockCounterContext*>(arg);
 
-template <typename Body>
-void runOnAllTasks(trivial::task::TaskSystem& taskSystem, const Body& body) {
-	std::vector<trivial::task::TaskHandle> handles;
-	handles.reserve(g_kConcurrentTasks);
-
-	for (std::size_t taskIndex = 0; taskIndex < g_kConcurrentTasks; ++taskIndex) {
-		handles.push_back(taskSystem.launch(trivial::task::TaskPayload{[taskIndex, &body]() noexcept {
-			body(taskIndex);
-		}}));
-	}
-
-	taskSystem.wait(std::span<const trivial::task::TaskHandle>{handles});
-
-	for (trivial::task::TaskHandle handle : handles) {
-		(void)taskSystem.release(handle);
+	for (std::size_t i = 0; i < g_kConcurrentIterations; ++i) {
+		context->lock->lock();
+		++(*context->counter);
+		context->lock->unlock();
 	}
 }
 
-TEST(SpinLockMultiThreadTest, ConcurrentLockIncrementsNeverRace) {
-	trivial::task::TaskSystem taskSystem{concurrentConfig()};
-	trivial::sync::SpinLock lock;
-	std::size_t counter = 0;
+void tryLockWorker(void* arg) {
+	auto* context = static_cast<LockCounterContext*>(arg);
 
-	runOnAllTasks(taskSystem, [&](std::size_t taskIndex) {
-		(void)taskIndex;
+	for (std::size_t i = 0; i < g_kConcurrentIterations; ++i) {
+		while (!context->lock->tryLock()) {}
 
-		for (std::size_t iteration = 0; iteration < g_kConcurrentIterations; ++iteration) {
-			lock.lock();
-			++counter;
-			lock.unlock();
-		}
-	});
-
-	EXPECT_EQ(counter, g_kConcurrentTasks * g_kConcurrentIterations);
+		++(*context->counter);
+		context->lock->unlock();
+	}
 }
 
-TEST(SpinLockMultiThreadTest, ConcurrentTryLockIncrementsNeverRace) {
-	trivial::task::TaskSystem taskSystem{concurrentConfig()};
+TEST(SpinLockMultiThreadTest, LockIncrementsNeverRace) {
 	trivial::sync::SpinLock lock;
 	std::size_t counter = 0;
+	LockCounterContext context{.lock = &lock, .counter = &counter};
 
-	runOnAllTasks(taskSystem, [&](std::size_t taskIndex) {
-		(void)taskIndex;
+	trivial::tests::runOnAllThreads<g_kConcurrentThreads>(&lockWorker, &context);
 
-		for (std::size_t iteration = 0; iteration < g_kConcurrentIterations; ++iteration) {
-			while (!lock.tryLock()) {}
+	EXPECT_EQ(counter, g_kConcurrentThreads * g_kConcurrentIterations);
+}
 
-			++counter;
-			lock.unlock();
-		}
-	});
+TEST(SpinLockMultiThreadTest, TryLockIncrementsNeverRace) {
+	trivial::sync::SpinLock lock;
+	std::size_t counter = 0;
+	LockCounterContext context{.lock = &lock, .counter = &counter};
 
-	EXPECT_EQ(counter, g_kConcurrentTasks * g_kConcurrentIterations);
+	trivial::tests::runOnAllThreads<g_kConcurrentThreads>(&tryLockWorker, &context);
+
+	EXPECT_EQ(counter, g_kConcurrentThreads * g_kConcurrentIterations);
 }
 
 } // namespace

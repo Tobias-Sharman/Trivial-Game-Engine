@@ -4,7 +4,7 @@
 
 namespace {
 
-TEST(SpinLockSingleThreadTest, DefaultConstructedLockIsUnlocked) {
+TEST(SpinLockSingleThreadTest, StartsUnlocked) {
 	trivial::sync::SpinLock lock;
 	EXPECT_TRUE(lock.tryLock());
 	lock.unlock();
@@ -17,7 +17,7 @@ TEST(SpinLockSingleThreadTest, TryLockFailsWhileHeld) {
 	lock.unlock();
 }
 
-TEST(SpinLockSingleThreadTest, UnlockAllowsReacquisition) {
+TEST(SpinLockSingleThreadTest, UnlockAllowsRelock) {
 	trivial::sync::SpinLock lock;
 	ASSERT_TRUE(lock.tryLock());
 	lock.unlock();
@@ -25,7 +25,7 @@ TEST(SpinLockSingleThreadTest, UnlockAllowsReacquisition) {
 	lock.unlock();
 }
 
-TEST(SpinLockSingleThreadTest, RepeatedLockUnlockCyclesStayConsistent) {
+TEST(SpinLockSingleThreadTest, CyclesStayConsistent) {
 	trivial::sync::SpinLock lock;
 
 	for (int i = 0; i < 100; ++i) { // NOLINT(readability-magic-numbers)
