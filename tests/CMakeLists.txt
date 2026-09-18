@@ -23,6 +23,8 @@ add_executable(trivial_tests
 	math/matrix.cpp
 	math/transform.cpp
 	memory/segment_allocator_single_thread.cpp
+	sync/latch_multi_thread.cpp
+	sync/latch_single_thread.cpp
 	sync/mutex_multi_thread.cpp
 	sync/mutex_single_thread.cpp
 	sync/spin_lock_single_thread.cpp

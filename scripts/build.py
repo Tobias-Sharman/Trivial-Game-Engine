@@ -15,6 +15,8 @@ ISOLATED_TESTS = (
     "SpinLockMultiThreadTest.LockIncrementsNeverRace",
     "SpinLockMultiThreadTest.TryLockIncrementsNeverRace",
     "MutexMultiThreadTest.LockIncrementsNeverRace",
+    "LatchMultiThreadTest.CountDownsNeverRace",
+    "LatchMultiThreadTest.WaitUnblocksAfterCountDown",
     "ThreadTest.CreateJoinRunsEntry",
     "ThreadTest.SuspendedWaitsForResume",
     "ThreadTest.IndexVisibleInEntry",
