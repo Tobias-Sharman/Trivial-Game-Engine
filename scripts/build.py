@@ -17,6 +17,8 @@ ISOLATED_TESTS = (
     "MutexMultiThreadTest.LockIncrementsNeverRace",
     "LatchMultiThreadTest.CountDownsNeverRace",
     "LatchMultiThreadTest.WaitUnblocksAfterCountDown",
+    "SemaphoreMultiThreadTest.AcquireReleaseNeverRace",
+    "SemaphoreMultiThreadTest.AcquireUnblocksAfterRelease",
     "ThreadTest.CreateJoinRunsEntry",
     "ThreadTest.SuspendedWaitsForResume",
     "ThreadTest.IndexVisibleInEntry",

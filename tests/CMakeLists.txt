@@ -27,6 +27,8 @@ add_executable(trivial_tests
 	sync/latch_single_thread.cpp
 	sync/mutex_multi_thread.cpp
 	sync/mutex_single_thread.cpp
+	sync/semaphore_multi_thread.cpp
+	sync/semaphore_single_thread.cpp
 	sync/spin_lock_single_thread.cpp
 	sync/spin_lock_multi_thread.cpp
 	thread/custom_thread_type.cpp
