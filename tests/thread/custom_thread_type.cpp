@@ -19,6 +19,8 @@ void markRan(void* arg) {
 }
 
 TEST(ThreadTest, CreateJoinRunsEntry) {
+	trivial::tests::requireIsolatedProcess();
+
 	std::atomic<bool> ran{false};
 
 	trivial::thread::Thread thread;
@@ -41,6 +43,8 @@ TEST(ThreadTest, CreateJoinRunsEntry) {
 }
 
 TEST(ThreadTest, SuspendedWaitsForResume) {
+	trivial::tests::requireIsolatedProcess();
+
 	std::atomic<bool> ran{false};
 
 	trivial::thread::Thread thread;
@@ -71,6 +75,8 @@ TEST(ThreadTest, IndexVisibleInEntry) {
 		std::atomic<std::uint32_t>* observedIndex;
 	};
 
+	trivial::tests::requireIsolatedProcess();
+
 	std::atomic<std::uint32_t> observedIndex{0};
 
 	trivial::thread::Thread thread;
@@ -96,6 +102,8 @@ TEST(ThreadTest, IndexVisibleInEntry) {
 }
 
 TEST(ThreadTest, IndicesAreDistinct) {
+	trivial::tests::requireIsolatedProcess();
+
 	constexpr std::size_t kThreadCount = 8;
 
 	std::array<trivial::thread::Thread, kThreadCount> threads;
@@ -127,6 +135,8 @@ TEST(ThreadTest, CurrentResolvesToSelf) {
 		std::atomic<bool>* matched;
 	};
 
+	trivial::tests::requireIsolatedProcess();
+
 	std::atomic<bool> matched{false};
 
 	trivial::thread::Thread thread;
@@ -153,6 +163,8 @@ TEST(ThreadTest, CurrentResolvesToSelf) {
 }
 
 TEST(ThreadTest, AdoptCapturesCallingThread) {
+	trivial::tests::requireIsolatedProcess();
+
 	trivial::thread::Thread thread;
 	trivial::thread::ThreadConfig config;
 	config.name = "adopted-main";

@@ -23,6 +23,8 @@ add_executable(trivial_tests
 	math/matrix.cpp
 	math/transform.cpp
 	memory/segment_allocator_single_thread.cpp
+	sync/mutex_multi_thread.cpp
+	sync/mutex_single_thread.cpp
 	sync/spin_lock_single_thread.cpp
 	sync/spin_lock_multi_thread.cpp
 	thread/custom_thread_type.cpp
@@ -35,7 +37,7 @@ target_link_libraries(trivial_tests
 )
 
 target_include_directories(trivial PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/config)
-target_include_directories(trivial_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/config ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(trivial_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/config ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/src)
 
 include(GoogleTest)
 

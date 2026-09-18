@@ -42,7 +42,7 @@ TEST(SpinLockMultiThreadTest, LockIncrementsNeverRace) {
 	std::size_t counter = 0;
 	LockCounterContext context{.lock = &lock, .counter = &counter};
 
-	trivial::tests::runOnAllThreads<g_kConcurrentThreads>(&lockWorker, &context);
+	trivial::tests::runOnAllThreads(g_kConcurrentThreads, &lockWorker, &context);
 
 	EXPECT_EQ(counter, g_kConcurrentThreads * g_kConcurrentIterations);
 }
@@ -52,7 +52,7 @@ TEST(SpinLockMultiThreadTest, TryLockIncrementsNeverRace) {
 	std::size_t counter = 0;
 	LockCounterContext context{.lock = &lock, .counter = &counter};
 
-	trivial::tests::runOnAllThreads<g_kConcurrentThreads>(&tryLockWorker, &context);
+	trivial::tests::runOnAllThreads(g_kConcurrentThreads, &tryLockWorker, &context);
 
 	EXPECT_EQ(counter, g_kConcurrentThreads * g_kConcurrentIterations);
 }
