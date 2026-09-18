@@ -212,7 +212,11 @@ TEST(ThreadTest, DestructorAbortsIfJoinable) {
 		        nullptr);
 		    (void)result;
 	    },
+#if TRIVIAL_ENABLE_LOGGING
 	    "destroyed while still joinable");
+#else
+	    "");
+#endif // TRIVIAL_ENABLE_LOGGING
 }
 
 } // namespace
