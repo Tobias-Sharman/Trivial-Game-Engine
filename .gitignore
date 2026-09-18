@@ -5,6 +5,9 @@
 *~
 .cache/
 
+# Python tooling
+.venv/
+
 # Build directories
 build/
 */build/
