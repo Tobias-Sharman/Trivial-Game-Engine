@@ -24,14 +24,14 @@ enum class ThreadType : std::uint8_t {
 	Main,
 	Worker,
 	Render,
-	Background
+	Background,
 };
 
 enum class ThreadState : std::uint8_t {
 	NotStarted,
 	Suspended,
 	Running,
-	Joined
+	Joined,
 };
 
 enum class ThreadCreateError : std::uint8_t {
@@ -40,7 +40,7 @@ enum class ThreadCreateError : std::uint8_t {
 	StackAllocationFailed,
 	ResourceLimitReached,
 	OutOfMemory,
-	PlatformError
+	PlatformError,
 };
 
 struct ThreadCreateResult {
@@ -49,6 +49,11 @@ struct ThreadCreateResult {
 };
 
 using ThreadStartRoutine = void (*)(void* arg);
+
+struct NativeHandleStorage {
+private:
+	[[maybe_unused]] std::uint64_t m_raw = 0;
+};
 
 struct ThreadConfig {
 	const char* name = nullptr;
@@ -94,17 +99,23 @@ public:
 	                                        ThreadStartRoutine startRoutine,
 	                                        void* arg) noexcept;
 
+	void adoptCurrentThread(const ThreadConfig& config) noexcept;
+
 	void resume() noexcept;
 
 	void join() noexcept;
 
 	// Could not find reason to keep detach() so removed it. There was resultant
 	// issues with stack reclamation so with no good reason for use with
-	// comparison to using join with a higher level manager
+	// comparison to using join with a higher level manager it was dropped
 	//
 	// No tracking in git so don't bother checking if needing in the future
 
 	[[nodiscard]] bool joinable() const noexcept {
+		if (m_type == ThreadType::Main) {
+			return false;
+		}
+
 		const ThreadState kState = m_state.load(std::memory_order_acquire);
 		return kState == ThreadState::Running || kState == ThreadState::Suspended;
 	}
@@ -114,6 +125,10 @@ public:
 	[[nodiscard]] static Thread* current() noexcept;
 
 	static void yield() noexcept;
+
+	// requested == 0 resolves to std::thread::hardware_concurrency() (or 1 if
+	// that can't be determined) any other value passes through unchanged
+	[[nodiscard]] static std::uint32_t resolveConcurrency(std::uint32_t requested) noexcept;
 
 private:
 	static void runEntry(Thread* self) noexcept;
@@ -146,7 +161,7 @@ private:
 	int m_qosRelativePriority = 0;
 #endif // TRIVIAL_PLATFORM_MACOS
 
-	alignas(void*) std::array<std::byte, sizeof(void*)> m_nativeHandleStorage{};
+	NativeHandleStorage m_nativeHandleStorage{};
 };
 
 } // namespace trivial::thread

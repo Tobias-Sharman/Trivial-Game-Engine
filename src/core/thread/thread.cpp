@@ -2,8 +2,10 @@
 
 #include <algorithm>
 #include <atomic>
+#include <bit>
 #include <cstdlib>
 #include <cstring>
+#include <thread>
 
 #include <trivial/core/assert.h>
 #include <trivial/core/log.h>
@@ -12,6 +14,8 @@
 #include <cerrno>
 #include <pthread.h>
 #include <sched.h>
+
+static_assert(sizeof(pthread_t) == sizeof(void*), "pthread_t is no longer NativeHandleStorage-sized");
 #endif // TRIVIAL_PLATFORM_POSIX
 
 #if TRIVIAL_PLATFORM_MACOS
@@ -26,8 +30,8 @@
 
 namespace {
 
-// Non-atomic would be safe but cost is much less than the syscalls for thread creation and makes it safer for future
-// planned usage changes
+// Non-atomic would be safe but cost is much less than the syscalls for thread
+// creation and makes it safer for future planned usage changes
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 std::atomic<std::uint32_t> g_nextThreadIndex{0};
 
@@ -36,14 +40,15 @@ thread_local trivial::thread::Thread* g_currentThread = nullptr; // Better linka
 
 void copyName(const char* name, std::array<char, trivial::thread::Thread::kMaxNameLength>& outName) noexcept {
 	if (name == nullptr) {
-		outName[0] = '\0';
+		outName[0] = '\0'; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 		return;
 	}
 
 	const std::size_t kLength = std::min(std::strlen(name), outName.size() - 1);
 
 	std::memcpy(outName.data(), name, kLength);
-	outName[kLength] = '\0'; // NOLINT(cppcoreguidelines-pro-bounds-constant-array-index)
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index,cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+	outName[kLength] = '\0';
 }
 
 } // namespace
@@ -94,12 +99,16 @@ Thread::~Thread() noexcept {
 
 #if TRIVIAL_PLATFORM_LINUX
 	if (config.schedPolicy != SCHED_OTHER) {
-		pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
-		pthread_attr_setschedpolicy(&attr, config.schedPolicy);
+		if (pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED) != 0
+		    || pthread_attr_setschedpolicy(&attr, config.schedPolicy) != 0) {
+			TRIVIAL_LOG_WARNING_PREFIX("Thread", "Failed to set requested scheduling policy");
+		}
 
 		sched_param param{};
 		param.sched_priority = config.schedPriority;
-		pthread_attr_setschedparam(&attr, &param);
+		if (pthread_attr_setschedparam(&attr, &param) != 0) {
+			TRIVIAL_LOG_WARNING_PREFIX("Thread", "Failed to set requested scheduling priority");
+		}
 	}
 
 	cpu_set_t cpuSet{};
@@ -113,7 +122,9 @@ Thread::~Thread() noexcept {
 			}
 		}
 
-		pthread_attr_setaffinity_np(&attr, sizeof(cpuSet), &cpuSet);
+		if (pthread_attr_setaffinity_np(&attr, sizeof(cpuSet), &cpuSet) != 0) {
+			TRIVIAL_LOG_WARNING_PREFIX("Thread", "Failed to set requested CPU affinity");
+		}
 	}
 #endif // TRIVIAL_PLATFORM_LINUX
 
@@ -140,7 +151,7 @@ Thread::~Thread() noexcept {
 		return ThreadCreateResult{.error = error, .platformErrorCode = kResult};
 	}
 
-	std::memcpy(m_nativeHandleStorage.data(), static_cast<const void*>(&handle), sizeof(pthread_t));
+	m_nativeHandleStorage = std::bit_cast<NativeHandleStorage>(handle);
 
 #if TRIVIAL_PLATFORM_LINUX
 	if (m_name[0] != '\0') {
@@ -162,7 +173,9 @@ Thread::~Thread() noexcept {
 		return ThreadCreateResult{.error = error, .platformErrorCode = static_cast<int>(kError)};
 	}
 
-	SetThreadPriority(handle, config.win32Priority);
+	if (SetThreadPriority(handle, config.win32Priority) == 0) {
+		TRIVIAL_LOG_WARNING_PREFIX("Thread", "Failed to set requested priority");
+	}
 
 #if TRIVIAL_PLATFORM_HAS_CPU_AFFINITY
 	if (config.affinityMask != 0) {
@@ -170,18 +183,102 @@ Thread::~Thread() noexcept {
 		groupAffinity.Mask = config.affinityMask;
 		groupAffinity.Group = config.affinityGroup;
 
-		SetThreadGroupAffinity(handle, &groupAffinity, nullptr);
+		if (SetThreadGroupAffinity(handle, &groupAffinity, nullptr) == 0) {
+			TRIVIAL_LOG_WARNING_PREFIX("Thread", "Failed to set requested CPU affinity");
+		}
 	}
 #endif // TRIVIAL_PLATFORM_HAS_CPU_AFFINITY
 
 	m_state.store(config.createSuspended ? ThreadState::Suspended : ThreadState::Running, std::memory_order_release);
 
-	std::memcpy(m_nativeHandleStorage.data(), static_cast<const void*>(&handle), sizeof(HANDLE));
+	m_nativeHandleStorage = std::bit_cast<NativeHandleStorage>(handle);
 
 	ResumeThread(handle);
 #endif // Platform-specific creation
 
 	return ThreadCreateResult{.error = ThreadCreateError::None, .platformErrorCode = 0};
+}
+
+void Thread::adoptCurrentThread(const ThreadConfig& config) noexcept {
+	TRIVIAL_ASSERT(m_state.load(std::memory_order_relaxed) == ThreadState::NotStarted);
+	TRIVIAL_ASSERT(config.type == ThreadType::Main);
+
+	m_index = g_nextThreadIndex.fetch_add(1, std::memory_order_relaxed);
+	m_type = config.type;
+
+	copyName(config.name, m_name);
+
+	m_state.store(ThreadState::Running, std::memory_order_release);
+
+#if TRIVIAL_PLATFORM_POSIX
+	const pthread_t kHandle = pthread_self();
+	m_nativeHandleStorage = std::bit_cast<NativeHandleStorage>(kHandle);
+
+#if TRIVIAL_PLATFORM_LINUX
+	if (m_name[0] != '\0') {
+		pthread_setname_np(kHandle, m_name.data());
+	}
+
+	if (config.schedPolicy != SCHED_OTHER) {
+		sched_param param{};
+		param.sched_priority = config.schedPriority;
+		if (pthread_setschedparam(kHandle, config.schedPolicy, &param) != 0) {
+			TRIVIAL_LOG_WARNING_PREFIX("Thread", "Failed to set requested scheduling priority");
+		}
+	}
+
+	if (config.affinityMask != 0) {
+		cpu_set_t cpuSet{};
+		CPU_ZERO(&cpuSet);
+
+		for (unsigned int bit = 0; bit < 64; ++bit) {
+			if ((config.affinityMask & (std::uint64_t{1} << bit)) != 0) {
+				CPU_SET((config.affinityGroup * 64) + bit, &cpuSet);
+			}
+		}
+
+		if (pthread_setaffinity_np(kHandle, sizeof(cpuSet), &cpuSet) != 0) {
+			TRIVIAL_LOG_WARNING_PREFIX("Thread", "Failed to set requested CPU affinity");
+		}
+	}
+
+#elif TRIVIAL_PLATFORM_MACOS
+	if (m_name[0] != '\0') { // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+		pthread_setname_np(m_name.data());
+	}
+
+	m_qosClass = config.qosClass;
+	m_qosRelativePriority = config.qosRelativePriority;
+	if (pthread_set_qos_class_self_np(m_qosClass, m_qosRelativePriority) != 0) {
+		TRIVIAL_LOG_WARNING_PREFIX("Thread", "Failed to set requested QoS class");
+	}
+
+#endif // Platform-specific naming/priority/affinity
+
+#elif TRIVIAL_PLATFORM_WINDOWS
+	const HANDLE kHandle = GetCurrentThread();
+	m_nativeHandleStorage = std::bit_cast<NativeHandleStorage>(kHandle);
+
+	if (SetThreadPriority(kHandle, config.win32Priority) == 0) {
+		TRIVIAL_LOG_WARNING_PREFIX("Thread", "Failed to set requested priority");
+	}
+
+#if TRIVIAL_PLATFORM_HAS_CPU_AFFINITY
+	if (config.affinityMask != 0) {
+		GROUP_AFFINITY groupAffinity{};
+		groupAffinity.Mask = config.affinityMask;
+		groupAffinity.Group = config.affinityGroup;
+
+		if (SetThreadGroupAffinity(kHandle, &groupAffinity, nullptr) == 0) {
+			TRIVIAL_LOG_WARNING_PREFIX("Thread", "Failed to set requested CPU affinity");
+		}
+	}
+
+#endif // TRIVIAL_PLATFORM_HAS_CPU_AFFINITY
+
+#endif // Platform-specific handle capture/priority/affinity
+
+	g_currentThread = this;
 }
 
 void Thread::resume() noexcept {
@@ -195,22 +292,18 @@ void Thread::join() noexcept {
 	TRIVIAL_ASSERT(joinable());
 
 #if TRIVIAL_PLATFORM_POSIX
-	pthread_t handle{};
-#elif TRIVIAL_PLATFORM_WINDOWS
-	HANDLE handle{};
-#endif // Native handle type
+	auto* const kHandle = std::bit_cast<pthread_t>(m_nativeHandleStorage);
 
-	std::memcpy(static_cast<void*>(&handle), m_nativeHandleStorage.data(), sizeof(decltype(handle)));
-
-#if TRIVIAL_PLATFORM_POSIX
-	pthread_join(handle, nullptr);
+	pthread_join(kHandle, nullptr);
 
 	m_stackAllocator->release(m_stackAllocation);
 	m_stackAllocator = nullptr;
 	m_stackAllocation = ThreadStackAllocation{};
 #elif TRIVIAL_PLATFORM_WINDOWS
-	WaitForSingleObject(handle, INFINITE);
-	CloseHandle(handle);
+	const auto kHandle = std::bit_cast<HANDLE>(m_nativeHandleStorage);
+
+	WaitForSingleObject(kHandle, INFINITE);
+	CloseHandle(kHandle);
 #endif // Platform-specific join
 
 	m_state.store(ThreadState::Joined, std::memory_order_release);
@@ -241,6 +334,21 @@ void Thread::yield() noexcept {
 #endif // Platform-specific yield
 }
 
+[[nodiscard]] std::uint32_t Thread::resolveConcurrency(std::uint32_t requested) noexcept {
+	if (requested != 0) {
+		return requested;
+	}
+
+	const std::uint32_t kHardware = std::thread::hardware_concurrency();
+
+	if (kHardware == 0U) {
+		TRIVIAL_LOG_ERROR("Could not resolve hardware concurrency");
+		return 1;
+	}
+
+	return kHardware;
+}
+
 void Thread::runEntry(Thread* self) noexcept {
 	g_currentThread = self;
 
@@ -249,9 +357,11 @@ void Thread::runEntry(Thread* self) noexcept {
 	}
 
 #if TRIVIAL_PLATFORM_MACOS
-	pthread_set_qos_class_self_np(self->m_qosClass, self->m_qosRelativePriority);
+	if (pthread_set_qos_class_self_np(self->m_qosClass, self->m_qosRelativePriority) != 0) {
+		TRIVIAL_LOG_WARNING_PREFIX("Thread", "Failed to set requested QoS class");
+	}
 
-	if (self->m_name[0] != '\0') {
+	if (self->m_name[0] != '\0') { // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 		pthread_setname_np(self->m_name.data());
 	}
 #endif // TRIVIAL_PLATFORM_MACOS
