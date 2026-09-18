@@ -3,10 +3,6 @@
 
 #include <atomic>
 #include <cstddef>
-#include <stop_token> // TODO: Can likely make a better version, but worth
-                      //       addressing when the context switching is in place
-                      //       and then weighing if reference counting is truly
-                      //       needed
 
 namespace trivial::sync {
 
@@ -26,7 +22,6 @@ public:
 	[[nodiscard]] std::size_t remaining() const noexcept { return m_remaining.load(std::memory_order_acquire); }
 
 	void wait() noexcept;
-	[[nodiscard]] bool wait(const std::stop_token& stopToken) noexcept;
 
 	void countDown() noexcept;
 

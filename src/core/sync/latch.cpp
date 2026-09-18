@@ -3,7 +3,6 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
-#include <stop_token>
 
 #include <trivial/core/assert.h>
 
@@ -26,28 +25,6 @@ void Latch::wait() noexcept {
 			return remaining() > 0;
 		});
 	}
-}
-
-[[nodiscard]] bool Latch::wait(const std::stop_token& stopToken) noexcept {
-	if (stopToken.stop_requested()) {
-		return false;
-	}
-
-	std::stop_callback cancelCallback(stopToken, [this] {
-		activeParkingLot().unparkAll(keyFor(this));
-	});
-
-	while (remaining() > 0) {
-		if (stopToken.stop_requested()) {
-			return false;
-		}
-
-		(void)activeParkingLot().park(keyFor(this), [this, &stopToken] {
-			return remaining() > 0 && !stopToken.stop_requested();
-		});
-	}
-
-	return true;
 }
 
 void Latch::countDown() noexcept {
