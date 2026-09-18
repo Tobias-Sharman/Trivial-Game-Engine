@@ -7,6 +7,8 @@ set_target_properties(trivial_sandbox PROPERTIES
 target_sources(trivial_sandbox
 	PRIVATE
 		src/main.cpp
+		src/boids/boid_rules.cpp
+		src/boids/boids_simulation.cpp
 )
 
 target_compile_features(trivial_sandbox
