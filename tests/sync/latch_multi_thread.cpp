@@ -34,7 +34,7 @@ TEST(LatchMultiThreadTest, CountDownsNeverRace) {
 	EXPECT_EQ(completed.load(std::memory_order_acquire), g_kWorkerThreads);
 	EXPECT_EQ(latch.remaining(), 0U);
 
-	latch.wait(); // already at zero - must return immediately
+	latch.wait();
 }
 
 TEST(LatchMultiThreadTest, WaitUnblocksAfterCountDown) {
