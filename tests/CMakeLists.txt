@@ -25,6 +25,8 @@ add_executable(trivial_tests
 	memory/segment_allocator_single_thread.cpp
 	sync/condition_variable_multi_thread.cpp
 	sync/condition_variable_single_thread.cpp
+	sync/event_multi_thread.cpp
+	sync/event_single_thread.cpp
 	sync/latch_multi_thread.cpp
 	sync/latch_single_thread.cpp
 	sync/mutex_multi_thread.cpp
