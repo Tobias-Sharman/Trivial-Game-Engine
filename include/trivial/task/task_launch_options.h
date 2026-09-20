@@ -11,7 +11,7 @@ enum class TaskAffinity : std::uint8_t {
 	MainThread,
 	// RenderThread,
 
-	Count
+	Count,
 };
 
 enum class TaskPriority : std::uint8_t {
@@ -20,12 +20,12 @@ enum class TaskPriority : std::uint8_t {
 	High,
 	Critical,
 
-	Count
+	Count,
 };
 
 enum class TaskLifetime : std::uint8_t {
 	AutoRelease,
-	Manual
+	Manual,
 };
 
 struct TaskScopeHandle {

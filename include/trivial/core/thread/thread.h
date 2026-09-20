@@ -101,6 +101,8 @@ public:
 
 	void adoptCurrentThread(const ThreadConfig& config) noexcept;
 
+	void rename(const char* name) noexcept;
+
 	void resume() noexcept;
 
 	void join() noexcept;
@@ -120,6 +122,7 @@ public:
 		return kState == ThreadState::Running || kState == ThreadState::Suspended;
 	}
 	[[nodiscard]] std::uint32_t index() const noexcept { return m_index; }
+	[[nodiscard]] const char* name() const noexcept { return m_name.data(); }
 	[[nodiscard]] ThreadType type() const noexcept { return m_type; }
 	[[nodiscard]] ThreadState state() const noexcept { return m_state.load(std::memory_order_acquire); }
 	[[nodiscard]] static Thread* current() noexcept;

@@ -7,7 +7,6 @@
 #include <trivial/gpu/context.h>
 #include <trivial/platform/window.h>
 #include <trivial/render/renderer.h>
-#include <trivial/task/task_system.h>
 #include <trivial/time/engine_time.h>
 
 namespace trivial {
@@ -42,8 +41,6 @@ private:
 	platform::Window m_window;
 	gpu::Context m_gpu;
 	render::Renderer m_renderer;
-
-	task::TaskSystem m_taskSystem;
 };
 
 } // namespace trivial

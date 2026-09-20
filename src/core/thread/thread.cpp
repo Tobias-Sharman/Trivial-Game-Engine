@@ -51,6 +51,30 @@ void copyName(const char* name, std::array<char, trivial::thread::Thread::kMaxNa
 	outName[kLength] = '\0';
 }
 
+#if TRIVIAL_PLATFORM_WINDOWS
+void applyThreadDescription(HANDLE handle,
+                            const std::array<char, trivial::thread::Thread::kMaxNameLength>& name) noexcept {
+	if (name[0] == '\0') { // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+		return;
+	}
+
+	std::array<wchar_t, trivial::thread::Thread::kMaxNameLength> wideName{};
+
+	std::size_t i = 0;
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+	for (; i < name.size() - 1 && name[i] != '\0'; ++i) {
+		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index,cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+		wideName[i] = static_cast<wchar_t>(static_cast<unsigned char>(name[i]));
+	}
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index,cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+	wideName[i] = L'\0';
+
+	if (FAILED(SetThreadDescription(handle, wideName.data()))) {
+		TRIVIAL_LOG_WARNING_PREFIX("Thread", "Failed to set requested thread name");
+	}
+}
+#endif // TRIVIAL_PLATFORM_WINDOWS
+
 } // namespace
 
 namespace trivial::thread {
@@ -59,6 +83,10 @@ Thread::~Thread() noexcept {
 	if (joinable()) [[unlikely]] {
 		TRIVIAL_LOG_FATAL_PREFIX("Thread", "destroyed while still joinable - call join() first");
 		std::abort();
+	}
+
+	if (g_currentThread == this) {
+		g_currentThread = nullptr;
 	}
 }
 
@@ -173,6 +201,8 @@ Thread::~Thread() noexcept {
 		return ThreadCreateResult{.error = error, .platformErrorCode = static_cast<int>(kError)};
 	}
 
+	applyThreadDescription(handle, m_name);
+
 	if (SetThreadPriority(handle, config.win32Priority) == 0) {
 		TRIVIAL_LOG_WARNING_PREFIX("Thread", "Failed to set requested priority");
 	}
@@ -259,6 +289,8 @@ void Thread::adoptCurrentThread(const ThreadConfig& config) noexcept {
 	const HANDLE kHandle = GetCurrentThread();
 	m_nativeHandleStorage = std::bit_cast<NativeHandleStorage>(kHandle);
 
+	applyThreadDescription(kHandle, m_name);
+
 	if (SetThreadPriority(kHandle, config.win32Priority) == 0) {
 		TRIVIAL_LOG_WARNING_PREFIX("Thread", "Failed to set requested priority");
 	}
@@ -279,6 +311,24 @@ void Thread::adoptCurrentThread(const ThreadConfig& config) noexcept {
 #endif // Platform-specific handle capture/priority/affinity
 
 	g_currentThread = this;
+}
+
+void Thread::rename(const char* name) noexcept {
+	TRIVIAL_ASSERT(this == g_currentThread);
+
+	copyName(name, m_name);
+
+#if TRIVIAL_PLATFORM_LINUX
+	if (m_name[0] != '\0') { // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+		pthread_setname_np(pthread_self(), m_name.data());
+	}
+#elif TRIVIAL_PLATFORM_MACOS
+	if (m_name[0] != '\0') { // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+		pthread_setname_np(m_name.data());
+	}
+#elif TRIVIAL_PLATFORM_WINDOWS
+	applyThreadDescription(GetCurrentThread(), m_name);
+#endif // Platform-specific rename
 }
 
 void Thread::resume() noexcept {

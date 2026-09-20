@@ -1,14 +1,14 @@
 #include <trivial/task/task_graph.h>
 
-#include <mutex>
 #include <new>
 
 #include <trivial/core/assert.h>
 #include <trivial/core/log.h>
+#include <trivial/core/sync/lock_guard.h>
 
 namespace trivial::task {
 
-TaskGraph::~TaskGraph() noexcept { // NOLINT(readability-function-cognitive-complexity)
+TaskGraph::~TaskGraph() noexcept {
 	for (std::atomic<TaskPage*>& pageEntry : m_pages) {
 		TaskPage* page = pageEntry.load(std::memory_order_relaxed);
 
@@ -49,7 +49,7 @@ TaskCreateDispatchOutcome TaskGraph::createDispatched(TaskPayload payload,
 
 	TaskSlot* slot = slotInPage(*page, taskIndex);
 
-	std::lock_guard<TaskSlotMutex> lock(slot->mutex());
+	sync::LockGuard<sync::Mutex> lock(slot->mutex());
 
 	TRIVIAL_ASSERT(!slot->isOccupied());
 
@@ -67,17 +67,21 @@ TaskCreateDispatchOutcome TaskGraph::createDispatched(TaskPayload payload,
 
 	if (state.prerequisites.empty()) {
 		state.setStatus(TaskStatus::Ready);
-		return {.createResult = TaskCreateResult::Success,
-		        .handle = kHandle,
-		        .readiness = TaskReadiness::Ready,
-		        .priority = state.priority()};
+		return {
+		    .createResult = TaskCreateResult::Success,
+		    .handle = kHandle,
+		    .readiness = TaskReadiness::Ready,
+		    .priority = state.priority(),
+		};
 	}
 
 	state.setStatus(TaskStatus::Waiting);
-	return {.createResult = TaskCreateResult::Success,
-	        .handle = kHandle,
-	        .readiness = TaskReadiness::Waiting,
-	        .priority = state.priority()};
+	return {
+	    .createResult = TaskCreateResult::Success,
+	    .handle = kHandle,
+	    .readiness = TaskReadiness::Waiting,
+	    .priority = state.priority(),
+	};
 }
 
 TaskClaimResult TaskGraph::tryClaim(TaskHandle handle) noexcept {
@@ -91,7 +95,7 @@ TaskClaimResult TaskGraph::tryClaim(TaskHandle handle) noexcept {
 		return TaskClaimResult::InvalidHandle;
 	}
 
-	std::lock_guard<TaskSlotMutex> lock(slot->mutex());
+	sync::LockGuard<sync::Mutex> lock(slot->mutex());
 
 	if (!slot->isOccupiedBy(handle)) {
 		return TaskClaimResult::InvalidHandle;
@@ -108,7 +112,7 @@ TaskClaimResult TaskGraph::tryClaim(TaskHandle handle) noexcept {
 	return TaskClaimResult::Success;
 }
 
-TaskAttachWaiterResult TaskGraph::tryAttachWaiter(TaskHandle handle, TaskWaitGroup& waitGroup) noexcept {
+TaskAttachWaiterResult TaskGraph::tryAttachWaiter(TaskHandle handle, sync::Latch& latch) noexcept {
 	if (!handle.isValid()) {
 		return TaskAttachWaiterResult::InvalidHandle;
 	}
@@ -119,7 +123,7 @@ TaskAttachWaiterResult TaskGraph::tryAttachWaiter(TaskHandle handle, TaskWaitGro
 		return TaskAttachWaiterResult::InvalidHandle;
 	}
 
-	std::lock_guard<TaskSlotMutex> lock(slot->mutex());
+	sync::LockGuard<sync::Mutex> lock(slot->mutex());
 
 	if (!slot->isOccupiedBy(handle)) {
 		return TaskAttachWaiterResult::InvalidHandle;
@@ -131,9 +135,9 @@ TaskAttachWaiterResult TaskGraph::tryAttachWaiter(TaskHandle handle, TaskWaitGro
 		return TaskAttachWaiterResult::AlreadyComplete;
 	}
 
-	TRIVIAL_ASSERT(state.waitGroup == nullptr);
+	TRIVIAL_ASSERT(state.latch == nullptr);
 
-	state.waitGroup = &waitGroup;
+	state.latch = &latch;
 
 	return TaskAttachWaiterResult::Attached;
 }
@@ -148,7 +152,7 @@ void TaskGraph::executeClaimed(TaskHandle handle) noexcept {
 	TaskPayload* payload = nullptr;
 
 	{
-		std::lock_guard<TaskSlotMutex> lock(slot->mutex());
+		sync::LockGuard<sync::Mutex> lock(slot->mutex());
 
 		TRIVIAL_ASSERT(slot->isOccupiedBy(handle));
 
@@ -171,7 +175,7 @@ void TaskGraph::completeAndCollectDependants(TaskHandle handle, std::vector<Task
 
 	TRIVIAL_ASSERT(slot != nullptr);
 
-	std::lock_guard<TaskSlotMutex> lock(slot->mutex());
+	sync::LockGuard<sync::Mutex> lock(slot->mutex());
 
 	TRIVIAL_ASSERT(slot->isOccupiedBy(handle));
 
@@ -184,9 +188,9 @@ void TaskGraph::completeAndCollectDependants(TaskHandle handle, std::vector<Task
 	outDependants.clear();
 	outDependants.insert(outDependants.end(), state.dependants.begin(), state.dependants.end());
 
-	if (state.waitGroup != nullptr) {
-		TaskWaitGroup::onMemberComplete(state.waitGroup);
-		state.waitGroup = nullptr;
+	if (state.latch != nullptr) {
+		state.latch->countDown();
+		state.latch = nullptr;
 	}
 }
 
@@ -200,7 +204,7 @@ bool TaskGraph::removePrerequisiteAndMarkReadyIfUnblocked(TaskHandle dependant,
 
 	TRIVIAL_ASSERT(dependantSlot != nullptr);
 
-	std::lock_guard<TaskSlotMutex> lock(dependantSlot->mutex());
+	sync::LockGuard<sync::Mutex> lock(dependantSlot->mutex());
 
 	TRIVIAL_ASSERT(dependantSlot->isOccupiedBy(dependant));
 
@@ -213,6 +217,7 @@ bool TaskGraph::removePrerequisiteAndMarkReadyIfUnblocked(TaskHandle dependant,
 	std::size_t prerequisiteIndex = prerequisites.size();
 
 	for (std::size_t i = 0; i < prerequisites.size(); ++i) {
+		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 		if (prerequisites[i] == prerequisite) {
 			prerequisiteIndex = i;
 			break;
@@ -221,6 +226,7 @@ bool TaskGraph::removePrerequisiteAndMarkReadyIfUnblocked(TaskHandle dependant,
 
 	TRIVIAL_ASSERT(prerequisiteIndex != prerequisites.size());
 
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 	prerequisites[prerequisiteIndex] = prerequisites.back();
 	prerequisites.pop_back();
 
@@ -247,7 +253,7 @@ TaskReleaseResult TaskGraph::release(TaskHandle handle) noexcept {
 	}
 
 	{
-		std::lock_guard<TaskSlotMutex> lock(slot->mutex());
+		sync::LockGuard<sync::Mutex> lock(slot->mutex());
 
 		if (!slot->isOccupiedBy(handle)) {
 			return TaskReleaseResult::InvalidHandle;
@@ -267,26 +273,6 @@ TaskReleaseResult TaskGraph::release(TaskHandle handle) noexcept {
 	return TaskReleaseResult::Success;
 }
 
-void TaskGraph::detachWaiterIfUnclaimed(TaskHandle handle, const TaskWaitGroup& waitGroup) noexcept {
-	TRIVIAL_ASSERT(handle.isValid());
-
-	TaskSlot* slot = slotAt(handle.index);
-
-	TRIVIAL_ASSERT(slot != nullptr);
-
-	std::lock_guard<TaskSlotMutex> lock(slot->mutex());
-
-	if (!slot->isOccupiedBy(handle)) {
-		return;
-	}
-
-	TaskState& state = slot->state();
-
-	if (state.waitGroup == &waitGroup) {
-		state.waitGroup = nullptr;
-	}
-}
-
 bool TaskGraph::tryGetStatus(TaskHandle handle, TaskStatus& outStatus) const noexcept {
 	if (!handle.isValid()) {
 		return false;
@@ -298,7 +284,7 @@ bool TaskGraph::tryGetStatus(TaskHandle handle, TaskStatus& outStatus) const noe
 		return false;
 	}
 
-	std::lock_guard<TaskSlotMutex> lock(slot->mutex());
+	sync::LockGuard<sync::Mutex> lock(slot->mutex());
 
 	if (!slot->isOccupiedBy(handle)) {
 		return false;
@@ -322,7 +308,7 @@ bool TaskGraph::tryGetWalkInfo(TaskHandle handle,
 		return false;
 	}
 
-	std::lock_guard<TaskSlotMutex> lock(slot->mutex());
+	sync::LockGuard<sync::Mutex> lock(slot->mutex());
 
 	if (!slot->isOccupiedBy(handle)) {
 		return false;
@@ -349,7 +335,7 @@ void* TaskGraph::getResultPointer(TaskHandle handle) noexcept {
 
 	TRIVIAL_ASSERT(slot != nullptr);
 
-	std::lock_guard<TaskSlotMutex> lock(slot->mutex());
+	sync::LockGuard<sync::Mutex> lock(slot->mutex());
 
 	TRIVIAL_ASSERT(slot->isOccupiedBy(handle));
 
@@ -365,7 +351,7 @@ TaskGraph::TaskPage* TaskGraph::pageAt(std::uint32_t pageIndex) noexcept {
 		return nullptr;
 	}
 
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 	return m_pages[pageIndex].load(std::memory_order_acquire);
 }
 
@@ -374,7 +360,7 @@ const TaskGraph::TaskPage* TaskGraph::pageAt(std::uint32_t pageIndex) const noex
 		return nullptr;
 	}
 
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 	return m_pages[pageIndex].load(std::memory_order_acquire);
 }
 
@@ -389,9 +375,9 @@ TaskGraph::TaskPage* TaskGraph::ensurePage(std::uint32_t pageIndex) noexcept {
 		return page;
 	}
 
-	std::lock_guard<TaskGraphMutex> lock(m_pageCreationMutex);
+	sync::LockGuard<sync::Mutex> lock(m_pageCreationMutex);
 
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 	page = m_pages[pageIndex].load(std::memory_order_relaxed);
 
 	if (page != nullptr) {
@@ -405,7 +391,7 @@ TaskGraph::TaskPage* TaskGraph::ensurePage(std::uint32_t pageIndex) noexcept {
 		return nullptr;
 	}
 
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 	m_pages[pageIndex].store(newPage, std::memory_order_release);
 
 	return newPage;
@@ -440,15 +426,17 @@ const TaskSlot* TaskGraph::slotAt(std::uint32_t taskIndex) const noexcept {
 }
 
 TaskSlot* TaskGraph::slotInPage(TaskPage& page, std::uint32_t taskIndex) noexcept {
-	return &page[slotIndexFor(taskIndex)]; // NOLINT(cppcoreguidelines-pro-bounds-constant-array-index)
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+	return &page[slotIndexFor(taskIndex)];
 }
 
 const TaskSlot* TaskGraph::slotInPage(const TaskPage& page, std::uint32_t taskIndex) noexcept {
-	return &page[slotIndexFor(taskIndex)]; // NOLINT(cppcoreguidelines-pro-bounds-constant-array-index)
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+	return &page[slotIndexFor(taskIndex)];
 }
 
 bool TaskGraph::allocateTaskIndex(std::uint32_t& taskIndex) noexcept {
-	std::lock_guard<TaskGraphMutex> lock(m_allocationMutex);
+	sync::LockGuard<sync::Mutex> lock(m_allocationMutex);
 
 	if (!m_freeTaskIndices.empty()) {
 		taskIndex = m_freeTaskIndices.back();
@@ -470,7 +458,7 @@ bool TaskGraph::allocateTaskIndex(std::uint32_t& taskIndex) noexcept {
 void TaskGraph::releaseTaskIndex(std::uint32_t taskIndex) noexcept {
 	TRIVIAL_ASSERT(taskIndex < kMaxTaskCount);
 
-	std::lock_guard<TaskGraphMutex> lock(m_allocationMutex);
+	sync::LockGuard<sync::Mutex> lock(m_allocationMutex);
 
 	m_freeTaskIndices.push_back(taskIndex); // TODO: Custom allocator
 }
@@ -486,7 +474,7 @@ TaskPrerequisiteResult TaskGraph::addPrerequisiteLocked(TaskHandle dependantHand
 	}
 
 #if TRIVIAL_CONFIG_DEBUG
-	std::lock_guard<TaskGraphMutex> topologyLock(m_debugTopologyMutex);
+	sync::LockGuard<sync::Mutex> topologyLock(m_debugTopologyMutex);
 
 	if (wouldCreateCycle(dependantHandle, dependantSlot, prerequisiteHandle)) {
 		TRIVIAL_LOG_ERROR("Task graph tried to create a dependency loop/cycle");
@@ -501,7 +489,7 @@ TaskPrerequisiteResult TaskGraph::addPrerequisiteLocked(TaskHandle dependantHand
 		return TaskPrerequisiteResult::InvalidHandle;
 	}
 
-	std::lock_guard<TaskSlotMutex> prerequisiteLock(prerequisiteSlot->mutex());
+	sync::LockGuard<sync::Mutex> prerequisiteLock(prerequisiteSlot->mutex());
 
 	if (!prerequisiteSlot->isOccupiedBy(prerequisiteHandle)) {
 		return TaskPrerequisiteResult::InvalidHandle;
@@ -566,7 +554,7 @@ bool TaskGraph::wouldCreateCycle(TaskHandle taskHandle,
 
 		TRIVIAL_ASSERT(slot != nullptr);
 
-		std::lock_guard<TaskSlotMutex> lock(slot->mutex());
+		sync::LockGuard<sync::Mutex> lock(slot->mutex());
 
 		TRIVIAL_ASSERT(slot->isOccupiedBy(kCurrentHandle));
 

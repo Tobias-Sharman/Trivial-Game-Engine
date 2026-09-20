@@ -9,8 +9,8 @@
 #include <utility>
 
 #include <trivial/core/assert.h>
+#include <trivial/core/sync/mutex.h>
 #include <trivial/task/task_handle.h>
-#include <trivial/task/task_mutex.h>
 #include <trivial/task/task_payload.h>
 #include <trivial/task/task_state.h>
 
@@ -18,7 +18,7 @@ namespace trivial::task {
 
 enum class TaskSlotState : std::uint8_t {
 	Free,
-	Occupied
+	Occupied,
 };
 
 class TaskSlot { // NOLINT(cppcoreguidelines-pro-type-member-init)
@@ -37,7 +37,7 @@ public:
 	TaskSlot(TaskSlot&&) = delete;
 	TaskSlot& operator=(TaskSlot&&) = delete;
 
-	[[nodiscard]] TaskSlotMutex& mutex() const noexcept { return m_mutex; }
+	[[nodiscard]] sync::Mutex& mutex() const noexcept { return m_mutex; }
 
 	[[nodiscard]] bool isOccupied() const noexcept { return m_state == TaskSlotState::Occupied; }
 
@@ -76,11 +76,14 @@ public:
 
 		m_state = TaskSlotState::Free;
 		++m_generation;
-		// NOTE: In theory an old handle could alias a new lifetime but that would be beyond unlikely as would require
-		//       roughly 4.3 billion retirements without the old handle just being removed. Can just add some check
-		//       later if somehow this amount is reached. Going for a day of constant running about 50,000 reuses per
-		//       second. So technically possible but if you are keeping a handle for a task that was retired that long
-		//       that is bad design foremostly
+		// NOTE: In theory an old handle could alias a new lifetime but that
+		//       would be beyond unlikely as would require roughly 4.3 billion
+		//       retirements without the old handle just being removed. Can
+		//       just add some check later if somehow this amount is reached.
+		//       Going for a day of constant running about 50,000 reuses per
+		//       second. So technically possible but if you are keeping a
+		//       handle for a task that was retired that long that is bad
+		//       design foremostly
 	}
 
 private:
@@ -94,7 +97,7 @@ private:
 	[[nodiscard]] TaskState* statePointer() noexcept { return std::launder(rawStatePointer()); }
 	[[nodiscard]] const TaskState* statePointer() const noexcept { return std::launder(rawStatePointer()); }
 
-	mutable TaskSlotMutex m_mutex;
+	mutable sync::Mutex m_mutex;
 
 	alignas(TaskState) std::array<std::byte, sizeof(TaskState)> m_storage;
 

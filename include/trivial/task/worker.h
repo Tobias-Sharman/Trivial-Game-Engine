@@ -1,15 +1,13 @@
 #ifndef TRIVIAL_TASK_WORKER_H
 #define TRIVIAL_TASK_WORKER_H
 
-#include <condition_variable>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
-#include <mutex>
-#include <stop_token>
-#include <thread>
-#include <utility>
 
 #include <trivial/core/assert.h>
+#include <trivial/core/platform.h>
+#include <trivial/core/thread/thread.h>
 #include <trivial/task/task_priority_queue.h>
 #include <trivial/task/task_system_config.h>
 
@@ -18,13 +16,11 @@ namespace trivial::task {
 enum class WorkerState : std::uint8_t {
 	Active,
 	Waiting,
-	Parked
+	Parked,
 };
 
-struct Worker {
-	Worker(std::size_t workerIndex, ThreadConfig workerConfig)
-	    : index(workerIndex)
-	    , config(std::move(workerConfig)) {}
+struct alignas(TRIVIAL_PLATFORM_FALSE_SHARING_ALIGNMENT) Worker {
+	Worker() noexcept = default;
 
 	~Worker() { TRIVIAL_ASSERT(!thread.joinable()); }
 
@@ -34,17 +30,14 @@ struct Worker {
 	Worker(Worker&&) = delete;
 	Worker& operator=(Worker&&) = delete;
 
-	std::size_t index;
-	ThreadConfig config;
+	std::size_t index = 0;
 
-	std::thread thread;
-	std::stop_source stopSource;
+	thread::Thread thread;
+	std::atomic<bool> stopping{false};
 
 	TaskPriorityQueue localQueue;
 
-	std::mutex stateMutex; // TODO: Custom mutex when doing the others
-	std::condition_variable_any stateCv;
-	WorkerState state = WorkerState::Parked; // every worker starts parked
+	std::atomic<WorkerState> state{WorkerState::Parked};
 };
 
 } // namespace trivial::task

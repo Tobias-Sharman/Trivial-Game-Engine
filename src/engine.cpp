@@ -1,9 +1,15 @@
 #include <trivial/engine.h>
 
+#include <cstdlib>
+
 #include <trivial/core/assert.h>
 #include <trivial/core/config.h>
+#include <trivial/core/log.h>
 #include <trivial/core/profile.h>
+#include <trivial/core/thread/thread.h>
 #include <trivial/task/task.h>
+
+#include "core/sync/parking_lot.h"
 
 namespace trivial {
 
@@ -22,13 +28,42 @@ Engine::Engine(const EngineConfig* config) noexcept
     , m_frameIndex(0)
     , m_window(config)
     , m_gpu(config, &m_window)
-    , m_renderer(&m_gpu)
-    , m_taskSystem(config->tasks) {
-	task::setActiveTaskSystem(&m_taskSystem);
+    , m_renderer(&m_gpu) {
+	auto* mainThread = new (std::nothrow) thread::Thread(); // TODO: Custom allocator
+	if (mainThread == nullptr) {
+		TRIVIAL_LOG_FATAL_PREFIX("Engine", "Failed to allocate main thread adoption record");
+		std::abort();
+	}
+	mainThread->adoptCurrentThread({.name = "Main", .type = thread::ThreadType::Main});
+
+	task::TaskSystemConfig taskConfig = config->tasks;
+	taskConfig.workers.count = thread::Thread::resolveConcurrency(taskConfig.workers.count);
+
+	const std::size_t kCapacity = 1 + taskConfig.workers.count + taskConfig.workers.maxStandbyWorkers;
+
+	auto* parkingLot = new (std::nothrow) sync::ParkingLot(kCapacity); // TODO: Custom allocator
+	if (parkingLot == nullptr) {
+		TRIVIAL_LOG_FATAL_PREFIX("Engine", "Failed to allocate ParkingLot");
+		std::abort();
+	}
+	sync::setActiveParkingLot(parkingLot);
+
+	auto* taskSystem = new (std::nothrow) task::TaskSystem(taskConfig); // TODO: Custom allocator
+	if (taskSystem == nullptr) {
+		TRIVIAL_LOG_FATAL_PREFIX("Engine", "Failed to allocate TaskSystem");
+		std::abort();
+	}
+	task::setActiveTaskSystem(taskSystem);
 } // TODO: Rework to integrate World/WorldContext/GameInstance
 
 Engine::~Engine() {
+	delete &task::activeTaskSystem();
 	task::setActiveTaskSystem(nullptr);
+
+	delete &sync::activeParkingLot();
+	sync::setActiveParkingLot(nullptr);
+
+	delete thread::Thread::current();
 }
 
 void Engine::tick(Application& application) noexcept {
@@ -64,7 +99,7 @@ void Engine::tick(Application& application) noexcept {
 }
 
 void Engine::run(Application& application) noexcept {
-	TRIVIAL_PROFILE_THREAD("Main Thread");
+	TRIVIAL_PROFILE_THREAD(thread::Thread::current()->name());
 
 	m_time.reset();
 

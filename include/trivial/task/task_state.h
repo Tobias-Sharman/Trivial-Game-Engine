@@ -7,17 +7,18 @@
 #include <vector>
 
 #include <trivial/core/assert.h>
+#include <trivial/core/sync/latch.h>
 #include <trivial/task/task_handle.h>
 #include <trivial/task/task_launch_options.h>
 #include <trivial/task/task_payload.h>
 #include <trivial/task/task_status.h>
-#include <trivial/task/task_wait_group.h>
 
 namespace trivial::task {
 
-// TODO: Measure size, padding, and alignment on different platforms for cache optimisation, can very likely be improved
-//       since now is more of a basic semantic sense (decenet for cache not optimised for size which is significant
-//       here)
+// TODO: Measure size, padding, and alignment on different platforms for cache
+//       optimisation, can very likely be improved since now is more of a basic
+//       semantic sense (decent for cache not optimised for size which is
+//       significant here)
 struct TaskState {
 	TaskState(TaskPayload payload, const TaskLaunchOptions& options) noexcept
 	    : payload(std::move(payload))
@@ -73,7 +74,7 @@ struct TaskState {
 
 	TaskScopeHandle scope = {};
 
-	TaskWaitGroup* waitGroup = nullptr;
+	sync::Latch* latch = nullptr;
 
 private:
 	[[nodiscard]] static constexpr std::uint16_t pack(TaskStatus status,
@@ -101,6 +102,7 @@ private:
 	static constexpr std::uint16_t kAffinityShift = kPriorityShift + 3;
 	static constexpr std::uint16_t kLifetimeShift = kAffinityShift + 3;
 
+	// NOLINTNEXTLINE(readability-magic-numbers)
 	static_assert(kLifetimeShift + 1 <= 16, "Packed fields no longer fit in uint16_t");
 
 	std::uint16_t m_packed = 0;

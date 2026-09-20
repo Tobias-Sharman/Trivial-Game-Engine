@@ -1,27 +1,37 @@
 #include <trivial/task/task_system.h>
 
-#include <mutex>
+#include <cstdint>
+#include <cstdlib>
+#include <string>
 #include <utility>
 
 #include <trivial/core/assert.h>
+#include <trivial/core/log.h>
 #include <trivial/core/profile.h>
+#include <trivial/core/sync/lock_guard.h>
+
+#include "core/sync/parking_lot.h"
 
 namespace {
 
-std::uint32_t resolveWorkerCount(uint32_t requested) {
-	if (requested == 0) {
-		auto hardware = std::thread::hardware_concurrency();
+// Could do some arithmetic operation on current thread - offset, where offset
+// is the number of designated threads, but in order to protect against thread
+// creation not on the main thread in the future (same vein as the given thread
+// index being atomic) the cost of the memory for a handful of pointers is
+// insignificant. Has the same indirection as going through thread index too so
+// gain would only be memory related
+//
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+thread_local trivial::task::Worker* g_currentWorker = nullptr;
 
-		if (hardware == 0U) {
-			TRIVIAL_LOG_ERROR("Could not resolve hardware concurrency");
+#if TRIVIAL_ENABLE_ASSERTS
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+thread_local trivial::task::TaskSystem* g_currentWorkerSystem = nullptr;
+#endif // TRIVIAL_ENABLE_ASSERTS
 
-			return 1;
-		}
-
-		return hardware;
-	}
-
-	return requested;
+[[nodiscard]] std::uintptr_t keyFor(const trivial::task::Worker& worker) noexcept {
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+	return reinterpret_cast<std::uintptr_t>(&worker);
 }
 
 } // namespace
@@ -30,18 +40,34 @@ namespace trivial::task {
 
 TaskSystem::TaskSystem(const TaskSystemConfig& config)
     : m_affinityQueues{TaskPriorityQueue(config.scheduler), TaskPriorityQueue()}
-    , m_targetActiveWorkerCount(static_cast<std::size_t>(resolveWorkerCount(config.workers.count)))
-    , m_activeSlots(static_cast<std::ptrdiff_t>(m_targetActiveWorkerCount))
+    , m_targetActiveWorkerCount(static_cast<std::size_t>(config.workers.count))
+    , m_activeSlots(m_targetActiveWorkerCount)
     , m_waitHelpMaxDepth(config.waitHelpMaxDepth) {
+	TRIVIAL_ASSERT(config.workers.count > 0);
+
 	const std::size_t kWorkerCount
 	    = m_targetActiveWorkerCount + static_cast<std::size_t>(config.workers.maxStandbyWorkers);
 
 	for (std::size_t i = 0; i < kWorkerCount; ++i) {
-		m_workers.emplace_back(i, config.workers.thread);
+		m_workers.emplace_back();
 	}
 
+	thread::ThreadConfig threadConfig{
+	    .name = "Worker",
+	    .type = thread::ThreadType::Worker,
+#if TRIVIAL_PLATFORM_POSIX
+	    .stackAllocator = &m_workerStackAllocator,
+#endif // TRIVIAL_PLATFORM_POSIX
+	};
+
 	for (Worker& worker : m_workers) {
-		worker.thread = std::thread(&TaskSystem::runWorkerLoop, this, worker.index, worker.stopSource.get_token());
+		const thread::ThreadCreateResult kResult
+		    = worker.thread.create(threadConfig, &TaskSystem::workerThreadEntry, static_cast<void*>(this));
+
+		if (kResult.error != thread::ThreadCreateError::None) [[unlikely]] {
+			TRIVIAL_LOG_FATAL_PREFIX("TaskSystem", "Failed to create worker thread");
+			std::abort();
+		}
 	}
 }
 
@@ -49,22 +75,21 @@ TaskSystem::~TaskSystem() noexcept {
 	constexpr auto kAnyWorkerIndex = static_cast<std::size_t>(TaskAffinity::AnyWorker);
 	constexpr auto kMainThreadIndex = static_cast<std::size_t>(TaskAffinity::MainThread);
 
-	while (true) {
+	for (;;) {
 		runMainThreadReadyTasks();
 
 		while (tryPopAndRunOneAnyWorkerTask()) {}
 
 		bool allParked = true;
 
-		for (Worker& worker : m_workers) {
-			std::lock_guard<std::mutex> stateLock(worker.stateMutex);
-
-			if (worker.state != WorkerState::Parked) {
+		for (const Worker& worker : m_workers) {
+			if (worker.state.load(std::memory_order_acquire) != WorkerState::Parked) {
 				allParked = false;
 			}
 		}
 
 		const bool kInjectionQueuesEmpty
+		    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 		    = m_affinityQueues[kAnyWorkerIndex].empty() && m_affinityQueues[kMainThreadIndex].empty();
 
 		if (allParked && kInjectionQueuesEmpty) {
@@ -77,7 +102,8 @@ TaskSystem::~TaskSystem() noexcept {
 	}
 
 	for (Worker& worker : m_workers) {
-		worker.stopSource.request_stop();
+		worker.stopping.store(true, std::memory_order_relaxed);
+		(void)sync::activeParkingLot().unparkOne(keyFor(worker));
 	}
 
 	for (Worker& worker : m_workers) {
@@ -145,9 +171,9 @@ void TaskSystem::wait(TaskHandle task) noexcept {
 		return;
 	}
 
-	TaskWaitGroup waitGroup{1};
+	sync::Latch latch{1};
 
-	const TaskAttachWaiterResult kAttachResult = m_graph.tryAttachWaiter(task, waitGroup);
+	const TaskAttachWaiterResult kAttachResult = m_graph.tryAttachWaiter(task, latch);
 
 	if (kAttachResult == TaskAttachWaiterResult::AlreadyComplete) {
 		return;
@@ -158,33 +184,23 @@ void TaskSystem::wait(TaskHandle task) noexcept {
 	const std::size_t kWorkerIndex = tryGetCurrentWorkerIndex();
 
 	if (kWorkerIndex == kInvalidWorkerIndex) {
-		waitGroup.wait();
+		latch.wait();
 		return;
 	}
 
-	Worker& worker = m_workers[kWorkerIndex];
+	Worker& worker = m_workers[kWorkerIndex]; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 
-	{
-		std::lock_guard<std::mutex> stateLock(worker.stateMutex);
-		worker.state = WorkerState::Waiting;
-	}
+	worker.state.store(WorkerState::Waiting, std::memory_order_relaxed);
 
 	m_activeSlots.release();
 
 	wakeOneIfUnderTarget();
 
-	const bool kSignaled = waitGroup.wait(worker.stopSource.get_token());
+	latch.wait();
 
 	m_activeSlots.acquire();
 
-	{
-		std::lock_guard<std::mutex> stateLock(worker.stateMutex);
-		worker.state = WorkerState::Active;
-	}
-
-	if (!kSignaled) {
-		m_graph.detachWaiterIfUnclaimed(task, waitGroup);
-	}
+	worker.state.store(WorkerState::Active, std::memory_order_relaxed);
 }
 
 void TaskSystem::wait(std::span<const TaskHandle> tasks) noexcept {
@@ -209,51 +225,38 @@ void TaskSystem::wait(std::span<const TaskHandle> tasks) noexcept {
 	}
 
 	// Extra slot to account for race of tasks finshing before all waiters area attached
-	TaskWaitGroup waitGroup{tasks.size() + 1};
+	sync::Latch latch{tasks.size() + 1};
 
 	for (TaskHandle task : tasks) {
-		if (m_graph.tryAttachWaiter(task, waitGroup) == TaskAttachWaiterResult::AlreadyComplete) {
-			TaskWaitGroup::onMemberComplete(&waitGroup);
+		if (m_graph.tryAttachWaiter(task, latch) == TaskAttachWaiterResult::AlreadyComplete) {
+			latch.countDown();
 		}
 	}
 
-	TaskWaitGroup::onMemberComplete(&waitGroup); // release the phantom slot
+	latch.countDown(); // release the phantom slot
 
 	const std::size_t kWorkerIndex = tryGetCurrentWorkerIndex();
 
 	if (kWorkerIndex == kInvalidWorkerIndex) {
-		waitGroup.wait();
+		latch.wait();
 		return;
 	}
 
-	Worker& worker = m_workers[kWorkerIndex];
+	Worker& worker = m_workers[kWorkerIndex]; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 
-	{
-		std::lock_guard<std::mutex> stateLock(worker.stateMutex);
-		worker.state = WorkerState::Waiting;
-	}
+	worker.state.store(WorkerState::Waiting, std::memory_order_relaxed);
 
 	m_activeSlots.release();
 
 	wakeOneIfUnderTarget();
 
-	const bool kSignaled = waitGroup.wait(worker.stopSource.get_token());
+	latch.wait();
 
 	m_activeSlots.acquire();
 
-	{
-		std::lock_guard<std::mutex> stateLock(worker.stateMutex);
-		worker.state = WorkerState::Active;
-	}
-
-	if (!kSignaled) {
-		for (TaskHandle task : tasks) {
-			if (!isComplete(task)) {
-				m_graph.detachWaiterIfUnclaimed(task, waitGroup);
-			}
-		}
-	}
+	worker.state.store(WorkerState::Active, std::memory_order_relaxed);
 }
+
 void* TaskSystem::getResultPointer(TaskHandle handle) noexcept {
 	wait(handle);
 
@@ -279,34 +282,50 @@ void TaskSystem::runMainThreadReadyTasks() noexcept {
 
 	TaskHandle handle{};
 
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 	while (m_affinityQueues[kMainThreadIndex].tryPop(handle)) {
 		runAndCompleteClaimedTask(handle);
 	}
 }
 
 std::size_t TaskSystem::tryGetCurrentWorkerIndex() const noexcept {
-	const std::thread::id kCurrentId = std::this_thread::get_id();
-
-	for (std::size_t i = 0; i < m_workers.size(); ++i) {
-		if (m_workers[i].thread.get_id() == kCurrentId) {
-			return i;
-		}
+	if (g_currentWorker == nullptr) {
+		return kInvalidWorkerIndex;
 	}
 
-	return kInvalidWorkerIndex;
+	TRIVIAL_ASSERT(g_currentWorkerSystem == this);
+
+	return g_currentWorker->index;
 }
 
-void TaskSystem::runWorkerLoop(std::size_t workerIndex, const std::stop_token& stopToken) {
-	Worker& worker = m_workers[workerIndex];
+void TaskSystem::workerThreadEntry(void* arg) noexcept {
+	TaskSystem* system = static_cast<TaskSystem*>(arg);
+	const std::size_t kIndex = system->m_nextWorkerStartIndex.fetch_add(1, std::memory_order_relaxed);
+
+	Worker& worker = system->m_workers[kIndex]; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+	worker.index = kIndex;
+
+	const std::string kThreadName = "Worker " + std::to_string(kIndex);
+	worker.thread.rename(kThreadName.c_str());
+
+	g_currentWorker = &worker;
+#if TRIVIAL_ENABLE_ASSERTS
+	g_currentWorkerSystem = system;
+#endif // TRIVIAL_ENABLE_ASSERTS
+
+	system->runWorkerLoop(kIndex);
+}
+
+void TaskSystem::runWorkerLoop(std::size_t workerIndex) {
+	Worker& worker = m_workers[workerIndex]; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 
 #if TRIVIAL_ENABLE_TRACY
-	const std::string kThreadName = worker.config.name + " " + std::to_string(workerIndex);
-	TRIVIAL_PROFILE_THREAD(kThreadName.c_str());
+	TRIVIAL_PROFILE_THREAD(worker.thread.name());
 #endif // TRIVIAL_ENABLE_TRACY
 
-	bool holdingSlot = m_activeSlots.try_acquire();
+	bool holdingSlot = m_activeSlots.tryAcquire();
 
-	while (!stopToken.stop_requested()) {
+	while (!worker.stopping.load(std::memory_order_relaxed)) {
 		TaskHandle handle{};
 
 		if (worker.localQueue.tryPop(handle)) {
@@ -317,8 +336,9 @@ void TaskSystem::runWorkerLoop(std::size_t workerIndex, const std::stop_token& s
 		if (holdingSlot) {
 			constexpr auto kAnyWorkerIndex = static_cast<std::size_t>(TaskAffinity::AnyWorker);
 
-			m_affinityQueues[kAnyWorkerIndex].tryPopWeightedBatchInto(worker.localQueue);
-			if (worker.localQueue.tryPop(handle)) {
+			// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+			const std::size_t kGranted = m_affinityQueues[kAnyWorkerIndex].tryPopWeightedBatchInto(worker.localQueue);
+			if (kGranted > 0 && worker.localQueue.tryPop(handle)) {
 				runAndCompleteClaimedTask(handle);
 				continue;
 			}
@@ -332,7 +352,7 @@ void TaskSystem::runWorkerLoop(std::size_t workerIndex, const std::stop_token& s
 			holdingSlot = false;
 		}
 
-		if (!parkWorker(workerIndex, stopToken)) {
+		if (!parkWorker(workerIndex)) {
 			break;
 		}
 
@@ -344,36 +364,42 @@ void TaskSystem::runWorkerLoop(std::size_t workerIndex, const std::stop_token& s
 	}
 }
 
-bool TaskSystem::parkWorker(std::size_t workerIndex, const std::stop_token& stopToken) noexcept {
-	Worker& worker = m_workers[workerIndex];
+bool TaskSystem::parkWorker(std::size_t workerIndex) noexcept {
+	Worker& worker = m_workers[workerIndex]; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 
-	std::unique_lock<std::mutex> stateLock(worker.stateMutex);
-
-	worker.state = WorkerState::Parked;
+	worker.state.store(WorkerState::Parked, std::memory_order_relaxed);
 
 	{
-		std::lock_guard<TaskGraphMutex> parkedLock(m_parkedIndicesMutex);
+		sync::LockGuard<sync::Mutex> parkedLock(m_parkedIndicesMutex);
 		m_parkedWorkerIndices.push_back(workerIndex);
 	}
 
-	return worker.stateCv.wait(stateLock, stopToken, [&worker] {
-		return worker.state == WorkerState::Active;
+	constexpr auto kAnyWorkerIndex = static_cast<std::size_t>(TaskAffinity::AnyWorker);
+
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+	if (!m_affinityQueues[kAnyWorkerIndex].empty() && m_activeSlots.tryAcquire()) {
+		removeParkedIndex(workerIndex);
+		worker.state.store(WorkerState::Active, std::memory_order_relaxed);
+		return true;
+	}
+
+	(void)sync::activeParkingLot().park(keyFor(worker), [&worker] {
+		return worker.state.load(std::memory_order_acquire) != WorkerState::Active
+		       && !worker.stopping.load(std::memory_order_relaxed);
 	});
+
+	return !worker.stopping.load(std::memory_order_relaxed);
 }
 
 void TaskSystem::wakeWorker(std::size_t workerIndex) noexcept {
-	Worker& worker = m_workers[workerIndex];
+	Worker& worker = m_workers[workerIndex]; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 
-	{
-		std::lock_guard<std::mutex> stateLock(worker.stateMutex);
-		worker.state = WorkerState::Active;
-	}
-
-	worker.stateCv.notify_one();
+	worker.state.store(WorkerState::Active, std::memory_order_release);
+	(void)sync::activeParkingLot().unparkOne(keyFor(worker));
 }
 
 void TaskSystem::wakeOneIfUnderTarget() noexcept {
-	if (!m_activeSlots.try_acquire()) {
+	if (!m_activeSlots.tryAcquire()) {
 		return;
 	}
 
@@ -381,7 +407,7 @@ void TaskSystem::wakeOneIfUnderTarget() noexcept {
 	bool foundParked = false;
 
 	{
-		std::lock_guard<TaskGraphMutex> parkedLock(m_parkedIndicesMutex);
+		sync::LockGuard<sync::Mutex> parkedLock(m_parkedIndicesMutex);
 
 		if (!m_parkedWorkerIndices.empty()) {
 			indexToWake = m_parkedWorkerIndices.back();
@@ -391,11 +417,25 @@ void TaskSystem::wakeOneIfUnderTarget() noexcept {
 	}
 
 	if (!foundParked) {
-		m_activeSlots.release(); // nobody to hand it to - give it back
+		m_activeSlots.release();
 		return;
 	}
 
 	wakeWorker(indexToWake);
+}
+
+void TaskSystem::removeParkedIndex(std::size_t workerIndex) noexcept {
+	sync::LockGuard<sync::Mutex> parkedLock(m_parkedIndicesMutex);
+
+	for (std::size_t i = 0; i < m_parkedWorkerIndices.size(); ++i) {
+		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+		if (m_parkedWorkerIndices[i] == workerIndex) {
+			// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+			m_parkedWorkerIndices[i] = m_parkedWorkerIndices.back();
+			m_parkedWorkerIndices.pop_back();
+			return;
+		}
+	}
 }
 
 bool TaskSystem::tryStealTask(std::size_t workerIndex, TaskHandle& handle) noexcept {
@@ -409,6 +449,7 @@ bool TaskSystem::tryStealTask(std::size_t workerIndex, TaskHandle& handle) noexc
 	for (std::size_t offset = 1; offset < kWorkerCount; ++offset) {
 		const std::size_t kCandidateIndex = (workerIndex + offset) % kWorkerCount;
 
+		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 		if (m_workers[kCandidateIndex].localQueue.tryPop(handle)) {
 			return true;
 		}
@@ -421,7 +462,7 @@ void TaskSystem::enqueueReadyTask(TaskHandle handle, TaskAffinity affinity, Task
 	TRIVIAL_ASSERT(handle.isValid());
 	TRIVIAL_ASSERT(priority < TaskPriority::Count);
 
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index)
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 	m_affinityQueues[static_cast<std::size_t>(affinity)].enqueue(handle, priority);
 
 	if (affinity == TaskAffinity::AnyWorker) {
@@ -448,6 +489,7 @@ bool TaskSystem::tryPopAndRunOneAnyWorkerTask() noexcept {
 
 	TaskHandle handle{};
 
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 	if (!m_affinityQueues[kAnyWorkerIndex].tryPop(handle)) {
 		return false;
 	}

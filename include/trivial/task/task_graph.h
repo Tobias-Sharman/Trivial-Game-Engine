@@ -8,20 +8,20 @@
 #include <vector>
 
 #include <trivial/core/config.h>
+#include <trivial/core/sync/latch.h>
+#include <trivial/core/sync/mutex.h>
 #include <trivial/task/task_handle.h>
 #include <trivial/task/task_launch_options.h>
-#include <trivial/task/task_mutex.h>
 #include <trivial/task/task_payload.h>
 #include <trivial/task/task_slot.h>
 #include <trivial/task/task_status.h>
-#include <trivial/task/task_wait_group.h>
 
 namespace trivial::task {
 
 enum class TaskCreateResult : std::uint8_t {
 	Success,
 	CapacityExhausted,
-	AllocationFailure
+	AllocationFailure,
 };
 
 enum class TaskPrerequisiteResult : std::uint8_t {
@@ -29,18 +29,18 @@ enum class TaskPrerequisiteResult : std::uint8_t {
 	InvalidHandle,
 	InvalidState,
 	DuplicateDependency,
-	SelfDependency
+	SelfDependency,
 };
 
 enum class TaskDispatchResult : std::uint8_t {
 	Success,
 	InvalidHandle,
-	AlreadyDispatched
+	AlreadyDispatched,
 };
 
 enum class TaskReadiness : std::uint8_t {
 	Waiting,
-	Ready
+	Ready,
 };
 
 enum class TaskClaimResult : std::uint8_t {
@@ -52,13 +52,13 @@ enum class TaskClaimResult : std::uint8_t {
 enum class TaskAttachWaiterResult : std::uint8_t {
 	AlreadyComplete,
 	Attached,
-	InvalidHandle
+	InvalidHandle,
 };
 
 enum class TaskReleaseResult : std::uint8_t {
 	Success,
 	InvalidHandle,
-	TaskNotComplete
+	TaskNotComplete,
 };
 
 struct TaskCreateDispatchOutcome {
@@ -96,20 +96,19 @@ public:
 
 	[[nodiscard]] TaskClaimResult tryClaim(TaskHandle handle) noexcept;
 
-	[[nodiscard]] TaskAttachWaiterResult tryAttachWaiter(TaskHandle handle, TaskWaitGroup& waitGroup) noexcept;
+	[[nodiscard]] TaskAttachWaiterResult tryAttachWaiter(TaskHandle handle, sync::Latch& latch) noexcept;
 
 	void executeClaimed(TaskHandle handle) noexcept;
 
 	void completeAndCollectDependants(TaskHandle handle, std::vector<TaskHandle>& outDependants) noexcept;
 
-	// Unideal but means that only one lock is needed. True for ready to be enqueue, false if not
+	// Unideal but means that only one lock is needed. True for ready to be
+	// enqueue, false if not
 	[[nodiscard]] bool removePrerequisiteAndMarkReadyIfUnblocked(TaskHandle dependantHandle,
 	                                                             TaskHandle prerequisiteHandle,
 	                                                             TaskReadyInfo& outReadyInfo) noexcept;
 
 	[[nodiscard]] TaskReleaseResult release(TaskHandle handle) noexcept;
-
-	void detachWaiterIfUnclaimed(TaskHandle handle, const TaskWaitGroup& waitGroup) noexcept;
 
 	[[nodiscard]] bool tryGetStatus(TaskHandle handle, TaskStatus& outStatus) const noexcept;
 
@@ -144,7 +143,7 @@ private:
 	[[nodiscard]] TaskSlot* slotAt(std::uint32_t taskIndex) noexcept;
 	[[nodiscard]] const TaskSlot* slotAt(std::uint32_t task) const noexcept;
 
-	// NOTE: Slot in page does not check fot validity of page and task index
+	// NOTE: Slot in page does not check for validity of page and task index
 	[[nodiscard]] static TaskSlot* slotInPage(TaskPage& page, std::uint32_t taskIndex) noexcept;
 	[[nodiscard]] static const TaskSlot* slotInPage(const TaskPage& page, std::uint32_t taskIndex) noexcept;
 
@@ -163,11 +162,11 @@ private:
 
 	std::array<std::atomic<TaskPage*>, kMaxPageCount> m_pages{};
 
-	TaskGraphMutex m_pageCreationMutex;
-	TaskGraphMutex m_allocationMutex;
+	sync::Mutex m_pageCreationMutex;
+	sync::Mutex m_allocationMutex;
 
 #if TRIVIAL_CONFIG_DEBUG
-	TaskGraphMutex m_debugTopologyMutex;
+	sync::Mutex m_debugTopologyMutex;
 #endif // TRIVIAL_CONFIG_DEBUG
 
 	std::vector<std::uint32_t> m_freeTaskIndices; // TODO: replace when having custom allocator

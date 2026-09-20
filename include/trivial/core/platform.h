@@ -15,6 +15,7 @@
 // Record of all minimums for reference for future changes:
 //     VirtualAlloc2 - 0x0A00 (Windows 10, 1803+)
 //     WaitOnAddress - 0x0602 (Windows 8)
+//     SetThreadDescription - 0x0A00 (Windows 10, 1607+)
 
 #elif defined(__APPLE__)
 #include <TargetConditionals.h>
