@@ -306,7 +306,7 @@ void TaskSystem::workerThreadEntry(void* arg) noexcept {
 	worker.index = kIndex;
 
 	const std::string kThreadName = "Worker " + std::to_string(kIndex);
-	worker.thread.rename(kThreadName.c_str());
+	thread::Thread::current()->rename(kThreadName.c_str());
 
 	g_currentWorker = &worker;
 #if TRIVIAL_ENABLE_ASSERTS
@@ -320,7 +320,7 @@ void TaskSystem::runWorkerLoop(std::size_t workerIndex) {
 	Worker& worker = m_workers[workerIndex]; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 
 #if TRIVIAL_ENABLE_TRACY
-	TRIVIAL_PROFILE_THREAD(worker.thread.name());
+	TRIVIAL_PROFILE_THREAD(thread::Thread::current()->name());
 #endif // TRIVIAL_ENABLE_TRACY
 
 	bool holdingSlot = m_activeSlots.tryAcquire();
