@@ -53,6 +53,10 @@ ISOLATED_TESTS: tuple[str, ...] = (
     "TaskSystemMultiThreadTest.ReentrantWaitDoesNotDeadlock",
     "TaskSystemMultiThreadTest.DestructorDrainsOutstandingWork",
     "TaskSystemMultiThreadTest.DestructorWaitsForSlowTask",
+    "SegmentAllocatorMultiThreadTest.AllocFreeNeverHandsOutSameSegment",
+    "SegmentAllocatorMultiThreadTest.MultiSegmentRunsStayContiguous",
+    "SegmentAllocatorMultiThreadTest.CommitKeepsPrefixConsistent",
+    "SegmentAllocatorMultiThreadTest.CommittedBytesReturnsToBaseline",
 )
 
 # Deliberately slow (wall-clock waits, not just heavier work) - skipped by
@@ -77,6 +81,9 @@ def parse_args() -> argparse.Namespace:
         "-l", "--long-tests", action="store_true", help="Also run long-running tests (skipped by default)"
     )
     parser.add_argument("-r", "--run-sandbox", action="store_true", help="Run the sandbox after building")
+    parser.add_argument(
+        "-n", "--repeat", type=int, default=1, help="Run the test suite this many times (for stress-testing flakiness)"
+    )
     # help done command automatically
 
     return parser.parse_args()
@@ -135,7 +142,7 @@ def run_gtest(binary: str, gtest_filter: str) -> tuple[int, str]:
     return result.returncode, result.stdout + result.stderr
 
 
-def run_tests(build_dir: Path, include_long: bool) -> bool:
+def run_tests(build_dir: Path, include_long: bool, indent: str = "") -> bool:
     binary = str(test_binary_path(build_dir))
 
     if include_long:
@@ -143,39 +150,38 @@ def run_tests(build_dir: Path, include_long: bool) -> bool:
         isolated = ISOLATED_TESTS
     else:
         if LONG_TESTS:
-            print(f"==> Skipping {len(LONG_TESTS)} long test(s) (pass --long-tests to include)", flush=True)
+            print(f"{indent}==> Skipping {len(LONG_TESTS)} long test(s) (pass --long-tests to include)", flush=True)
         excluded = ISOLATED_TESTS + LONG_TESTS
         isolated = tuple(test for test in ISOLATED_TESTS if test not in LONG_TESTS)
 
-    print("==> Running shared-process tests", flush=True)
+    print(f"{indent}==> Running shared-process tests", flush=True)
     exclude_filter = "-" + ":".join(excluded)
     shared_code, shared_output = run_gtest(binary, exclude_filter)
     shared_total = extract_count(shared_output, " ran. (", 1)
     shared_passed = extract_count(shared_output, "[  PASSED  ]", 3)
     if shared_code != 0:
         print(shared_output)
-    print(f"    [{'PASS' if shared_code == 0 else 'FAIL'}] {shared_passed}/{shared_total} tests")
+    print(f"{indent}    [{'PASS' if shared_code == 0 else 'FAIL'}] {shared_passed}/{shared_total} tests")
 
-    print("==> Running isolated tests", flush=True)
+    print(f"{indent}==> Running isolated tests", flush=True)
     isolated_failed = 0
     for test in isolated:
         code, output = run_gtest(binary, test)
         if code != 0:
             isolated_failed += 1
             print(output)
-            print(f"    [FAIL] {test}")
+            print(f"{indent}    [FAIL] {test}")
     isolated_total = len(isolated)
     isolated_passed = isolated_total - isolated_failed
-    print(f"    [{'PASS' if isolated_failed == 0 else 'FAIL'}] {isolated_passed}/{isolated_total} tests")
+    print(f"{indent}    [{'PASS' if isolated_failed == 0 else 'FAIL'}] {isolated_passed}/{isolated_total} tests")
 
     total = shared_total + isolated_total
     passed = shared_passed + isolated_passed
 
-    print()
-    print("==> Test summary")
-    print(f"    Shared-process: {shared_passed}/{shared_total} passed")
-    print(f"    Isolated:       {isolated_passed}/{isolated_total} passed")
-    print(f"    Total:          {passed}/{total} passed")
+    print(f"{indent}==> Test summary")
+    print(f"{indent}    Shared-process: {shared_passed}/{shared_total} passed")
+    print(f"{indent}    Isolated:       {isolated_passed}/{isolated_total} passed")
+    print(f"{indent}    Total:          {passed}/{total} passed")
 
     return shared_code == 0 and isolated_failed == 0
 
@@ -191,8 +197,25 @@ def main() -> None:
 
     refresh_compile_commands_symlink(args.preset)
 
-    if args.test and not run_tests(ROOT_DIR / "build" / args.preset, args.long_tests):
-        sys.exit(1)
+    if args.test:
+        failed_runs = 0
+
+        for run_index in range(args.repeat):
+            if args.repeat > 1:
+                print()
+                print(f"==> Test run {run_index + 1}/{args.repeat}", flush=True)
+
+            indent = "    " if args.repeat > 1 else ""
+            if not run_tests(ROOT_DIR / "build" / args.preset, args.long_tests, indent):
+                failed_runs += 1
+
+        if args.repeat > 1:
+            passed_runs = args.repeat - failed_runs
+            print()
+            print(f"==> Overall: {passed_runs}/{args.repeat} runs passed")
+
+        if failed_runs > 0:
+            sys.exit(1)
 
     if args.run_sandbox:
         print("==> Running sandbox", flush=True)

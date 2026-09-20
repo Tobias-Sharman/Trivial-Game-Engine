@@ -6,78 +6,80 @@
 #include <gtest/gtest.h>
 
 #include <trivial/core/memory/segment_allocator.h>
+#include <trivial/core/thread/thread.h>
 #include <trivial/task/task_payload.h>
 #include <trivial/task/task_system.h>
 #include <trivial/task/task_system_config.h>
+
+#include "support/helpers.h"
 
 using namespace trivial::memory;
 
 namespace {
 
-constexpr std::size_t kConcurrentSegments = 64;
-constexpr std::size_t kConcurrentReserve = kConcurrentSegments * g_kSegmentSize;
-constexpr std::size_t kConcurrentTasks = 8;
-constexpr std::size_t kConcurrentIterations = 256;
-constexpr std::uint32_t kConcurrentWorkers = 4;
+constexpr std::size_t g_kConcurrentSegments = 64;
+constexpr std::size_t g_kConcurrentReserve = g_kConcurrentSegments * g_kSegmentSize;
+constexpr std::size_t g_kConcurrentTasks = 8;
+constexpr std::size_t g_kConcurrentIterations = 256;
+constexpr std::uint32_t g_kConcurrentWorkers = 4;
 
-// Fixed rather than left to hardware concurrency, so a race that reproduces on
-// one machine reproduces on every machine
 [[nodiscard]] trivial::task::TaskSystemConfig concurrentConfig() {
 	trivial::task::TaskSystemConfig config;
-	config.workers.count = kConcurrentWorkers;
-	config.workers.thread.name = "Segment allocator test worker";
+	config.workers.count = g_kConcurrentWorkers;
 
 	return config;
 }
 
 class SegmentAllocatorMultiThreadTest : public ::testing::Test {
 protected:
-	void SetUp() override { ASSERT_TRUE(allocator.init(kConcurrentReserve)); }
+	SegmentAllocatorMultiThreadTest() {
+		m_mainThread.adoptCurrentThread({.name = "Test Main", .type = trivial::thread::ThreadType::Main});
+	}
 
-	void TearDown() override { allocator.shutdown(); }
+	void SetUp() override { ASSERT_TRUE(m_allocator.init(g_kConcurrentReserve)); }
 
-	// Runs body on kConcurrentTasks workers and waits for all of them. Drives
-	// the fixture's own TaskSystem directly rather than through the
-	// setActiveTaskSystem global, since that global is shared process-wide and
-	// other test files rely on it staying set to their own task system for the
-	// lifetime of the binary
+	void TearDown() override { m_allocator.shutdown(); }
+
 	template <typename Body>
-	void runOnAllTasks(Body&& body) {
+	void runOnAllTasks(Body body) {
 		std::vector<trivial::task::TaskHandle> handles;
-		handles.reserve(kConcurrentTasks);
+		handles.reserve(g_kConcurrentTasks);
 
-		for (std::size_t taskIndex = 0; taskIndex < kConcurrentTasks; ++taskIndex) {
-			handles.push_back(taskSystem.launch(trivial::task::TaskPayload{[taskIndex, &body]() noexcept {
-				body(taskIndex);
-			}}));
+		for (std::size_t taskIndex = 0; taskIndex < g_kConcurrentTasks; ++taskIndex) {
+			handles.push_back(m_taskSystem.launch(trivial::task::TaskPayload{
+			    [taskIndex, &body]() noexcept {
+				    body(taskIndex);
+			    },
+			}));
 		}
 
-		taskSystem.wait(std::span<const trivial::task::TaskHandle>{handles});
+		m_taskSystem.wait(std::span<const trivial::task::TaskHandle>{handles});
 
 		for (trivial::task::TaskHandle handle : handles) {
-			(void)taskSystem.release(handle);
+			(void)m_taskSystem.release(handle);
 		}
 	}
 
-	SegmentAllocator allocator;
-	trivial::task::TaskSystem taskSystem{concurrentConfig()};
+	SegmentAllocator m_allocator;
+	trivial::task::TaskSystemConfig m_config = concurrentConfig();
+	trivial::thread::Thread m_mainThread;
+	trivial::tests::ScopedParkingLot m_parkingLotScope{m_config.workers.count + m_config.workers.maxStandbyWorkers};
+	trivial::task::TaskSystem m_taskSystem{m_config};
 };
 
 // -----------------------------------------------------------------------------
 // Concurrent allocation and release
 // -----------------------------------------------------------------------------
 
-// A segment handed to two threads at once would corrupt the pattern one of them
-// wrote, so a mismatch here is a double handout rather than a memory error
-TEST_F(SegmentAllocatorMultiThreadTest, ConcurrentAllocFreeNeverHandsOutTheSameSegment) {
+TEST_F(SegmentAllocatorMultiThreadTest, AllocFreeNeverHandsOutSameSegment) {
 	std::atomic<std::size_t> mismatches{0};
 	std::atomic<std::size_t> exhaustions{0};
 
 	runOnAllTasks([&](std::size_t taskIndex) {
 		const auto kPattern = static_cast<unsigned char>(0x40 + taskIndex);
 
-		for (std::size_t iteration = 0; iteration < kConcurrentIterations; ++iteration) {
-			void* segment = allocator.allocSegments(1, SegmentKind::Small);
+		for (std::size_t iteration = 0; iteration < g_kConcurrentIterations; ++iteration) {
+			void* segment = m_allocator.allocSegments(1, SegmentKind::Small);
 
 			if (segment == nullptr) {
 				exhaustions.fetch_add(1, std::memory_order_relaxed);
@@ -85,12 +87,12 @@ TEST_F(SegmentAllocatorMultiThreadTest, ConcurrentAllocFreeNeverHandsOutTheSameS
 			}
 
 			int error = 0;
-			if (!allocator.ensureCommittedPages(segment, 1, error)) {
-				allocator.freeSegments(segment, 1);
+			if (!m_allocator.ensureCommittedPages(segment, 1, error)) {
+				m_allocator.freeSegments(segment, 1);
 				continue;
 			}
 
-			const std::size_t kBytes = allocator.capabilities().pageSize;
+			const std::size_t kBytes = m_allocator.capabilities().pageSize;
 			std::memset(segment, kPattern, kBytes);
 
 			for (std::size_t byte = 0; byte < kBytes; ++byte) {
@@ -100,7 +102,7 @@ TEST_F(SegmentAllocatorMultiThreadTest, ConcurrentAllocFreeNeverHandsOutTheSameS
 				}
 			}
 
-			allocator.freeSegments(segment, 1);
+			m_allocator.freeSegments(segment, 1);
 		}
 	});
 
@@ -109,26 +111,26 @@ TEST_F(SegmentAllocatorMultiThreadTest, ConcurrentAllocFreeNeverHandsOutTheSameS
 	// Everything must be free again, so the whole reservation is available
 	std::vector<void*> held;
 
-	while (void* segment = allocator.allocSegments(1, SegmentKind::Small)) {
+	while (void* segment = m_allocator.allocSegments(1, SegmentKind::Small)) {
 		held.push_back(segment);
 	}
 
-	EXPECT_EQ(held.size(), allocator.segmentCapacity());
+	EXPECT_EQ(held.size(), m_allocator.segmentCapacity());
 
 	for (void* segment : held) {
-		allocator.freeSegments(segment, 1);
+		m_allocator.freeSegments(segment, 1);
 	}
 }
 
-TEST_F(SegmentAllocatorMultiThreadTest, ConcurrentMultiSegmentRunsStayContiguous) {
+TEST_F(SegmentAllocatorMultiThreadTest, MultiSegmentRunsStayContiguous) {
 	std::atomic<std::size_t> mismatches{0};
 
 	runOnAllTasks([&](std::size_t taskIndex) {
 		const auto kPattern = static_cast<unsigned char>(0x80 + taskIndex);
 		const std::size_t kCount = 1 + (taskIndex % 3);
 
-		for (std::size_t iteration = 0; iteration < kConcurrentIterations / 4; ++iteration) {
-			void* run = allocator.allocSegments(kCount, SegmentKind::HugeHead);
+		for (std::size_t iteration = 0; iteration < g_kConcurrentIterations / 4; ++iteration) {
+			void* run = m_allocator.allocSegments(kCount, SegmentKind::HugeHead);
 
 			if (run == nullptr) {
 				continue;
@@ -139,11 +141,11 @@ TEST_F(SegmentAllocatorMultiThreadTest, ConcurrentMultiSegmentRunsStayContiguous
 
 			for (std::size_t offset = 0; offset < kCount && committed; ++offset) {
 				void* segment = static_cast<char*>(run) + (offset * g_kSegmentSize);
-				committed = allocator.ensureCommittedPages(segment, 1, error);
+				committed = m_allocator.ensureCommittedPages(segment, 1, error);
 			}
 
 			if (committed) {
-				const std::size_t kPageSize = allocator.capabilities().pageSize;
+				const std::size_t kPageSize = m_allocator.capabilities().pageSize;
 
 				for (std::size_t offset = 0; offset < kCount; ++offset) {
 					std::memset(static_cast<char*>(run) + (offset * g_kSegmentSize), kPattern, kPageSize);
@@ -159,7 +161,7 @@ TEST_F(SegmentAllocatorMultiThreadTest, ConcurrentMultiSegmentRunsStayContiguous
 				}
 			}
 
-			allocator.freeSegments(run, kCount);
+			m_allocator.freeSegments(run, kCount);
 		}
 	});
 
@@ -170,14 +172,14 @@ TEST_F(SegmentAllocatorMultiThreadTest, ConcurrentMultiSegmentRunsStayContiguous
 // Concurrent commit on segments owned by one task each
 // -----------------------------------------------------------------------------
 
-TEST_F(SegmentAllocatorMultiThreadTest, ConcurrentCommitKeepsPrefixConsistent) {
+TEST_F(SegmentAllocatorMultiThreadTest, CommitKeepsPrefixConsistent) {
 	std::atomic<std::size_t> inconsistencies{0};
 
 	runOnAllTasks([&](std::size_t taskIndex) {
 		(void)taskIndex;
 
-		for (std::size_t iteration = 0; iteration < kConcurrentIterations / 8; ++iteration) {
-			void* segment = allocator.allocSegments(1, SegmentKind::Medium);
+		for (std::size_t iteration = 0; iteration < g_kConcurrentIterations / 8; ++iteration) {
+			void* segment = m_allocator.allocSegments(1, SegmentKind::Medium);
 
 			if (segment == nullptr) {
 				continue;
@@ -186,16 +188,16 @@ TEST_F(SegmentAllocatorMultiThreadTest, ConcurrentCommitKeepsPrefixConsistent) {
 			int error = 0;
 
 			for (std::size_t pages = 1; pages <= 8; ++pages) {
-				if (!allocator.ensureCommittedPages(segment, pages, error)) {
+				if (!m_allocator.ensureCommittedPages(segment, pages, error)) {
 					break;
 				}
 
-				if (allocator.committedPages(segment) < pages) {
+				if (m_allocator.committedPages(segment) < pages) {
 					inconsistencies.fetch_add(1, std::memory_order_relaxed);
 				}
 			}
 
-			allocator.freeSegments(segment, 1);
+			m_allocator.freeSegments(segment, 1);
 		}
 	});
 
@@ -206,31 +208,31 @@ TEST_F(SegmentAllocatorMultiThreadTest, ConcurrentCommitKeepsPrefixConsistent) {
 // The counter is claimed before each commit and released on every decommit and
 // purge, so a drift here is a bookkeeping leak rather than a memory one
 TEST_F(SegmentAllocatorMultiThreadTest, CommittedBytesReturnsToBaseline) {
-	const std::size_t kBaseline = allocator.committedBytes();
+	const std::size_t kBaseline = m_allocator.committedBytes();
 
 	runOnAllTasks([&](std::size_t taskIndex) {
 		(void)taskIndex;
 
-		for (std::size_t iteration = 0; iteration < kConcurrentIterations / 8; ++iteration) {
-			void* segment = allocator.allocSegments(1, SegmentKind::Small);
+		for (std::size_t iteration = 0; iteration < g_kConcurrentIterations / 8; ++iteration) {
+			void* segment = m_allocator.allocSegments(1, SegmentKind::Small);
 
 			if (segment == nullptr) {
 				continue;
 			}
 
 			int error = 0;
-			(void)allocator.ensureCommittedPages(segment, 4, error);
-			allocator.freeSegments(segment, 1);
+			(void)m_allocator.ensureCommittedPages(segment, 4, error);
+			m_allocator.freeSegments(segment, 1);
 		}
 	});
 
 #if TRIVIAL_MEMORY_ENABLE_DECOMMIT
 	// Purge everything the run left cached
-	for (std::uint32_t tick = 0; tick <= g_kDecayTicks + allocator.segmentCapacity(); ++tick) {
-		allocator.tick();
+	for (std::uint32_t tick = 0; tick <= g_kDecayTicks + m_allocator.segmentCapacity(); ++tick) {
+		m_allocator.tick();
 	}
 
-	EXPECT_EQ(allocator.committedBytes(), kBaseline);
+	EXPECT_EQ(m_allocator.committedBytes(), kBaseline);
 #else
 	EXPECT_GE(allocator.committedBytes(), kBaseline);
 #endif // TRIVIAL_MEMORY_ENABLE_DECOMMIT

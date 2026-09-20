@@ -1,7 +1,6 @@
 #include <trivial/core/memory/segment_allocator.h>
 
 #include <algorithm>
-#include <atomic>
 #include <bit>
 #include <cstddef>
 #include <cstdint>
@@ -11,6 +10,7 @@
 #include <trivial/core/log.h>
 #include <trivial/core/platform.h>
 #include <trivial/core/profile.h>
+#include <trivial/core/sync/lock_guard.h>
 
 #include "core/memory/virtual_memory.h"
 
@@ -202,7 +202,7 @@ namespace trivial::memory {
 	bool succeeded = false;
 
 	{
-		std::lock_guard lock(m_stateMutex);
+		sync::LockGuard lock(m_stateMutex);
 
 		const SystemInfo kSystemInfo = probeSystemInfo();
 		// NOTE: Could save this varible when page size is known but makes code
@@ -319,7 +319,7 @@ namespace trivial::memory {
 }
 
 void SegmentAllocator::shutdown() noexcept {
-	std::lock_guard lock(m_stateMutex);
+	sync::LockGuard lock(m_stateMutex);
 
 	if (m_base == nullptr) {
 		return;
@@ -366,7 +366,7 @@ void SegmentAllocator::shutdown() noexcept {
 	void* result = nullptr;
 
 	{
-		std::lock_guard lock(m_stateMutex);
+		sync::LockGuard lock(m_stateMutex);
 
 		std::size_t index = g_kInvalidIndex;
 
@@ -431,7 +431,7 @@ void SegmentAllocator::freeSegments(void* segments, std::size_t count) noexcept 
 
 	TRIVIAL_PROFILE_FREE("segments", segments);
 
-	std::lock_guard lock(m_stateMutex);
+	sync::LockGuard lock(m_stateMutex);
 
 	const std::size_t kIndex = segmentIndex(segments);
 	TRIVIAL_ASSERT(kIndex + count <= m_segmentCapacity);
@@ -472,7 +472,7 @@ void SegmentAllocator::freeSegments(void* segments, std::size_t count) noexcept 
 		return 0;
 	}
 
-	std::lock_guard lock(m_stateMutex);
+	sync::LockGuard lock(m_stateMutex);
 	return m_records[segmentIndex(segment)].committedPages; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 }
 
@@ -525,7 +525,7 @@ void SegmentAllocator::disableLargePages() noexcept {
 	void* target = nullptr;
 
 	{
-		std::lock_guard lock(m_stateMutex);
+		sync::LockGuard lock(m_stateMutex);
 
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 		SegmentRecord& record = m_records[segmentIndex(segment)];
@@ -557,7 +557,7 @@ void SegmentAllocator::disableLargePages() noexcept {
 	}
 
 	{
-		std::lock_guard lock(m_stateMutex);
+		sync::LockGuard lock(m_stateMutex);
 
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 		SegmentRecord& record = m_records[segmentIndex(segment)];
@@ -592,7 +592,7 @@ void SegmentAllocator::disableLargePages() noexcept {
 	void* target = nullptr;
 
 	{
-		std::lock_guard lock(m_stateMutex);
+		sync::LockGuard lock(m_stateMutex);
 
 		SegmentRecord& record = m_records[segmentIndex(segment)];
 		if (record.committedPages >= pages) {
@@ -622,7 +622,7 @@ void SegmentAllocator::disableLargePages() noexcept {
 	}
 
 	{
-		std::lock_guard lock(m_stateMutex);
+		sync::LockGuard lock(m_stateMutex);
 
 		const std::size_t kIndex = segmentIndex(segment);
 		SegmentRecord& record = m_records[kIndex];
@@ -651,7 +651,7 @@ void SegmentAllocator::trimCommittedPagesTo(void* segment, std::size_t pages) no
 
 	const std::size_t kPageSize = m_capabilities.pageSize; // NOLINT(readability-static-accessed-through-instance)
 
-	std::lock_guard lock(m_stateMutex);
+	sync::LockGuard lock(m_stateMutex);
 
 	const std::size_t kIndex = segmentIndex(segment);
 
@@ -688,7 +688,7 @@ void SegmentAllocator::decommitRange(void* addr, std::size_t bytes) const noexce
 void SegmentAllocator::tick() noexcept {
 	TRIVIAL_PROFILE_FUNCTION();
 
-	std::lock_guard lock(m_stateMutex);
+	sync::LockGuard lock(m_stateMutex);
 
 	++m_tick;
 
@@ -825,7 +825,7 @@ void SegmentAllocator::releaseCommitBudget(std::size_t bytes) const noexcept {
 		return SegmentKind::Invalid;
 	}
 
-	std::lock_guard lock(m_stateMutex);
+	sync::LockGuard lock(m_stateMutex);
 
 	std::size_t index = segmentIndex(ptr);
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
@@ -837,7 +837,7 @@ void SegmentAllocator::releaseCommitBudget(std::size_t bytes) const noexcept {
 		return SegmentRecord{};
 	}
 
-	std::lock_guard lock(m_stateMutex);
+	sync::LockGuard lock(m_stateMutex);
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 	return m_records[segmentIndex(ptr)];
 }
@@ -846,7 +846,7 @@ void SegmentAllocator::releaseCommitBudget(std::size_t bytes) const noexcept {
 void SegmentAllocator::handleOom(std::size_t requestedSize, const char* context, int osErrorCode) const noexcept {
 	TRIVIAL_LOG_OOM_FAILURE("SegmentAllocator", context, requestedSize, osErrorCode);
 
-	std::lock_guard lock(m_oomMutex);
+	sync::LockGuard lock(m_oomMutex);
 
 	if (m_oomHandler != nullptr) {
 		OomInfo info{.requestedSize = requestedSize, .context = context, .osErrorCode = osErrorCode};

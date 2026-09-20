@@ -1,15 +1,18 @@
 #ifndef TRIVIAL_CORE_MEMORY_SEGMENT_ALLOCATOR_H
 #define TRIVIAL_CORE_MEMORY_SEGMENT_ALLOCATOR_H
 
-#include <atomic>
 #include <cstddef>
 #include <cstdint>
-#include <mutex>
 
 #include <trivial/core/config.h>
 #include <trivial/core/memory/memory_config.h>
 #include <trivial/core/memory/oom_handler.h>
 #include <trivial/core/platform.h>
+#include <trivial/core/sync/mutex.h>
+
+#if TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
+#include <atomic>
+#endif // TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
 
 namespace trivial::memory {
 
@@ -184,8 +187,8 @@ private:
 
 	[[nodiscard]] std::size_t segmentIndex(const void* ptr) const noexcept;
 
-	mutable std::mutex m_stateMutex;
-	mutable std::mutex m_oomMutex;
+	mutable sync::Mutex m_stateMutex;
+	mutable sync::Mutex m_oomMutex;
 
 #if TRIVIAL_PLATFORM_WINDOWS
 	// For when windows does not allow for getting the base aligned, since it
