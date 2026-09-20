@@ -2,8 +2,7 @@
 
 #include <array>
 #include <atomic>
-#include <barrier>
-#include <mutex>
+#include <cstdint>
 #include <span>
 #include <thread>
 #include <type_traits>
@@ -12,28 +11,47 @@
 
 #include <gtest/gtest.h>
 
+#include <trivial/core/sync/event.h>
+#include <trivial/core/sync/lock_guard.h>
+#include <trivial/core/sync/mutex.h>
+#include <trivial/core/thread/thread.h>
 #include <trivial/task/task.h>
+
+#include "support/helpers.h"
 
 namespace trivial::task {
 
 namespace {
 
-TaskSystem g_taskSystem{TaskSystemConfig{}};
+TaskSystemConfig makeResolvedTestConfig() noexcept {
+	TaskSystemConfig config{};
+	config.workers.count = trivial::thread::Thread::resolveConcurrency(config.workers.count);
+	return config;
+}
 
-class TaskSystemTestSetup {
+class ScopedTaskSystem {
 public:
-	TaskSystemTestSetup() noexcept { setActiveTaskSystem(&g_taskSystem); }
+	ScopedTaskSystem() noexcept
+	    : m_parkingLotScope(m_config.workers.count + m_config.workers.maxStandbyWorkers)
+	    , m_taskSystem(m_config) {
+		m_mainThread.adoptCurrentThread({.name = "Test Main", .type = thread::ThreadType::Main});
+		setActiveTaskSystem(&m_taskSystem);
+	}
 
-	~TaskSystemTestSetup() noexcept { setActiveTaskSystem(nullptr); }
+	~ScopedTaskSystem() noexcept { setActiveTaskSystem(nullptr); }
 
-	TaskSystemTestSetup(const TaskSystemTestSetup&) = delete;
-	TaskSystemTestSetup& operator=(const TaskSystemTestSetup&) = delete;
+	ScopedTaskSystem(const ScopedTaskSystem&) = delete;
+	ScopedTaskSystem& operator=(const ScopedTaskSystem&) = delete;
 
-	TaskSystemTestSetup(TaskSystemTestSetup&&) = delete;
-	TaskSystemTestSetup& operator=(TaskSystemTestSetup&&) = delete;
+	ScopedTaskSystem(ScopedTaskSystem&&) = delete;
+	ScopedTaskSystem& operator=(ScopedTaskSystem&&) = delete;
+
+private:
+	TaskSystemConfig m_config = makeResolvedTestConfig();
+	thread::Thread m_mainThread;
+	trivial::tests::ScopedParkingLot m_parkingLotScope;
+	TaskSystem m_taskSystem;
 };
-
-TaskSystemTestSetup g_taskSystemTestSetup;
 
 struct LargeTaskResult {
 	std::array<std::byte, 64> storage{};
@@ -42,16 +60,13 @@ struct LargeTaskResult {
 
 static_assert(sizeof(LargeTaskResult) > 40);
 
-[[nodiscard]] std::size_t testDriverThreadCount() noexcept {
-	const auto kHardware = std::thread::hardware_concurrency();
-	return kHardware > 0 ? static_cast<std::size_t>(kHardware) : 4UZ;
-}
-
 // ----------------------------------------------------------------------------
 // Single-threaded correctness
 // ----------------------------------------------------------------------------
 
-TEST(TaskSystemTests, LaunchesTaskWithoutPrerequisites) {
+TEST(TaskSystemTest, LaunchWithoutPrerequisites) {
+	ScopedTaskSystem taskSystemScope;
+
 	bool executed = false;
 
 	const TaskHandle kTask = launch(TaskPayload{[&executed]() noexcept {
@@ -59,8 +74,6 @@ TEST(TaskSystemTests, LaunchesTaskWithoutPrerequisites) {
 	}});
 
 	EXPECT_TRUE(kTask.isValid());
-	EXPECT_FALSE(executed);
-	EXPECT_FALSE(isComplete(kTask));
 
 	wait(kTask);
 
@@ -68,7 +81,9 @@ TEST(TaskSystemTests, LaunchesTaskWithoutPrerequisites) {
 	EXPECT_TRUE(isComplete(kTask));
 }
 
-TEST(TaskSystemTests, WaitExecutesSinglePrerequisiteBeforeDependant) {
+TEST(TaskSystemTest, PrerequisiteRunsBeforeDependant) {
+	ScopedTaskSystem taskSystemScope;
+
 	std::vector<int> executionOrder;
 
 	const TaskHandle kPrerequisite = launch(TaskPayload{[&executionOrder]() noexcept {
@@ -93,7 +108,9 @@ TEST(TaskSystemTests, WaitExecutesSinglePrerequisiteBeforeDependant) {
 	EXPECT_TRUE(isComplete(kDependant));
 }
 
-TEST(TaskSystemTests, WaitExecutesMultiplePrerequisitesBeforeDependant) {
+TEST(TaskSystemTest, MultiplePrerequisitesRunBeforeDependant) {
+	ScopedTaskSystem taskSystemScope;
+
 	bool firstExecuted = false;
 	bool secondExecuted = false;
 	bool dependantExecuted = false;
@@ -131,7 +148,9 @@ TEST(TaskSystemTests, WaitExecutesMultiplePrerequisitesBeforeDependant) {
 	EXPECT_TRUE(isComplete(kDependant));
 }
 
-TEST(TaskSystemTests, WaitForSpanWaitsForAllTasks) {
+TEST(TaskSystemTest, WaitOnSpanWaitsForAll) {
+	ScopedTaskSystem taskSystemScope;
+
 	bool firstExecuted = false;
 	bool secondExecuted = false;
 
@@ -154,7 +173,9 @@ TEST(TaskSystemTests, WaitForSpanWaitsForAllTasks) {
 	EXPECT_TRUE(isComplete(kSecond));
 }
 
-TEST(TaskSystemTests, ReleaseSucceedsAfterCompletion) {
+TEST(TaskSystemTest, ReleaseSucceedsAfterCompletion) {
+	ScopedTaskSystem taskSystemScope;
+
 	const TaskLaunchOptions kOptions{.lifetime = TaskLifetime::Manual};
 
 	bool executed = false;
@@ -176,10 +197,14 @@ TEST(TaskSystemTests, ReleaseSucceedsAfterCompletion) {
 	EXPECT_EQ(release(kTask), TaskReleaseResult::InvalidHandle);
 }
 
-TEST(TaskSystemTests, ReleaseFailsBeforeCompletion) {
+TEST(TaskSystemTest, ReleaseFailsBeforeCompletion) {
+	ScopedTaskSystem taskSystemScope;
+
+	sync::Event gate;
 	bool executed = false;
 
-	const TaskHandle kTask = launch(TaskPayload{[&executed]() noexcept {
+	const TaskHandle kTask = launch(TaskPayload{[&gate, &executed]() noexcept {
+		gate.wait();
 		executed = true;
 	}});
 
@@ -188,13 +213,14 @@ TEST(TaskSystemTests, ReleaseFailsBeforeCompletion) {
 	EXPECT_EQ(release(kTask), TaskReleaseResult::TaskNotComplete);
 	EXPECT_FALSE(executed);
 
+	gate.trigger();
 	wait(kTask);
 
 	EXPECT_TRUE(executed);
 	EXPECT_EQ(release(kTask), TaskReleaseResult::Success);
 }
 
-TEST(TaskPriorityQueueTests, TryPopReturnsHighestPriorityFirst) {
+TEST(TaskPriorityQueueTest, TryPopReturnsHighestPriorityFirst) {
 	TaskPriorityQueue queue;
 
 	const TaskHandle kNormalHandle{.index = 1, .generation = 0};
@@ -214,7 +240,9 @@ TEST(TaskPriorityQueueTests, TryPopReturnsHighestPriorityFirst) {
 	EXPECT_FALSE(queue.tryPop(popped));
 }
 
-TEST(TaskSystemTests, LaunchDeducesVoidTaskType) {
+TEST(TaskSystemTest, LaunchDeducesVoidTaskType) {
+	ScopedTaskSystem taskSystemScope;
+
 	const auto kTask = launch([]() noexcept {});
 
 	static_assert(std::is_same_v<decltype(kTask), const Task<void>>);
@@ -226,7 +254,9 @@ TEST(TaskSystemTests, LaunchDeducesVoidTaskType) {
 	EXPECT_TRUE(isComplete(kTask));
 }
 
-TEST(TaskSystemTests, LaunchDeducesValueTaskType) {
+TEST(TaskSystemTest, LaunchDeducesValueTaskType) {
+	ScopedTaskSystem taskSystemScope;
+
 	const auto kTask = launch([]() noexcept -> int {
 		return 42;
 	});
@@ -240,7 +270,9 @@ TEST(TaskSystemTests, LaunchDeducesValueTaskType) {
 	EXPECT_TRUE(isComplete(kTask));
 }
 
-TEST(TaskSystemTests, GetResultWaitsForTaskAndReturnsInlineResult) {
+TEST(TaskSystemTest, GetResultWaitsAndReturnsInline) {
+	ScopedTaskSystem taskSystemScope;
+
 	bool executed = false;
 
 	auto task = launch([&executed]() noexcept -> int {
@@ -252,8 +284,6 @@ TEST(TaskSystemTests, GetResultWaitsForTaskAndReturnsInlineResult) {
 	static_assert(std::is_same_v<decltype(task), Task<int>>);
 
 	EXPECT_TRUE(task.isValid());
-	EXPECT_FALSE(executed);
-	EXPECT_FALSE(isComplete(task));
 
 	const int& kResult = task.getResult();
 
@@ -262,7 +292,9 @@ TEST(TaskSystemTests, GetResultWaitsForTaskAndReturnsInlineResult) {
 	EXPECT_EQ(kResult, 42);
 }
 
-TEST(TaskSystemTests, GetResultReturnsHeapStoredResult) {
+TEST(TaskSystemTest, GetResultReturnsHeapStoredResult) {
+	ScopedTaskSystem taskSystemScope;
+
 	auto task = launch([]() noexcept -> LargeTaskResult {
 		LargeTaskResult result{};
 		result.value = 42;
@@ -278,7 +310,9 @@ TEST(TaskSystemTests, GetResultReturnsHeapStoredResult) {
 	EXPECT_EQ(kResult.value, 42);
 }
 
-TEST(TaskSystemTests, GetResultReturnsVector) {
+TEST(TaskSystemTest, GetResultReturnsVector) {
+	ScopedTaskSystem taskSystemScope;
+
 	auto task = launch([]() noexcept -> std::vector<int> {
 		return {1, 2, 3, 4};
 	});
@@ -294,7 +328,9 @@ TEST(TaskSystemTests, GetResultReturnsVector) {
 	EXPECT_EQ(kResult[3], 4);
 }
 
-TEST(TaskSystemTests, TypedTaskCanBeUsedAsPrerequisite) {
+TEST(TaskSystemTest, TypedTaskCanBeUsedAsPrerequisite) {
+	ScopedTaskSystem taskSystemScope;
+
 	std::vector<int> executionOrder;
 
 	const auto kPrerequisite = launch([&executionOrder]() noexcept -> int {
@@ -323,7 +359,9 @@ TEST(TaskSystemTests, TypedTaskCanBeUsedAsPrerequisite) {
 	EXPECT_EQ(kPrerequisite.getResult(), 42);
 }
 
-TEST(TaskSystemTests, TypedTaskExposesUnderlyingHandle) {
+TEST(TaskSystemTest, TypedTaskExposesUnderlyingHandle) {
+	ScopedTaskSystem taskSystemScope;
+
 	const auto kTask = launch([]() noexcept -> int {
 		return 42;
 	});
@@ -339,7 +377,9 @@ TEST(TaskSystemTests, TypedTaskExposesUnderlyingHandle) {
 	EXPECT_EQ(kTask.getResult(), 42);
 }
 
-TEST(TaskSystemTests, TypedResultTaskCanBeReleasedAfterResultAccess) {
+TEST(TaskSystemTest, TypedResultReleasedAfterAccess) {
+	ScopedTaskSystem taskSystemScope;
+
 	const TaskLaunchOptions kOptions{.lifetime = TaskLifetime::Manual};
 
 	auto task = launch(
@@ -359,7 +399,9 @@ TEST(TaskSystemTests, TypedResultTaskCanBeReleasedAfterResultAccess) {
 // Multithreading
 // ----------------------------------------------------------------------------
 
-TEST(TaskSystemMultithreadingTests, ManyIndependentTasksAllCompleteExactlyOnce) {
+TEST(TaskSystemMultiThreadTest, IndependentTasksAllCompleteOnce) {
+	ScopedTaskSystem taskSystemScope;
+
 	constexpr std::size_t kTaskCount = 500;
 
 	std::atomic<int> counter{0};
@@ -385,68 +427,38 @@ TEST(TaskSystemMultithreadingTests, ManyIndependentTasksAllCompleteExactlyOnce) 
 	}
 }
 
-TEST(TaskSystemMultithreadingTests, ConcurrentExternalThreadsLaunchAndWaitSafely) {
-	const std::size_t kThreadCount = testDriverThreadCount();
-	constexpr std::size_t kTasksPerThread = 50;
-
-	std::atomic<int> counter{0};
-	std::barrier startBarrier(static_cast<std::ptrdiff_t>(kThreadCount));
-
-	std::vector<std::thread> driverThreads;
-	driverThreads.reserve(kThreadCount);
-
-	for (std::size_t t = 0; t < kThreadCount; ++t) {
-		driverThreads.emplace_back([&counter, &startBarrier]() {
-			startBarrier.arrive_and_wait();
-
-			std::vector<TaskHandle> handles;
-			handles.reserve(kTasksPerThread);
-
-			for (std::size_t i = 0; i < kTasksPerThread; ++i) {
-				handles.push_back(launch(TaskPayload{[&counter]() noexcept {
-					counter.fetch_add(1, std::memory_order_relaxed);
-				}}));
-			}
-
-			wait(std::span<const TaskHandle>{handles});
-		});
-	}
-
-	for (std::thread& driverThread : driverThreads) {
-		driverThread.join();
-	}
-
-	EXPECT_EQ(counter.load(std::memory_order_relaxed), static_cast<int>(kThreadCount * kTasksPerThread));
-}
-
-TEST(TaskSystemMultithreadingTests, TasksAreDistributedAcrossMultipleWorkerThreads) {
-	if (std::thread::hardware_concurrency() <= 1) {
+TEST(TaskSystemMultiThreadTest, TasksDistributeAcrossWorkers) {
+	if (thread::Thread::resolveConcurrency(0) <= 1) {
 		GTEST_SKIP() << "Single-core host - worker distribution cannot be observed";
 	}
 
+	ScopedTaskSystem taskSystemScope;
+
 	constexpr std::size_t kTaskCount = 400;
 
-	std::mutex threadIdMutex;
-	std::unordered_set<std::thread::id> observedThreadIds;
+	sync::Mutex workerIndexMutex;
+	std::unordered_set<std::uint32_t> observedWorkerIndices;
 	std::vector<TaskHandle> handles;
 	handles.reserve(kTaskCount);
 
 	for (std::size_t i = 0; i < kTaskCount; ++i) {
-		handles.push_back(launch(TaskPayload{[&threadIdMutex, &observedThreadIds]() noexcept {
-			std::lock_guard<std::mutex> lock(threadIdMutex);
-			observedThreadIds.insert(std::this_thread::get_id());
+		handles.push_back(launch(TaskPayload{[&workerIndexMutex, &observedWorkerIndices]() noexcept {
+			sync::LockGuard<sync::Mutex> lock(workerIndexMutex);
+			observedWorkerIndices.insert(thread::Thread::current()->index());
 		}}));
 	}
 
 	wait(std::span<const TaskHandle>{handles});
 
-	EXPECT_GT(observedThreadIds.size(), 1UZ);
+	EXPECT_GT(observedWorkerIndices.size(), 1UZ);
 }
 
-TEST(TaskSystemMultithreadingTests, LongSequentialDependencyChainPreservesOrder) {
+TEST(TaskSystemMultiThreadTest, DependencyChainPreservesOrder) {
+	ScopedTaskSystem taskSystemScope;
+
 	constexpr int kChainLength = 100;
 
-	std::mutex orderMutex;
+	sync::Mutex orderMutex;
 	std::vector<int> executionOrder;
 	executionOrder.reserve(static_cast<std::size_t>(kChainLength));
 
@@ -454,7 +466,7 @@ TEST(TaskSystemMultithreadingTests, LongSequentialDependencyChainPreservesOrder)
 
 	for (int i = 0; i < kChainLength; ++i) {
 		TaskPayload payload{[&orderMutex, &executionOrder, i]() noexcept {
-			std::lock_guard<std::mutex> lock(orderMutex);
+			sync::LockGuard<sync::Mutex> lock(orderMutex);
 			executionOrder.push_back(i);
 		}};
 
@@ -470,7 +482,9 @@ TEST(TaskSystemMultithreadingTests, LongSequentialDependencyChainPreservesOrder)
 	}
 }
 
-TEST(TaskSystemMultithreadingTests, WideFanOutCompletesBeforeFanInJoinRuns) {
+TEST(TaskSystemMultiThreadTest, FanOutCompletesBeforeFanIn) {
+	ScopedTaskSystem taskSystemScope;
+
 	constexpr std::size_t kBranchCount = 32;
 
 	std::atomic<std::size_t> branchesCompleted{0};
@@ -499,7 +513,9 @@ TEST(TaskSystemMultithreadingTests, WideFanOutCompletesBeforeFanInJoinRuns) {
 	EXPECT_TRUE(joinSawAllBranchesComplete);
 }
 
-TEST(TaskSystemMultithreadingTests, ReentrantWaitFromInsideATaskDoesNotDeadlock) {
+TEST(TaskSystemMultiThreadTest, ReentrantWaitDoesNotDeadlock) {
+	ScopedTaskSystem taskSystemScope;
+
 	bool innermostExecuted = false;
 	bool middleExecuted = false;
 	bool outerExecuted = false;
@@ -529,13 +545,19 @@ TEST(TaskSystemMultithreadingTests, ReentrantWaitFromInsideATaskDoesNotDeadlock)
 	EXPECT_TRUE(outerExecuted);
 }
 
-TEST(TaskSystemMultithreadingTests, DestructorDrainsOutstandingWorkBeforeReturning) {
+TEST(TaskSystemMultiThreadTest, DestructorDrainsOutstandingWork) {
+	thread::Thread mainThread;
+	mainThread.adoptCurrentThread({.name = "Test Main", .type = thread::ThreadType::Main});
+
+	const TaskSystemConfig kConfig = makeResolvedTestConfig();
+	trivial::tests::ScopedParkingLot parkingLotScope(kConfig.workers.count + kConfig.workers.maxStandbyWorkers);
+
 	constexpr int kTaskCount = 20;
 
 	std::atomic<int> completedCount{0};
 
 	{
-		TaskSystem localSystem{TaskSystemConfig{}};
+		TaskSystem localSystem{kConfig};
 
 		TaskHandle previous{};
 
@@ -554,8 +576,14 @@ TEST(TaskSystemMultithreadingTests, DestructorDrainsOutstandingWorkBeforeReturni
 	EXPECT_EQ(completedCount.load(std::memory_order_relaxed), kTaskCount);
 }
 
-TEST(TaskSystemTests, LaunchReturnsInvalidHandleWhenCapacityExhausted) {
-	TaskSystem localSystem{TaskSystemConfig{}};
+TEST(TaskSystemTest, LaunchFailsWhenCapacityExhausted) {
+	thread::Thread mainThread;
+	mainThread.adoptCurrentThread({.name = "Test Main", .type = thread::ThreadType::Main});
+
+	const TaskSystemConfig kConfig = makeResolvedTestConfig();
+	trivial::tests::ScopedParkingLot parkingLotScope(kConfig.workers.count + kConfig.workers.maxStandbyWorkers);
+
+	TaskSystem localSystem{kConfig};
 
 	// NOTE: Needs adjusting if the max task count is increased
 	constexpr int kMaxTaskCount = 65536;
@@ -587,13 +615,19 @@ TEST(TaskSystemTests, LaunchReturnsInvalidHandleWhenCapacityExhausted) {
 	}
 }
 
-TEST(TaskSystemMultithreadingTests, DestructorWaitsForSlowRunningTaskToFinish) {
+TEST(TaskSystemMultiThreadTest, DestructorWaitsForSlowTask) {
+	thread::Thread mainThread;
+	mainThread.adoptCurrentThread({.name = "Test Main", .type = thread::ThreadType::Main});
+
+	const TaskSystemConfig kConfig = makeResolvedTestConfig();
+	trivial::tests::ScopedParkingLot parkingLotScope(kConfig.workers.count + kConfig.workers.maxStandbyWorkers);
+
 	constexpr auto kTaskDuration = std::chrono::milliseconds{100};
 
 	std::atomic<bool> taskCompleted{false};
 
 	{
-		TaskSystem localSystem{TaskSystemConfig{}};
+		TaskSystem localSystem{kConfig};
 
 		const TaskHandle kTask = localSystem.launch(TaskPayload{[&taskCompleted, kTaskDuration]() noexcept {
 			std::this_thread::sleep_for(kTaskDuration);

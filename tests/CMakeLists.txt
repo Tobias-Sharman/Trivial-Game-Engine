@@ -35,6 +35,7 @@ add_executable(trivial_tests
 	sync/semaphore_single_thread.cpp
 	sync/spin_lock_single_thread.cpp
 	sync/spin_lock_multi_thread.cpp
+	task/task_system.cpp
 	thread/custom_thread_type.cpp
 )
 
