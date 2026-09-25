@@ -97,9 +97,11 @@ TaskSystem::~TaskSystem() noexcept {
 		}
 	}
 
+#if TRIVIAL_ENABLE_ASSERTS
 	for (const Worker& worker : m_workers) {
 		TRIVIAL_ASSERT(worker.localQueue.empty());
 	}
+#endif // TRIVIAL_ENABLE_ASSERTS
 
 	for (Worker& worker : m_workers) {
 		worker.stopping.store(true, std::memory_order_relaxed);
