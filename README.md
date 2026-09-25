@@ -4,34 +4,36 @@ A game engine designed for 2.5D games. The design will be more specialised and
 directed towards the creation of game with myself and a friend. The creation of
 the engine is to allow for complete freedom in the development of the game.
 
-Building is done through cmake. It will pull in the base dependencies, e.g.
-GLFW, and VMA, to a dependencies directory, except for the Vukan SDK, which you
-must get yourself. For the Vulkan SDK, it is normally recommended to do so
-through the official LunarG Vulkan SDK.
+Build tooling (including grabbing dependencies) is handled via CMake, but built
+on top is a python script that is recommended for usage for building and
+especially for testing.
 
-Recent testing on windows revealed some unknown issues, this has not been fully
-explored but appears to be either a glfw or vulkan issue that does not surface
-an error yet does not result in proper execution. It is unclear if this is a
-consequence of windows being different or my machines install style of some of
-the required packages hiding a bug in dependency pulling in. This will be
-explored once I have need for Windows to be properly working (sometime mid 20s
-of August), so I am free to focus on some other stuff.
+Tested on MacOS with Apple Silicon and remains needing testing on other
+platforms - all architectures for Windows and Linux, and older x86 Mac. A later
+check on support for mobile platforms may also be taken as an extension to the
+engine.
 
-There is no formal licence and everything is free to use with no rights
-reserved.
+Licensed under the [Apache License, Version 2.0](LICENSE). Games and other
+software built with the engine can use any license, but must keep the
+[NOTICE.md](NOTICE.md) file's attribution somewhere a user could reasonably
+find it (e.g. a credits screen, documentation, or an in-app NOTICE display).
+NOTICE.md also lists the engine's third-party dependencies and their license
+terms, and credits design references where deemed appropriate. A note on this
+is it need not be a title screen as that can often interfere with the feel of a
+game, and as such implementation of accreditation is deferred to the user.
 
-Documentation for the parts of the engine as they are in an appropriate place
-to not have an overhaul to the api or the internals that would entirely change
-functionality. For instance the task system can be found with its initial
-documentation in there.
+Some documentation can be found in this repository, this documentation is not
+complete, due to some bits with work ongoing and without a proper release
+schedule keeping to having full documentation for each component added that may
+likely change later. It is a personal project so a great formality of this is
+neglected prior to a proper version 1.0.0.
 
-Tests are ai generated for the most part for the initial engine development.
-This simply allows for faster development when getting the base level working,
-once all in place and looking at first proper release the tests will be
-reviewed and cleaned up.
+## Current plan of action
 
-Current plan of action:
-
+- Rework config for engine and task system to match style taken through other
+engine components and move some such config to compile time over runtime.
+- Custom Chrono with suitable types
+- Function decoration with const args and compiler attributes where appropriate
 - Allocator
   - Arenas allocator
   - general allocator
@@ -44,6 +46,15 @@ Current plan of action:
   - Full testing of allocator (segment allocator is briefly yet importantly not
   fully tested)
 - Basic physics system to test and profile the task system
+- Fibre backing to task system with context switching
+  - Context switching from defined points and not called from outside of the
+  running thread to keep the register handling simple, clean, and consistent
+    - A need for context switching from outside would go in contrast to some of
+    the intended principles of the task system with clean tasks run to
+    completion independently, and without side effects
+- First party parallel running tasks
+- Proper automatic handle release, mark a flag on destruction (i.e. not some
+reference counted form)
 - Overhaul of the ECS system to have a proper efficient storage rather than the
 current placeholder mockup
   - Will be chunked archtype unless I can narrow done how to implement a sparse
