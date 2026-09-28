@@ -7,8 +7,8 @@
 
 namespace boids {
 
-constexpr std::size_t g_kBatchSize = 10;
-constexpr std::size_t g_kInitialBoidCount = 10;
+constexpr std::size_t g_kBatchSize = 5;
+constexpr std::size_t g_kInitialBoidCount = 250;
 
 struct Boid {
 	trivial::math::Vec2f position{};
@@ -32,7 +32,7 @@ struct BoidConfig {
 	std::size_t slowFrameStreakToCull = 10;  // NOLINT(readability-magic-numbers)
 
 	float spawnIntervalSeconds = 2.0F; // NOLINT(readability-magic-numbers)
-	std::size_t maxBoidCount = 100;    // NOLINT(readability-magic-numbers)
+	std::size_t maxBoidCount = 10000;  // NOLINT(readability-magic-numbers)
 };
 
 } // namespace boids

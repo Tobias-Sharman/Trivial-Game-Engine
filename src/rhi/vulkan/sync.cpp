@@ -1,5 +1,9 @@
 #include "rhi/vulkan/sync.h"
 
+#include <cstdint>
+
+#include <vulkan/vulkan_core.h>
+
 #include <trivial/core/assert.h>
 
 #include "rhi/vulkan/result.h"

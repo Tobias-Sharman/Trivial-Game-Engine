@@ -7,7 +7,7 @@ namespace trivial {
 
 enum class GraphicsApi : std::uint8_t {
 	Auto,
-	Vulkan
+	Vulkan,
 };
 
 } // namespace trivial

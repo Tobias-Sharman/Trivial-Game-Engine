@@ -2,12 +2,14 @@
 #include <array>
 #include <atomic>
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <thread>
 #include <vector>
 
 #include <gtest/gtest.h>
 
+#include <trivial/core/platform.h>
 #include <trivial/core/thread/thread.h>
 
 #include "support/helpers.h"
@@ -30,8 +32,8 @@ TEST(ThreadTest, CreateJoinRunsEntry) {
 	trivial::tests::attachStackAllocator(config);
 #endif // TRIVIAL_PLATFORM_POSIX
 
-	trivial::thread::ThreadCreateResult result = thread.create(config, &markRan, &ran);
-	ASSERT_EQ(result.error, trivial::thread::ThreadCreateError::None);
+	const trivial::thread::ThreadCreateResult kResult = thread.create(config, &markRan, &ran);
+	ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
 
 	EXPECT_TRUE(thread.joinable());
 
@@ -55,8 +57,8 @@ TEST(ThreadTest, SuspendedWaitsForResume) {
 #endif // TRIVIAL_PLATFORM_POSIX
 	config.createSuspended = true;
 
-	trivial::thread::ThreadCreateResult result = thread.create(config, &markRan, &ran);
-	ASSERT_EQ(result.error, trivial::thread::ThreadCreateError::None);
+	const trivial::thread::ThreadCreateResult kResult = thread.create(config, &markRan, &ran);
+	ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
 
 	EXPECT_EQ(thread.state(), trivial::thread::ThreadState::Suspended);
 
@@ -87,14 +89,14 @@ TEST(ThreadTest, IndexVisibleInEntry) {
 #endif // TRIVIAL_PLATFORM_POSIX
 
 	IndexObservation observation{.thread = &thread, .observedIndex = &observedIndex};
-	trivial::thread::ThreadCreateResult result = thread.create(
+	const trivial::thread::ThreadCreateResult kResult = thread.create(
 	    config,
 	    [](void* arg) {
-		    auto* observation = static_cast<IndexObservation*>(arg);
+		    const IndexObservation* observation = static_cast<IndexObservation*>(arg);
 		    observation->observedIndex->store(observation->thread->index(), std::memory_order_release);
 	    },
 	    &observation);
-	ASSERT_EQ(result.error, trivial::thread::ThreadCreateError::None);
+	ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
 
 	thread.join();
 
@@ -117,8 +119,8 @@ TEST(ThreadTest, IndicesAreDistinct) {
 		trivial::tests::attachStackAllocator(config);
 #endif // TRIVIAL_PLATFORM_POSIX
 
-		trivial::thread::ThreadCreateResult result = thread.create(config, [](void*) {}, nullptr);
-		ASSERT_EQ(result.error, trivial::thread::ThreadCreateError::None);
+		const trivial::thread::ThreadCreateResult kResult = thread.create(config, [](void*) {}, nullptr);
+		ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
 
 		EXPECT_EQ(std::ranges::find(seenIndices, thread.index()), seenIndices.end());
 		seenIndices.push_back(thread.index());
@@ -147,15 +149,15 @@ TEST(ThreadTest, CurrentResolvesToSelf) {
 #endif // TRIVIAL_PLATFORM_POSIX
 
 	CurrentObservation observation{.thread = &thread, .matched = &matched};
-	trivial::thread::ThreadCreateResult result = thread.create(
+	const trivial::thread::ThreadCreateResult kResult = thread.create(
 	    config,
 	    [](void* arg) {
-		    auto* observation = static_cast<CurrentObservation*>(arg);
+		    const CurrentObservation* observation = static_cast<CurrentObservation*>(arg);
 		    observation->matched->store(trivial::thread::Thread::current() == observation->thread,
 			                            std::memory_order_release);
 	    },
 	    &observation);
-	ASSERT_EQ(result.error, trivial::thread::ThreadCreateError::None);
+	ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
 
 	thread.join();
 
@@ -204,13 +206,13 @@ TEST(ThreadTest, DestructorAbortsIfJoinable) {
 		    trivial::tests::attachStackAllocator(config);
 #endif // TRIVIAL_PLATFORM_POSIX
 
-		    trivial::thread::ThreadCreateResult result = thread.create(
+		    const trivial::thread::ThreadCreateResult kResult = thread.create(
 		        config,
 		        [](void*) {
 			        std::this_thread::sleep_for(std::chrono::milliseconds(200));
 		        }, // NOLINT(readability-magic-numbers)
 		        nullptr);
-		    (void)result;
+		    (void)kResult;
 	    },
 #if TRIVIAL_ENABLE_LOGGING
 	    "destroyed while still joinable");

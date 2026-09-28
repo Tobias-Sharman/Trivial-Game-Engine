@@ -13,9 +13,9 @@ namespace {
 template <typename T>
 constexpr T epsilon() noexcept {
 	if constexpr (std::is_same_v<T, float>) {
-		return T{1.0e-5f};
+		return T{1.0e-5F};
 	} else {
-		return T{1.0e-12};
+		return T{1.0e-12F};
 	}
 }
 
@@ -55,75 +55,75 @@ void testVec2Basics() {
 
 template <typename T>
 void testVec2Arithmetic() {
-	Vec2<T> lhs{T{4}, T{8}};
-	Vec2<T> rhs{T{2}, T{4}};
+	const Vec2<T> kLhs{T{4}, T{8}};
+	const Vec2<T> kRhs{T{2}, T{4}};
 
-	EXPECT_EQ(+lhs, lhs);
-	EXPECT_EQ(-lhs, (Vec2<T>{T{-4}, T{-8}}));
+	EXPECT_EQ(+kLhs, kLhs);
+	EXPECT_EQ(-kLhs, (Vec2<T>{T{-4}, T{-8}}));
 
-	EXPECT_EQ(lhs + rhs, (Vec2<T>{T{6}, T{12}}));
-	EXPECT_EQ(lhs - rhs, (Vec2<T>{T{2}, T{4}}));
-	EXPECT_EQ(lhs * rhs, (Vec2<T>{T{8}, T{32}}));
-	EXPECT_EQ(lhs / rhs, (Vec2<T>{T{2}, T{2}}));
+	EXPECT_EQ(kLhs + kRhs, (Vec2<T>{T{6}, T{12}}));
+	EXPECT_EQ(kLhs - kRhs, (Vec2<T>{T{2}, T{4}}));
+	EXPECT_EQ(kLhs * kRhs, (Vec2<T>{T{8}, T{32}}));
+	EXPECT_EQ(kLhs / kRhs, (Vec2<T>{T{2}, T{2}}));
 
-	EXPECT_EQ(lhs * T{2}, (Vec2<T>{T{8}, T{16}}));
-	EXPECT_EQ(T{2} * lhs, (Vec2<T>{T{8}, T{16}}));
-	EXPECT_EQ(lhs / T{2}, (Vec2<T>{T{2}, T{4}}));
+	EXPECT_EQ(kLhs * T{2}, (Vec2<T>{T{8}, T{16}}));
+	EXPECT_EQ(T{2} * kLhs, (Vec2<T>{T{8}, T{16}}));
+	EXPECT_EQ(kLhs / T{2}, (Vec2<T>{T{2}, T{4}}));
 
-	Vec2<T> value = lhs;
+	Vec2<T> value = kLhs;
 
-	EXPECT_EQ(&(value += rhs), &value);
+	EXPECT_EQ(&(value += kRhs), &value);
 	EXPECT_EQ(value, (Vec2<T>{T{6}, T{12}}));
 
-	EXPECT_EQ(&(value -= rhs), &value);
-	EXPECT_EQ(value, lhs);
+	EXPECT_EQ(&(value -= kRhs), &value);
+	EXPECT_EQ(value, kLhs);
 
-	EXPECT_EQ(&(value *= rhs), &value);
+	EXPECT_EQ(&(value *= kRhs), &value);
 	EXPECT_EQ(value, (Vec2<T>{T{8}, T{32}}));
 
-	EXPECT_EQ(&(value /= rhs), &value);
-	EXPECT_EQ(value, lhs);
+	EXPECT_EQ(&(value /= kRhs), &value);
+	EXPECT_EQ(value, kLhs);
 
 	EXPECT_EQ(&(value *= T{2}), &value);
 	EXPECT_EQ(value, (Vec2<T>{T{8}, T{16}}));
 
 	EXPECT_EQ(&(value /= T{2}), &value);
-	EXPECT_EQ(value, lhs);
+	EXPECT_EQ(value, kLhs);
 }
 
 template <typename T>
 void testVec2Geometry() {
-	Vec2<T> vector{T{3}, T{4}};
-	Vec2<T> other{T{2}, T{1}};
+	const Vec2<T> kVector{T{3}, T{4}};
+	const Vec2<T> kOther{T{2}, T{1}};
 
-	EXPECT_EQ(vector.dot(other), T{10});
-	EXPECT_EQ(dot(vector, other), T{10});
+	EXPECT_EQ(kVector.dot(kOther), T{10});
+	EXPECT_EQ(dot(kVector, kOther), T{10});
 
-	EXPECT_EQ(vector.cross(other), T{-5});
-	EXPECT_EQ(cross(vector, other), T{-5});
+	EXPECT_EQ(kVector.cross(kOther), T{-5});
+	EXPECT_EQ(cross(kVector, kOther), T{-5});
 
-	EXPECT_EQ(vector.lengthSquared(), T{25});
-	EXPECT_NEAR(vector.length(), T{5}, epsilon<T>());
-	EXPECT_NEAR(vector.robustLength(), T{5}, epsilon<T>());
+	EXPECT_EQ(kVector.lengthSquared(), T{25});
+	EXPECT_NEAR(kVector.length(), T{5}, epsilon<T>());
+	EXPECT_NEAR(kVector.robustLength(), T{5}, epsilon<T>());
 
-	expectNear(vector.normalised(), (Vec2<T>{T{0.6}, T{0.8}}));
+	expectNear(kVector.normalised(), (Vec2<T>{T{0.6}, T{0.8}}));
 	EXPECT_EQ(Vec2<T>{}.normalisedOrZero(), Vec2<T>{});
 
-	EXPECT_EQ(vector.perpLeft(), (Vec2<T>{T{-4}, T{3}}));
-	EXPECT_EQ(vector.perpRight(), (Vec2<T>{T{4}, T{-3}}));
+	EXPECT_EQ(kVector.perpLeft(), (Vec2<T>{T{-4}, T{3}}));
+	EXPECT_EQ(kVector.perpRight(), (Vec2<T>{T{4}, T{-3}}));
 
-	Vec2<T> start{T{0}, T{2}};
-	Vec2<T> end{T{4}, T{6}};
+	const Vec2<T> kStart{T{0}, T{2}};
+	const Vec2<T> kEnd{T{4}, T{6}};
 
-	EXPECT_EQ(start.lerp(end, T{0.5}), (Vec2<T>{T{2}, T{4}}));
-	EXPECT_EQ(lerp(start, end, T{0.5}), (Vec2<T>{T{2}, T{4}}));
+	EXPECT_EQ(kStart.lerp(kEnd, T{0.5}), (Vec2<T>{T{2}, T{4}}));
+	EXPECT_EQ(lerp(kStart, kEnd, T{0.5}), (Vec2<T>{T{2}, T{4}}));
 
-	Vec2<T> close{T{1}, T{2}};
-	Vec2<T> nearlyClose{T{1} + (epsilon<T>() / T{2}), T{2} - (epsilon<T>() / T{2})};
+	const Vec2<T> kClose{T{1}, T{2}};
+	const Vec2<T> kNearlyClose{T{1} + (epsilon<T>() / T{2}), T{2} - (epsilon<T>() / T{2})};
 
-	EXPECT_TRUE(close.nearlyEqual(nearlyClose, epsilon<T>()));
-	EXPECT_TRUE(nearlyEqual(close, nearlyClose, epsilon<T>()));
-	EXPECT_FALSE(close.nearlyEqual(Vec2<T>{T{2}, T{3}}, epsilon<T>()));
+	EXPECT_TRUE(kClose.nearlyEqual(kNearlyClose, epsilon<T>()));
+	EXPECT_TRUE(nearlyEqual(kClose, kNearlyClose, epsilon<T>()));
+	EXPECT_FALSE(kClose.nearlyEqual(Vec2<T>{T{2}, T{3}}, epsilon<T>()));
 }
 
 TEST(Vec2Test, SupportsBasicAccess) {
@@ -160,63 +160,63 @@ void testVec3Basics() {
 
 template <typename T>
 void testVec3Arithmetic() {
-	Vec3<T> lhs{T{4}, T{8}, T{12}};
-	Vec3<T> rhs{T{2}, T{4}, T{6}};
+	const Vec3<T> kLhs{T{4}, T{8}, T{12}};
+	const Vec3<T> kRhs{T{2}, T{4}, T{6}};
 
-	EXPECT_EQ(+lhs, lhs);
-	EXPECT_EQ(-lhs, (Vec3<T>{T{-4}, T{-8}, T{-12}}));
+	EXPECT_EQ(+kLhs, kLhs);
+	EXPECT_EQ(-kLhs, (Vec3<T>{T{-4}, T{-8}, T{-12}}));
 
-	EXPECT_EQ(lhs + rhs, (Vec3<T>{T{6}, T{12}, T{18}}));
-	EXPECT_EQ(lhs - rhs, (Vec3<T>{T{2}, T{4}, T{6}}));
-	EXPECT_EQ(lhs * rhs, (Vec3<T>{T{8}, T{32}, T{72}}));
-	EXPECT_EQ(lhs / rhs, (Vec3<T>{T{2}, T{2}, T{2}}));
+	EXPECT_EQ(kLhs + kRhs, (Vec3<T>{T{6}, T{12}, T{18}}));
+	EXPECT_EQ(kLhs - kRhs, (Vec3<T>{T{2}, T{4}, T{6}}));
+	EXPECT_EQ(kLhs * kRhs, (Vec3<T>{T{8}, T{32}, T{72}}));
+	EXPECT_EQ(kLhs / kRhs, (Vec3<T>{T{2}, T{2}, T{2}}));
 
-	EXPECT_EQ(lhs * T{2}, (Vec3<T>{T{8}, T{16}, T{24}}));
-	EXPECT_EQ(T{2} * lhs, (Vec3<T>{T{8}, T{16}, T{24}}));
-	EXPECT_EQ(lhs / T{2}, (Vec3<T>{T{2}, T{4}, T{6}}));
+	EXPECT_EQ(kLhs * T{2}, (Vec3<T>{T{8}, T{16}, T{24}}));
+	EXPECT_EQ(T{2} * kLhs, (Vec3<T>{T{8}, T{16}, T{24}}));
+	EXPECT_EQ(kLhs / T{2}, (Vec3<T>{T{2}, T{4}, T{6}}));
 
-	Vec3<T> value = lhs;
+	Vec3<T> value = kLhs;
 
-	EXPECT_EQ(&(value += rhs), &value);
-	EXPECT_EQ(&(value -= rhs), &value);
-	EXPECT_EQ(&(value *= rhs), &value);
-	EXPECT_EQ(&(value /= rhs), &value);
+	EXPECT_EQ(&(value += kRhs), &value);
+	EXPECT_EQ(&(value -= kRhs), &value);
+	EXPECT_EQ(&(value *= kRhs), &value);
+	EXPECT_EQ(&(value /= kRhs), &value);
 	EXPECT_EQ(&(value *= T{2}), &value);
 	EXPECT_EQ(&(value /= T{2}), &value);
 
-	EXPECT_EQ(value, lhs);
+	EXPECT_EQ(value, kLhs);
 }
 
 template <typename T>
 void testVec3Geometry() {
-	Vec3<T> vector{T{3}, T{4}, T{0}};
-	Vec3<T> other{T{2}, T{1}, T{3}};
+	const Vec3<T> kVector{T{3}, T{4}, T{0}};
+	const Vec3<T> kOther{T{2}, T{1}, T{3}};
 
-	EXPECT_EQ(vector.dot(other), T{10});
-	EXPECT_EQ(dot(vector, other), T{10});
+	EXPECT_EQ(kVector.dot(kOther), T{10});
+	EXPECT_EQ(dot(kVector, kOther), T{10});
 
-	EXPECT_EQ(vector.cross(other), (Vec3<T>{T{12}, T{-9}, T{-5}}));
-	EXPECT_EQ(cross(vector, other), (Vec3<T>{T{12}, T{-9}, T{-5}}));
+	EXPECT_EQ(kVector.cross(kOther), (Vec3<T>{T{12}, T{-9}, T{-5}}));
+	EXPECT_EQ(cross(kVector, kOther), (Vec3<T>{T{12}, T{-9}, T{-5}}));
 
-	EXPECT_EQ(vector.lengthSquared(), T{25});
-	EXPECT_NEAR(vector.length(), T{5}, epsilon<T>());
-	EXPECT_NEAR(vector.robustLength(), T{5}, epsilon<T>());
+	EXPECT_EQ(kVector.lengthSquared(), T{25});
+	EXPECT_NEAR(kVector.length(), T{5}, epsilon<T>());
+	EXPECT_NEAR(kVector.robustLength(), T{5}, epsilon<T>());
 
-	expectNear(vector.normalised(), (Vec3<T>{T{0.6}, T{0.8}, T{0}}));
+	expectNear(kVector.normalised(), (Vec3<T>{T{0.6}, T{0.8}, T{0}}));
 	EXPECT_EQ(Vec3<T>{}.normalisedOrZero(), Vec3<T>{});
 
-	Vec3<T> start{T{0}, T{2}, T{4}};
-	Vec3<T> end{T{4}, T{6}, T{8}};
+	const Vec3<T> kStart{T{0}, T{2}, T{4}};
+	const Vec3<T> kEnd{T{4}, T{6}, T{8}};
 
-	EXPECT_EQ(start.lerp(end, T{0.5}), (Vec3<T>{T{2}, T{4}, T{6}}));
-	EXPECT_EQ(lerp(start, end, T{0.5}), (Vec3<T>{T{2}, T{4}, T{6}}));
+	EXPECT_EQ(kStart.lerp(kEnd, T{0.5}), (Vec3<T>{T{2}, T{4}, T{6}}));
+	EXPECT_EQ(lerp(kStart, kEnd, T{0.5}), (Vec3<T>{T{2}, T{4}, T{6}}));
 
-	Vec3<T> close{T{1}, T{2}, T{3}};
-	Vec3<T> nearlyClose{T{1} + (epsilon<T>() / T{2}), T{2} - (epsilon<T>() / T{2}), T{3}};
+	const Vec3<T> kClose{T{1}, T{2}, T{3}};
+	const Vec3<T> kNearlyClose{T{1} + (epsilon<T>() / T{2}), T{2} - (epsilon<T>() / T{2}), T{3}};
 
-	EXPECT_TRUE(close.nearlyEqual(nearlyClose, epsilon<T>()));
-	EXPECT_TRUE(nearlyEqual(close, nearlyClose, epsilon<T>()));
-	EXPECT_FALSE(close.nearlyEqual(Vec3<T>{T{2}, T{3}, T{4}}, epsilon<T>()));
+	EXPECT_TRUE(kClose.nearlyEqual(kNearlyClose, epsilon<T>()));
+	EXPECT_TRUE(nearlyEqual(kClose, kNearlyClose, epsilon<T>()));
+	EXPECT_FALSE(kClose.nearlyEqual(Vec3<T>{T{2}, T{3}, T{4}}, epsilon<T>()));
 }
 
 TEST(Vec3Test, SupportsBasicAccess) {
@@ -255,60 +255,60 @@ void testVec4Basics() {
 
 template <typename T>
 void testVec4Arithmetic() {
-	Vec4<T> lhs{T{4}, T{8}, T{12}, T{16}};
-	Vec4<T> rhs{T{2}, T{4}, T{6}, T{8}};
+	const Vec4<T> kLhs{T{4}, T{8}, T{12}, T{16}};
+	const Vec4<T> kRhs{T{2}, T{4}, T{6}, T{8}};
 
-	EXPECT_EQ(+lhs, lhs);
-	EXPECT_EQ(-lhs, (Vec4<T>{T{-4}, T{-8}, T{-12}, T{-16}}));
+	EXPECT_EQ(+kLhs, kLhs);
+	EXPECT_EQ(-kLhs, (Vec4<T>{T{-4}, T{-8}, T{-12}, T{-16}}));
 
-	EXPECT_EQ(lhs + rhs, (Vec4<T>{T{6}, T{12}, T{18}, T{24}}));
-	EXPECT_EQ(lhs - rhs, (Vec4<T>{T{2}, T{4}, T{6}, T{8}}));
-	EXPECT_EQ(lhs * rhs, (Vec4<T>{T{8}, T{32}, T{72}, T{128}}));
-	EXPECT_EQ(lhs / rhs, (Vec4<T>{T{2}, T{2}, T{2}, T{2}}));
+	EXPECT_EQ(kLhs + kRhs, (Vec4<T>{T{6}, T{12}, T{18}, T{24}}));
+	EXPECT_EQ(kLhs - kRhs, (Vec4<T>{T{2}, T{4}, T{6}, T{8}}));
+	EXPECT_EQ(kLhs * kRhs, (Vec4<T>{T{8}, T{32}, T{72}, T{128}}));
+	EXPECT_EQ(kLhs / kRhs, (Vec4<T>{T{2}, T{2}, T{2}, T{2}}));
 
-	EXPECT_EQ(lhs * T{2}, (Vec4<T>{T{8}, T{16}, T{24}, T{32}}));
-	EXPECT_EQ(T{2} * lhs, (Vec4<T>{T{8}, T{16}, T{24}, T{32}}));
-	EXPECT_EQ(lhs / T{2}, (Vec4<T>{T{2}, T{4}, T{6}, T{8}}));
+	EXPECT_EQ(kLhs * T{2}, (Vec4<T>{T{8}, T{16}, T{24}, T{32}}));
+	EXPECT_EQ(T{2} * kLhs, (Vec4<T>{T{8}, T{16}, T{24}, T{32}}));
+	EXPECT_EQ(kLhs / T{2}, (Vec4<T>{T{2}, T{4}, T{6}, T{8}}));
 
-	Vec4<T> value = lhs;
+	Vec4<T> value = kLhs;
 
-	EXPECT_EQ(&(value += rhs), &value);
-	EXPECT_EQ(&(value -= rhs), &value);
-	EXPECT_EQ(&(value *= rhs), &value);
-	EXPECT_EQ(&(value /= rhs), &value);
+	EXPECT_EQ(&(value += kRhs), &value);
+	EXPECT_EQ(&(value -= kRhs), &value);
+	EXPECT_EQ(&(value *= kRhs), &value);
+	EXPECT_EQ(&(value /= kRhs), &value);
 	EXPECT_EQ(&(value *= T{2}), &value);
 	EXPECT_EQ(&(value /= T{2}), &value);
 
-	EXPECT_EQ(value, lhs);
+	EXPECT_EQ(value, kLhs);
 }
 
 template <typename T>
 void testVec4Geometry() {
-	Vec4<T> vector{T{3}, T{4}, T{0}, T{0}};
-	Vec4<T> other{T{2}, T{1}, T{3}, T{4}};
+	const Vec4<T> kVector{T{3}, T{4}, T{0}, T{0}};
+	const Vec4<T> kOther{T{2}, T{1}, T{3}, T{4}};
 
-	EXPECT_EQ(vector.dot(other), T{10});
-	EXPECT_EQ(dot(vector, other), T{10});
+	EXPECT_EQ(kVector.dot(kOther), T{10});
+	EXPECT_EQ(dot(kVector, kOther), T{10});
 
-	EXPECT_EQ(vector.lengthSquared(), T{25});
-	EXPECT_NEAR(vector.length(), T{5}, epsilon<T>());
-	EXPECT_NEAR(vector.robustLength(), T{5}, epsilon<T>());
+	EXPECT_EQ(kVector.lengthSquared(), T{25});
+	EXPECT_NEAR(kVector.length(), T{5}, epsilon<T>());
+	EXPECT_NEAR(kVector.robustLength(), T{5}, epsilon<T>());
 
-	expectNear(vector.normalised(), (Vec4<T>{T{0.6}, T{0.8}, T{0}, T{0}}));
+	expectNear(kVector.normalised(), (Vec4<T>{T{0.6}, T{0.8}, T{0}, T{0}}));
 	EXPECT_EQ(Vec4<T>{}.normalisedOrZero(), Vec4<T>{});
 
-	Vec4<T> start{T{0}, T{2}, T{4}, T{6}};
-	Vec4<T> end{T{4}, T{6}, T{8}, T{10}};
+	const Vec4<T> kStart{T{0}, T{2}, T{4}, T{6}};
+	const Vec4<T> kEnd{T{4}, T{6}, T{8}, T{10}};
 
-	EXPECT_EQ(start.lerp(end, T{0.5}), (Vec4<T>{T{2}, T{4}, T{6}, T{8}}));
-	EXPECT_EQ(lerp(start, end, T{0.5}), (Vec4<T>{T{2}, T{4}, T{6}, T{8}}));
+	EXPECT_EQ(kStart.lerp(kEnd, T{0.5}), (Vec4<T>{T{2}, T{4}, T{6}, T{8}}));
+	EXPECT_EQ(lerp(kStart, kEnd, T{0.5}), (Vec4<T>{T{2}, T{4}, T{6}, T{8}}));
 
-	Vec4<T> close{T{1}, T{2}, T{3}, T{4}};
-	Vec4<T> nearlyClose{T{1} + (epsilon<T>() / T{2}), T{2} - (epsilon<T>() / T{2}), T{3}, T{4}};
+	const Vec4<T> kClose{T{1}, T{2}, T{3}, T{4}};
+	const Vec4<T> kNearlyClose{T{1} + (epsilon<T>() / T{2}), T{2} - (epsilon<T>() / T{2}), T{3}, T{4}};
 
-	EXPECT_TRUE(close.nearlyEqual(nearlyClose, epsilon<T>()));
-	EXPECT_TRUE(nearlyEqual(close, nearlyClose, epsilon<T>()));
-	EXPECT_FALSE(close.nearlyEqual(Vec4<T>{T{2}, T{3}, T{4}, T{5}}, epsilon<T>()));
+	EXPECT_TRUE(kClose.nearlyEqual(kNearlyClose, epsilon<T>()));
+	EXPECT_TRUE(nearlyEqual(kClose, kNearlyClose, epsilon<T>()));
+	EXPECT_FALSE(kClose.nearlyEqual(Vec4<T>{T{2}, T{3}, T{4}, T{5}}, epsilon<T>()));
 }
 
 TEST(Vec4Test, SupportsBasicAccess) {

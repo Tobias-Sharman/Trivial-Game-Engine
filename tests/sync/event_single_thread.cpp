@@ -10,8 +10,8 @@
 namespace {
 
 TEST(EventSingleThreadTest, IsTriggeredDefaultsFalse) {
-	trivial::sync::Event event;
-	EXPECT_FALSE(event.isTriggered());
+	const trivial::sync::Event kEvent;
+	EXPECT_FALSE(kEvent.isTriggered());
 }
 
 TEST(EventSingleThreadTest, ResetIsSafeWhenNotTriggered) {
@@ -21,7 +21,7 @@ TEST(EventSingleThreadTest, ResetIsSafeWhenNotTriggered) {
 }
 
 TEST(EventSingleThreadTest, WaitForTimesOutThenSucceedsAfterTrigger) {
-	trivial::tests::ScopedParkingLot parkingLotScope(0);
+	const trivial::tests::ScopedParkingLot kParkingLotScope(0);
 
 	trivial::thread::Thread mainThread;
 	mainThread.adoptCurrentThread({.name = "main-test-thread", .type = trivial::thread::ThreadType::Main});

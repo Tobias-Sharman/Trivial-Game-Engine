@@ -8,11 +8,17 @@
 
 #include <trivial/core/assert.h>
 #include <trivial/core/log.h>
+#include <trivial/core/memory/memory_config.h>
+#include <trivial/core/memory/oom_handler.h>
 #include <trivial/core/platform.h>
 #include <trivial/core/profile.h>
 #include <trivial/core/sync/lock_guard.h>
 
 #include "core/memory/virtual_memory.h"
+
+#if TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
+#include <atomic>
+#endif // TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
 
 #if TRIVIAL_PLATFORM_WINDOWS
 #define WIN32_LEAN_AND_MEAN
@@ -40,14 +46,14 @@ constexpr std::size_t g_kBitIndexMask = g_kBitsPerWord - 1;
 constexpr std::uint64_t g_kFullWord = ~std::uint64_t{0};
 
 void* mapMetadata(std::size_t bytes, std::size_t pageSize, std::size_t& outMappingBytes, int& outOsErrorCode) noexcept {
-	std::size_t payload = (bytes + pageSize - 1) & ~(pageSize - 1);
+	const std::size_t kPayload = (bytes + pageSize - 1) & ~(pageSize - 1);
 
-	if (payload == 0 || payload > SIZE_MAX - (2 * pageSize)) {
+	if (kPayload == 0 || kPayload > SIZE_MAX - (2 * pageSize)) {
 		outOsErrorCode = 0;
 		return nullptr;
 	}
 
-	std::size_t mappingBytes = payload + (2 * pageSize);
+	const std::size_t kMappingBytes = kPayload + (2 * pageSize);
 
 #if TRIVIAL_PLATFORM_WINDOWS
 	void* raw = VirtualAlloc(nullptr, mappingBytes, MEM_RESERVE, PAGE_NOACCESS);
@@ -66,7 +72,7 @@ void* mapMetadata(std::size_t bytes, std::size_t pageSize, std::size_t& outMappi
 	}
 
 #elif TRIVIAL_PLATFORM_POSIX
-	void* raw = mmap(nullptr, mappingBytes, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	void* raw = mmap(nullptr, kMappingBytes, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	if (raw == MAP_FAILED) {
 		outOsErrorCode = errno;
 		return nullptr;
@@ -75,15 +81,15 @@ void* mapMetadata(std::size_t bytes, std::size_t pageSize, std::size_t& outMappi
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 	void* payloadBase = static_cast<char*>(raw) + pageSize;
 
-	if (mprotect(payloadBase, payload, PROT_READ | PROT_WRITE) != 0) {
+	if (mprotect(payloadBase, kPayload, PROT_READ | PROT_WRITE) != 0) {
 		outOsErrorCode = errno;
-		(void)munmap(raw, mappingBytes);
+		(void)munmap(raw, kMappingBytes);
 		return nullptr;
 	}
 
 #endif // Platform check
 
-	outMappingBytes = mappingBytes;
+	outMappingBytes = kMappingBytes;
 	return payloadBase;
 }
 
@@ -202,7 +208,7 @@ namespace trivial::memory {
 	bool succeeded = false;
 
 	{
-		sync::LockGuard lock(m_stateMutex);
+		const sync::LockGuard kLock(m_stateMutex);
 
 		const SystemInfo kSystemInfo = probeSystemInfo();
 		// NOTE: Could save this varible when page size is known but makes code
@@ -319,7 +325,7 @@ namespace trivial::memory {
 }
 
 void SegmentAllocator::shutdown() noexcept {
-	sync::LockGuard lock(m_stateMutex);
+	const sync::LockGuard kLock(m_stateMutex);
 
 	if (m_base == nullptr) {
 		return;
@@ -366,7 +372,7 @@ void SegmentAllocator::shutdown() noexcept {
 	void* result = nullptr;
 
 	{
-		sync::LockGuard lock(m_stateMutex);
+		const sync::LockGuard kLock(m_stateMutex);
 
 		std::size_t index = g_kInvalidIndex;
 
@@ -431,7 +437,7 @@ void SegmentAllocator::freeSegments(void* segments, std::size_t count) noexcept 
 
 	TRIVIAL_PROFILE_FREE("segments", segments);
 
-	sync::LockGuard lock(m_stateMutex);
+	const sync::LockGuard kLock(m_stateMutex);
 
 	const std::size_t kIndex = segmentIndex(segments);
 	TRIVIAL_ASSERT(kIndex + count <= m_segmentCapacity);
@@ -472,7 +478,7 @@ void SegmentAllocator::freeSegments(void* segments, std::size_t count) noexcept 
 		return 0;
 	}
 
-	sync::LockGuard lock(m_stateMutex);
+	const sync::LockGuard kLock(m_stateMutex);
 	return m_records[segmentIndex(segment)].committedPages; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 }
 
@@ -525,10 +531,10 @@ void SegmentAllocator::disableLargePages() noexcept {
 	void* target = nullptr;
 
 	{
-		sync::LockGuard lock(m_stateMutex);
+		const sync::LockGuard kLock(m_stateMutex);
 
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-		SegmentRecord& record = m_records[segmentIndex(segment)];
+		const SegmentRecord& record = m_records[segmentIndex(segment)];
 
 		if (record.committedPages >= pages) {
 			return true;
@@ -557,7 +563,7 @@ void SegmentAllocator::disableLargePages() noexcept {
 	}
 
 	{
-		sync::LockGuard lock(m_stateMutex);
+		const sync::LockGuard kLock(m_stateMutex);
 
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 		SegmentRecord& record = m_records[segmentIndex(segment)];
@@ -651,7 +657,7 @@ void SegmentAllocator::trimCommittedPagesTo(void* segment, std::size_t pages) no
 
 	const std::size_t kPageSize = m_capabilities.pageSize; // NOLINT(readability-static-accessed-through-instance)
 
-	sync::LockGuard lock(m_stateMutex);
+	const sync::LockGuard kLock(m_stateMutex);
 
 	const std::size_t kIndex = segmentIndex(segment);
 
@@ -688,7 +694,7 @@ void SegmentAllocator::decommitRange(void* addr, std::size_t bytes) const noexce
 void SegmentAllocator::tick() noexcept {
 	TRIVIAL_PROFILE_FUNCTION();
 
-	sync::LockGuard lock(m_stateMutex);
+	const sync::LockGuard kLock(m_stateMutex);
 
 	++m_tick;
 
@@ -825,11 +831,11 @@ void SegmentAllocator::releaseCommitBudget(std::size_t bytes) const noexcept {
 		return SegmentKind::Invalid;
 	}
 
-	sync::LockGuard lock(m_stateMutex);
+	const sync::LockGuard kLock(m_stateMutex);
 
-	std::size_t index = segmentIndex(ptr);
+	const std::size_t kIndex = segmentIndex(ptr);
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-	return isBitSet(m_allocatedBitmap, index) ? m_records[index].kind : SegmentKind::Invalid;
+	return isBitSet(m_allocatedBitmap, kIndex) ? m_records[kIndex].kind : SegmentKind::Invalid;
 }
 
 [[nodiscard]] SegmentRecord SegmentAllocator::recordOf(const void* ptr) const noexcept {
@@ -837,7 +843,7 @@ void SegmentAllocator::releaseCommitBudget(std::size_t bytes) const noexcept {
 		return SegmentRecord{};
 	}
 
-	sync::LockGuard lock(m_stateMutex);
+	const sync::LockGuard kLock(m_stateMutex);
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 	return m_records[segmentIndex(ptr)];
 }
@@ -846,11 +852,11 @@ void SegmentAllocator::releaseCommitBudget(std::size_t bytes) const noexcept {
 void SegmentAllocator::handleOom(std::size_t requestedSize, const char* context, int osErrorCode) const noexcept {
 	TRIVIAL_LOG_OOM_FAILURE("SegmentAllocator", context, requestedSize, osErrorCode);
 
-	sync::LockGuard lock(m_oomMutex);
+	const sync::LockGuard kLock(m_oomMutex);
 
 	if (m_oomHandler != nullptr) {
-		OomInfo info{.requestedSize = requestedSize, .context = context, .osErrorCode = osErrorCode};
-		m_oomHandler(info);
+		const OomInfo kInfo{.requestedSize = requestedSize, .context = context, .osErrorCode = osErrorCode};
+		m_oomHandler(kInfo);
 	}
 }
 

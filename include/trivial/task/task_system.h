@@ -78,7 +78,7 @@ public:
 	void runMainThreadReadyTasks() noexcept;
 
 private:
-	static constexpr std::size_t kInvalidWorkerIndex = std::numeric_limits<std::size_t>::max();
+	static constexpr std::size_t s_kInvalidWorkerIndex = std::numeric_limits<std::size_t>::max();
 
 	[[nodiscard]] std::size_t tryGetCurrentWorkerIndex() const noexcept;
 

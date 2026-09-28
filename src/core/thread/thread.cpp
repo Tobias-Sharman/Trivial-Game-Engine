@@ -1,32 +1,42 @@
 #include <trivial/core/thread/thread.h>
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <bit>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <thread>
 
 #include <trivial/core/assert.h>
 #include <trivial/core/log.h>
-
-#if TRIVIAL_PLATFORM_POSIX
-#include <cerrno>
-#include <pthread.h>
-#include <sched.h>
-
-static_assert(sizeof(pthread_t) == sizeof(void*), "pthread_t is no longer NativeHandleStorage-sized");
-#endif // TRIVIAL_PLATFORM_POSIX
-
-#if TRIVIAL_PLATFORM_MACOS
-#include <mach/mach.h>
-#include <mach/thread_switch.h>
-#endif // TRIVIAL_PLATFORM_MACOS
+#include <trivial/core/platform.h>
+#include <trivial/core/thread/thread_config.h>
 
 #if TRIVIAL_PLATFORM_WINDOWS
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#endif // TRIVIAL_PLATFORM_WINDOWS
+
+#elif TRIVIAL_PLATFORM_MACOS
+#include <mach/mach_traps.h>
+#include <mach/port.h>
+#include <mach/thread_switch.h>
+#include <pthread/qos.h>
+
+#elif TRIVIAL_PLATFORM_LINUX
+#include <sched.h>
+
+#endif // TRIVIAL_PLATFORM_CHECK
+
+#if TRIVIAL_PLATFORM_POSIX
+#include <cerrno>
+#include <pthread.h>
+
+#include <trivial/core/thread/thread_stack_allocator.h>
+
+static_assert(sizeof(pthread_t) == sizeof(void*), "pthread_t is no longer NativeHandleStorage-sized");
+#endif // TRIVIAL_PLATFORM_POSIX
 
 namespace {
 
@@ -38,7 +48,7 @@ std::atomic<std::uint32_t> g_nextThreadIndex{0};
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 thread_local trivial::thread::Thread* g_currentThread = nullptr; // Better linkage than member variable
 
-void copyName(const char* name, std::array<char, trivial::thread::Thread::kMaxNameLength>& outName) noexcept {
+void copyName(const char* name, std::array<char, trivial::thread::Thread::s_kMaxNameLength>& outName) noexcept {
 	if (name == nullptr) {
 		outName[0] = '\0';
 		return;

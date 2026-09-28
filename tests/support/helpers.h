@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 
 #include <trivial/core/log.h>
+#include <trivial/core/platform.h>
 #include <trivial/core/thread/thread.h>
 
 #include "core/heap_array.h"
@@ -59,7 +60,7 @@ private:
 };
 
 inline void runOnAllThreads(std::size_t threadCount, trivial::thread::ThreadStartRoutine routine, void* arg) {
-	ScopedParkingLot parkingLotScope(threadCount);
+	const ScopedParkingLot kParkingLotScope(threadCount);
 
 	trivial::core::HeapArray<trivial::thread::Thread> threads(threadCount);
 
@@ -69,8 +70,8 @@ inline void runOnAllThreads(std::size_t threadCount, trivial::thread::ThreadStar
 		attachStackAllocator(config);
 #endif // TRIVIAL_PLATFORM_POSIX
 
-		trivial::thread::ThreadCreateResult result = threads[i].create(config, routine, arg);
-		ASSERT_EQ(result.error, trivial::thread::ThreadCreateError::None);
+		const trivial::thread::ThreadCreateResult kResult = threads[i].create(config, routine, arg);
+		ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
 	}
 
 	for (std::size_t i = 0; i < threadCount; ++i) {

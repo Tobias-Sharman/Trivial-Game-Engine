@@ -1,6 +1,8 @@
 #ifndef TRIVIAL_ENGINE_H
 #define TRIVIAL_ENGINE_H
 
+#include <cstdint>
+
 #include <trivial/application.h>
 #include <trivial/core/application_info.h>
 #include <trivial/core/graphics_api.h>
@@ -48,7 +50,7 @@ private:
 	// TODO: Once form of what objects engine actually owns is explicit then update this
 	GraphicsApi m_requestedGraphicsApi = GraphicsApi::Auto;
 	EngineTime m_time;
-	std::uint64_t m_frameIndex;
+	std::uint64_t m_frameIndex = 0;
 
 	platform::Window m_window;
 	gpu::Context m_gpu;

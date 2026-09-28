@@ -1,5 +1,12 @@
 #include "boid_rules.h"
 
+#include <cstddef>
+#include <span>
+
+#include <trivial/core/math/vec2.h>
+
+#include "boid.h"
+
 namespace {
 
 [[nodiscard]] trivial::math::Vec2f clampLength(trivial::math::Vec2f vector, float maxLength) noexcept {

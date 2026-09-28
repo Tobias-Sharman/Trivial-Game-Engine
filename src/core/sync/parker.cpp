@@ -26,6 +26,7 @@
 
 #elif TRIVIAL_PLATFORM_MACOS
 #include <cerrno>
+#include <pthread.h>
 #include <sys/time.h>
 
 #endif // Platform-specific headers
@@ -89,13 +90,8 @@ void UnparkHandle::wake() noexcept {
 void UnparkHandle::wake() noexcept {
 	m_state->notified = true;
 
-#if TRIVIAL_ENABLE_ASSERTS
-	TRIVIAL_ASSERT(pthread_cond_signal(&m_state->condvar) == 0);
-	TRIVIAL_ASSERT(pthread_mutex_unlock(&m_state->mutex) == 0);
-#else
-	pthread_cond_signal(&m_state->condvar);
-	pthread_mutex_unlock(&m_state->mutex);
-#endif
+	TRIVIAL_VERIFY(pthread_cond_signal(&m_state->condvar) == 0);
+	TRIVIAL_VERIFY(pthread_mutex_unlock(&m_state->mutex) == 0);
 }
 
 #endif // Platform-specific UnparkHandle::wake
@@ -107,13 +103,8 @@ Parker::Parker() noexcept = default;
 #elif TRIVIAL_PLATFORM_MACOS
 
 Parker::Parker() noexcept {
-#if TRIVIAL_ENABLE_ASSERTS
-	TRIVIAL_ASSERT(pthread_mutex_init(&m_state.mutex, nullptr) == 0);
-	TRIVIAL_ASSERT(pthread_cond_init(&m_state.condvar, nullptr) == 0);
-#else
-	pthread_mutex_init(&m_state.mutex, nullptr);
-	pthread_cond_init(&m_state.condvar, nullptr);
-#endif
+	TRIVIAL_VERIFY(pthread_mutex_init(&m_state.mutex, nullptr) == 0);
+	TRIVIAL_VERIFY(pthread_cond_init(&m_state.condvar, nullptr) == 0);
 }
 
 #endif // Platform-specific Parker::Parker
@@ -125,13 +116,8 @@ Parker::~Parker() noexcept = default;
 #elif TRIVIAL_PLATFORM_MACOS
 
 Parker::~Parker() noexcept {
-#if TRIVIAL_ENABLE_ASSERTS
-	TRIVIAL_ASSERT(pthread_cond_destroy(&m_state.condvar) == 0);
-	TRIVIAL_ASSERT(pthread_mutex_destroy(&m_state.mutex) == 0);
-#else
-	pthread_cond_destroy(&m_state.condvar);
-	pthread_mutex_destroy(&m_state.mutex);
-#endif
+	TRIVIAL_VERIFY(pthread_cond_destroy(&m_state.condvar) == 0);
+	TRIVIAL_VERIFY(pthread_mutex_destroy(&m_state.mutex) == 0);
 }
 
 #endif // Platform-specific Parker::~Parker
@@ -145,19 +131,11 @@ void Parker::prepare() noexcept {
 #elif TRIVIAL_PLATFORM_MACOS
 
 void Parker::prepare() noexcept {
-#if TRIVIAL_ENABLE_ASSERTS
-	TRIVIAL_ASSERT(pthread_mutex_lock(&m_state.mutex) == 0);
-#else
-	pthread_mutex_lock(&m_state.mutex);
-#endif
+	TRIVIAL_VERIFY(pthread_mutex_lock(&m_state.mutex) == 0);
 
 	m_state.notified = false;
 
-#if TRIVIAL_ENABLE_ASSERTS
-	TRIVIAL_ASSERT(pthread_mutex_unlock(&m_state.mutex) == 0);
-#else
-	pthread_mutex_unlock(&m_state.mutex);
-#endif
+	TRIVIAL_VERIFY(pthread_mutex_unlock(&m_state.mutex) == 0);
 }
 
 #endif // Platform-specific Parker::prepare
@@ -167,11 +145,7 @@ void Parker::prepare() noexcept {
 void Parker::park() noexcept {
 	std::uint32_t compare = 1;
 	while (m_state.state.load(std::memory_order_acquire) != 0) {
-#if TRIVIAL_ENABLE_ASSERTS
-		TRIVIAL_ASSERT(WaitOnAddress(&m_state.state, &compare, sizeof(compare), INFINITE) != 0);
-#else
-		WaitOnAddress(&m_state.state, &compare, sizeof(compare), INFINITE);
-#endif
+		TRIVIAL_VERIFY(WaitOnAddress(&m_state.state, &compare, sizeof(compare), INFINITE) != 0);
 	}
 }
 
@@ -186,25 +160,13 @@ void Parker::park() noexcept {
 #elif TRIVIAL_PLATFORM_MACOS
 
 void Parker::park() noexcept {
-#if TRIVIAL_ENABLE_ASSERTS
-	TRIVIAL_ASSERT(pthread_mutex_lock(&m_state.mutex) == 0);
-#else
-	pthread_mutex_lock(&m_state.mutex);
-#endif
+	TRIVIAL_VERIFY(pthread_mutex_lock(&m_state.mutex) == 0);
 
 	while (!m_state.notified) {
-#if TRIVIAL_ENABLE_ASSERTS
-		TRIVIAL_ASSERT(pthread_cond_wait(&m_state.condvar, &m_state.mutex) == 0);
-#else
-		pthread_cond_wait(&m_state.condvar, &m_state.mutex);
-#endif
+		TRIVIAL_VERIFY(pthread_cond_wait(&m_state.condvar, &m_state.mutex) == 0);
 	}
 
-#if TRIVIAL_ENABLE_ASSERTS
-	TRIVIAL_ASSERT(pthread_mutex_unlock(&m_state.mutex) == 0);
-#else
-	pthread_mutex_unlock(&m_state.mutex);
-#endif
+	TRIVIAL_VERIFY(pthread_mutex_unlock(&m_state.mutex) == 0);
 }
 
 #endif // Platform-specific Parker::park
@@ -276,20 +238,12 @@ void Parker::park() noexcept {
 [[nodiscard]] bool Parker::parkFor(std::chrono::nanoseconds lifetime) noexcept {
 	const std::chrono::steady_clock::time_point kExpiry = std::chrono::steady_clock::now() + lifetime;
 
-#if TRIVIAL_ENABLE_ASSERTS
-	TRIVIAL_ASSERT(pthread_mutex_lock(&m_state.mutex) == 0);
-#else
-	pthread_mutex_lock(&m_state.mutex);
-#endif
+	TRIVIAL_VERIFY(pthread_mutex_lock(&m_state.mutex) == 0);
 
 	while (!m_state.notified) {
 		const std::chrono::steady_clock::time_point kNow = std::chrono::steady_clock::now();
 		if (kExpiry <= kNow) {
-#if TRIVIAL_ENABLE_ASSERTS
-			TRIVIAL_ASSERT(pthread_mutex_unlock(&m_state.mutex) == 0);
-#else
-			pthread_mutex_unlock(&m_state.mutex);
-#endif
+			TRIVIAL_VERIFY(pthread_mutex_unlock(&m_state.mutex) == 0);
 			return false;
 		}
 
@@ -302,11 +256,7 @@ void Parker::park() noexcept {
 
 		if (kRemainingSec
 		    > static_cast<decltype(kRemainingNs)>(std::numeric_limits<std::time_t>::max()) - wallNow.tv_sec) {
-#if TRIVIAL_ENABLE_ASSERTS
-			TRIVIAL_ASSERT(pthread_cond_wait(&m_state.condvar, &m_state.mutex) == 0);
-#else
-			pthread_cond_wait(&m_state.condvar, &m_state.mutex);
-#endif
+			TRIVIAL_VERIFY(pthread_cond_wait(&m_state.condvar, &m_state.mutex) == 0);
 			continue;
 		}
 
@@ -335,11 +285,7 @@ void Parker::park() noexcept {
 #endif
 	}
 
-#if TRIVIAL_ENABLE_ASSERTS
-	TRIVIAL_ASSERT(pthread_mutex_unlock(&m_state.mutex) == 0);
-#else
-	pthread_mutex_unlock(&m_state.mutex);
-#endif
+	TRIVIAL_VERIFY(pthread_mutex_unlock(&m_state.mutex) == 0);
 
 	return true;
 }
@@ -356,11 +302,7 @@ void Parker::park() noexcept {
 #elif TRIVIAL_PLATFORM_MACOS
 
 [[nodiscard]] UnparkHandle Parker::beginUnpark() noexcept {
-#if TRIVIAL_ENABLE_ASSERTS
-	TRIVIAL_ASSERT(pthread_mutex_lock(&m_state.mutex) == 0);
-#else
-	pthread_mutex_lock(&m_state.mutex);
-#endif
+	TRIVIAL_VERIFY(pthread_mutex_lock(&m_state.mutex) == 0);
 
 	return UnparkHandle(&m_state);
 }
@@ -376,19 +318,11 @@ void Parker::park() noexcept {
 #elif TRIVIAL_PLATFORM_MACOS
 
 [[nodiscard]] bool Parker::timedOut() noexcept {
-#if TRIVIAL_ENABLE_ASSERTS
-	TRIVIAL_ASSERT(pthread_mutex_lock(&m_state.mutex) == 0);
-#else
-	pthread_mutex_lock(&m_state.mutex);
-#endif
+	TRIVIAL_VERIFY(pthread_mutex_lock(&m_state.mutex) == 0);
 
 	const bool kStillWaiting = !m_state.notified;
 
-#if TRIVIAL_ENABLE_ASSERTS
-	TRIVIAL_ASSERT(pthread_mutex_unlock(&m_state.mutex) == 0);
-#else
-	pthread_mutex_unlock(&m_state.mutex);
-#endif
+	TRIVIAL_VERIFY(pthread_mutex_unlock(&m_state.mutex) == 0);
 
 	return kStillWaiting;
 }

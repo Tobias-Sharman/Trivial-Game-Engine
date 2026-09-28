@@ -1,6 +1,7 @@
 #include <trivial/platform/window.h>
 
 #include <trivial/core/assert.h>
+#include <trivial/platform/window_types.h>
 
 namespace trivial::platform {
 

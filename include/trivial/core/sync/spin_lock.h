@@ -2,7 +2,9 @@
 #define TRIVIAL_CORE_SYNC_SPIN_LOCK_H
 
 #include <atomic>
+#include <cstdint>
 
+#include <trivial/core/compiler.h>
 #include <trivial/core/sync/spin_wait.h>
 
 namespace trivial::sync {
@@ -31,9 +33,7 @@ public:
 		}
 	}
 
-	TRIVIAL_FORCE_INLINE void unlock() noexcept {
-		m_state.store(false, std::memory_order_release);
-	}
+	TRIVIAL_FORCE_INLINE void unlock() noexcept { m_state.store(false, std::memory_order_release); }
 
 private:
 	std::atomic<bool> m_state{false};

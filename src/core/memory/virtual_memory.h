@@ -96,10 +96,10 @@ inline SystemInfo probeSystemInfo() noexcept {
 #endif // TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
 
 #elif TRIVIAL_PLATFORM_POSIX
-	long pageSize = sysconf(_SC_PAGESIZE);
-	TRIVIAL_ASSERT(pageSize > 0);
+	const long kPageSize = sysconf(_SC_PAGESIZE);
+	TRIVIAL_ASSERT(kPageSize > 0);
 
-	info.pageSize = static_cast<std::size_t>(pageSize);
+	info.pageSize = static_cast<std::size_t>(kPageSize);
 	info.allocationGranularity = info.pageSize;
 
 #if TRIVIAL_MEMORY_ENABLE_LARGE_PAGES && TRIVIAL_PLATFORM_LINUX
@@ -122,10 +122,10 @@ inline bool probeMadvFree(std::size_t pageSize) noexcept {
 		return false;
 	}
 
-	bool supported = madvise(probe, pageSize, MADV_FREE) == 0;
+	const bool kSupported = madvise(probe, pageSize, MADV_FREE) == 0;
 	(void)munmap(probe, pageSize);
 
-	return supported;
+	return kSupported;
 #else
 	(void)pageSize;
 	return false;
@@ -210,27 +210,26 @@ inline void* reserveAligned(std::size_t bytes,
 		return nullptr;
 	}
 
-	std::size_t rawBytes = bytes + alignment;
-	void* raw = mmap(nullptr, rawBytes, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	const std::size_t kRawBytes = bytes + alignment;
+	void* raw = mmap(nullptr, kRawBytes, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
 	if (raw == MAP_FAILED) {
 		outOsErrorCode = errno;
 		return nullptr;
 	}
 
-	std::size_t offset = alignmentOffset(raw, alignment);
+	const std::size_t kOffset = alignmentOffset(raw, alignment);
 
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-	char* aligned = static_cast<char*>(raw) + offset;
+	char* aligned = static_cast<char*>(raw) + kOffset;
 
-	if (offset > 0) {
-		(void)munmap(raw, offset);
+	if (kOffset > 0) {
+		(void)munmap(raw, kOffset);
 	}
 
-	std::size_t tail = rawBytes - offset - bytes;
-	if (tail > 0) {
+	if (const std::size_t kTail = kRawBytes - kOffset - bytes; kTail > 0) {
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-		(void)munmap(aligned + bytes, tail);
+		(void)munmap(aligned + bytes, kTail);
 	}
 
 	return aligned;
@@ -335,16 +334,16 @@ inline void decommitPages(void* addr,
 	// MADV_DONTNEED does not reliably release pages on Darwin
 	// MADV_FREE_REUSABLE for eager release for updating process accounting
 	// MADV_FREE defers reclaim to memory pressure
-	int advice = mode == trivial::memory::DecommitMode::Lazy ? MADV_FREE : MADV_FREE_REUSABLE;
+	const int kAdvice = mode == trivial::memory::DecommitMode::Lazy ? MADV_FREE : MADV_FREE_REUSABLE;
 #elif TRIVIAL_PLATFORM_SDK_HAS_MADV_FREE
 	int advice = mode == trivial::memory::DecommitMode::Lazy ? MADV_FREE : MADV_DONTNEED;
 #else
 	int advice = MADV_DONTNEED;
 #endif // Decommit advice
 
-	bool ok = madvise(addr, bytes, advice) == 0;
-	TRIVIAL_ASSERT(ok);
-	(void)ok;
+	const bool kOk = madvise(addr, bytes, kAdvice) == 0;
+	TRIVIAL_ASSERT(kOk);
+	(void)kOk;
 
 	if (mprotect(addr, bytes, PROT_NONE) != 0) {
 		TRIVIAL_ASSERT(false);

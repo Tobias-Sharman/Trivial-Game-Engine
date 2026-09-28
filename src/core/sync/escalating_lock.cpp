@@ -3,7 +3,6 @@
 #include <atomic>
 #include <cstdint>
 
-#include <trivial/core/assert.h>
 #include <trivial/core/compiler.h>
 #include <trivial/core/sync/spin_wait.h>
 #include <trivial/core/sync/sync_config.h>
@@ -21,7 +20,7 @@ struct EscalatingLockNode {
 
 static_assert(alignof(EscalatingLockNode) > 3, "Low 2 bits of an EscalatingLockNode pointer must be free for tagging");
 
-TRIVIAL_FORCE_INLINE void fenceAcquire(std::atomic<std::uintptr_t>& state) noexcept {
+TRIVIAL_FORCE_INLINE void fenceAcquire(const std::atomic<std::uintptr_t>& state) noexcept {
 	// ThreadSanitizer has only partial fence support, so it needs an acquire load here instead
 	if constexpr (TRIVIAL_THREAD_SANITIZER_ENABLED) {
 		(void)state.load(std::memory_order_acquire);
@@ -40,9 +39,9 @@ void EscalatingLock::lockSlow() noexcept {
 	thread_local EscalatingLockNode s_node;
 
 	for (;;) {
-		if ((state & kLockedBit) == 0) {
+		if ((state & s_kLockedBit) == 0) {
 			if (m_state.compare_exchange_weak(state,
-			                                  state | kLockedBit,
+			                                  state | s_kLockedBit,
 			                                  std::memory_order_acquire,
 			                                  std::memory_order_relaxed)) {
 				return;
@@ -51,7 +50,7 @@ void EscalatingLock::lockSlow() noexcept {
 			continue;
 		}
 
-		if ((state & kQueueMask) == 0 && spinCount < TRIVIAL_SYNC_MAX_SPIN_COUNT) {
+		if ((state & s_kQueueMask) == 0 && spinCount < TRIVIAL_SYNC_MAX_SPIN_COUNT) {
 			spinWaitForever(spinCount);
 			state = m_state.load(std::memory_order_relaxed);
 			continue;
@@ -60,7 +59,7 @@ void EscalatingLock::lockSlow() noexcept {
 		s_node.parker.prepare();
 
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast, performance-no-int-to-ptr)
-		EscalatingLockNode* const kQueueHead = reinterpret_cast<EscalatingLockNode*>(state & kQueueMask);
+		EscalatingLockNode* const kQueueHead = reinterpret_cast<EscalatingLockNode*>(state & s_kQueueMask);
 		if (kQueueHead == nullptr) {
 			s_node.queueTail = &s_node;
 			s_node.previous = nullptr;
@@ -71,7 +70,7 @@ void EscalatingLock::lockSlow() noexcept {
 		}
 
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-		const std::uintptr_t kNewState = (state & ~kQueueMask) | reinterpret_cast<std::uintptr_t>(&s_node);
+		const std::uintptr_t kNewState = (state & ~s_kQueueMask) | reinterpret_cast<std::uintptr_t>(&s_node);
 		if (!m_state.compare_exchange_weak(state, kNewState, std::memory_order_acq_rel, std::memory_order_relaxed)) {
 			continue;
 		}
@@ -88,12 +87,12 @@ void EscalatingLock::unlockSlow() noexcept {
 	std::uintptr_t state = m_state.load(std::memory_order_relaxed);
 
 	for (;;) {
-		if ((state & kQueueLockedBit) != 0 || (state & kQueueMask) == 0) {
+		if ((state & s_kQueueLockedBit) != 0 || (state & s_kQueueMask) == 0) {
 			return;
 		}
 
 		if (m_state.compare_exchange_weak(state,
-		                                  state | kQueueLockedBit,
+		                                  state | s_kQueueLockedBit,
 		                                  std::memory_order_acquire,
 		                                  std::memory_order_relaxed)) {
 			break;
@@ -103,7 +102,7 @@ void EscalatingLock::unlockSlow() noexcept {
 outer:
 	for (;;) {
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast, performance-no-int-to-ptr)
-		EscalatingLockNode* const kQueueHead = reinterpret_cast<EscalatingLockNode*>(state & kQueueMask);
+		EscalatingLockNode* const kQueueHead = reinterpret_cast<EscalatingLockNode*>(state & s_kQueueMask);
 		EscalatingLockNode* queueTail = kQueueHead->queueTail;
 		EscalatingLockNode* current = kQueueHead;
 		while (queueTail == nullptr) {
@@ -115,9 +114,9 @@ outer:
 
 		kQueueHead->queueTail = queueTail;
 
-		if ((state & kLockedBit) != 0) {
+		if ((state & s_kLockedBit) != 0) {
 			if (m_state.compare_exchange_weak(state,
-			                                  state & ~kQueueLockedBit,
+			                                  state & ~s_kQueueLockedBit,
 			                                  std::memory_order_release,
 			                                  std::memory_order_relaxed)) {
 				return;
@@ -131,13 +130,13 @@ outer:
 		if (kNewTail == nullptr) {
 			for (;;) {
 				if (m_state.compare_exchange_weak(state,
-				                                  state & kLockedBit,
+				                                  state & s_kLockedBit,
 				                                  std::memory_order_release,
 				                                  std::memory_order_relaxed)) {
 					break;
 				}
 
-				if ((state & kQueueMask) == 0) {
+				if ((state & s_kQueueMask) == 0) {
 					continue;
 				}
 
@@ -146,7 +145,7 @@ outer:
 			}
 		} else {
 			kQueueHead->queueTail = kNewTail;
-			m_state.fetch_and(~kQueueLockedBit, std::memory_order_release);
+			m_state.fetch_and(~s_kQueueLockedBit, std::memory_order_release);
 		}
 
 		UnparkHandle handle = queueTail->parker.beginUnpark();

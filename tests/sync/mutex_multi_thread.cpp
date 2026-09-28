@@ -17,7 +17,7 @@ struct MutexCounterContext {
 };
 
 void incrementWorker(void* arg) {
-	auto* context = static_cast<MutexCounterContext*>(arg);
+	const MutexCounterContext* context = static_cast<MutexCounterContext*>(arg);
 
 	for (std::size_t i = 0; i < g_kConcurrentIterations; ++i) {
 		context->mutex->lock();

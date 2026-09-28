@@ -2,6 +2,7 @@
 #define TRIVIAL_CORE_MATH_MAT4_H
 
 #include <cmath>
+#include <concepts>
 #include <cstddef>
 #include <type_traits>
 
@@ -57,47 +58,57 @@ struct Mat4 {
 	}
 
 	[[nodiscard]] static constexpr Mat4 translation(const Vec3<T>& translation) noexcept {
-		return {{T{1}, T{0}, T{0}, T{0}},
-		        {T{0}, T{1}, T{0}, T{0}},
-		        {T{0}, T{0}, T{1}, T{0}},
-		        {translation.x, translation.y, translation.z, T{1}}};
+		return {
+		    {T{1}, T{0}, T{0}, T{0}},
+		    {T{0}, T{1}, T{0}, T{0}},
+		    {T{0}, T{0}, T{1}, T{0}},
+		    {translation.x, translation.y, translation.z, T{1}},
+		};
 	}
 
 	[[nodiscard]] static constexpr Mat4 scale(const Vec3<T>& scale) noexcept {
-		return {{scale.x, T{0}, T{0}, T{0}},
-		        {T{0}, scale.y, T{0}, T{0}},
-		        {T{0}, T{0}, scale.z, T{0}},
-		        {T{0}, T{0}, T{0}, T{1}}};
+		return {
+		    {scale.x, T{0}, T{0}, T{0}},
+		    {T{0}, scale.y, T{0}, T{0}},
+		    {T{0}, T{0}, scale.z, T{0}},
+		    {T{0}, T{0}, T{0}, T{1}},
+		};
 	}
 
 	[[nodiscard]] static Mat4 rotationX(Angle<T> angle) noexcept {
 		const T kCosAngle = std::cos(angle.radians());
 		const T kSinAngle = std::sin(angle.radians());
 
-		return {{T{1}, T{0}, T{0}, T{0}},
-		        {T{0}, kCosAngle, kSinAngle, T{0}},
-		        {T{0}, -kSinAngle, kCosAngle, T{0}},
-		        {T{0}, T{0}, T{0}, T{1}}};
+		return {
+		    {T{1}, T{0}, T{0}, T{0}},
+		    {T{0}, kCosAngle, kSinAngle, T{0}},
+		    {T{0}, -kSinAngle, kCosAngle, T{0}},
+		    {T{0}, T{0}, T{0}, T{1}},
+		};
 	}
 
 	[[nodiscard]] static Mat4 rotationY(Angle<T> angle) noexcept {
 		const T kCosAngle = std::cos(angle.radians());
 		const T kSinAngle = std::sin(angle.radians());
 
-		return {{kCosAngle, T{0}, -kSinAngle, T{0}},
-		        {T{0}, T{1}, T{0}, T{0}},
-		        {kSinAngle, T{0}, kCosAngle, T{0}},
-		        {T{0}, T{0}, T{0}, T{1}}};
+		return {
+		    {kCosAngle, T{0}, -kSinAngle, T{0}},
+		    {T{0}, T{1}, T{0}, T{0}},
+		    {kSinAngle, T{0}, kCosAngle, T{0}},
+		    {T{0}, T{0}, T{0}, T{1}},
+		};
 	}
 
 	[[nodiscard]] static Mat4 rotationZ(Angle<T> angle) noexcept {
 		const T kCosAngle = std::cos(angle.radians());
 		const T kSinAngle = std::sin(angle.radians());
 
-		return {{kCosAngle, kSinAngle, T{0}, T{0}},
-		        {-kSinAngle, kCosAngle, T{0}, T{0}},
-		        {T{0}, T{0}, T{1}, T{0}},
-		        {T{0}, T{0}, T{0}, T{1}}};
+		return {
+		    {kCosAngle, kSinAngle, T{0}, T{0}},
+		    {-kSinAngle, kCosAngle, T{0}, T{0}},
+		    {T{0}, T{0}, T{1}, T{0}},
+		    {T{0}, T{0}, T{0}, T{1}},
+		};
 	}
 
 	[[nodiscard]] constexpr bool operator==(const Mat4& rhs) const noexcept = default;
@@ -145,10 +156,12 @@ template <FloatingPoint T>
 
 template <FloatingPoint T>
 [[nodiscard]] constexpr Mat4<T> multiplyMat4Mat4Scalar(const Mat4<T>& lhs, const Mat4<T>& rhs) noexcept {
-	return {(lhs.col0 * rhs.col0.x + lhs.col1 * rhs.col0.y) + (lhs.col2 * rhs.col0.z + lhs.col3 * rhs.col0.w),
-	        (lhs.col0 * rhs.col1.x + lhs.col1 * rhs.col1.y) + (lhs.col2 * rhs.col1.z + lhs.col3 * rhs.col1.w),
-	        (lhs.col0 * rhs.col2.x + lhs.col1 * rhs.col2.y) + (lhs.col2 * rhs.col2.z + lhs.col3 * rhs.col2.w),
-	        (lhs.col0 * rhs.col3.x + lhs.col1 * rhs.col3.y) + (lhs.col2 * rhs.col3.z + lhs.col3 * rhs.col3.w)};
+	return {
+	    (lhs.col0 * rhs.col0.x + lhs.col1 * rhs.col0.y) + (lhs.col2 * rhs.col0.z + lhs.col3 * rhs.col0.w),
+	    (lhs.col0 * rhs.col1.x + lhs.col1 * rhs.col1.y) + (lhs.col2 * rhs.col1.z + lhs.col3 * rhs.col1.w),
+	    (lhs.col0 * rhs.col2.x + lhs.col1 * rhs.col2.y) + (lhs.col2 * rhs.col2.z + lhs.col3 * rhs.col2.w),
+	    (lhs.col0 * rhs.col3.x + lhs.col1 * rhs.col3.y) + (lhs.col2 * rhs.col3.z + lhs.col3 * rhs.col3.w),
+	};
 }
 
 } // namespace detail
@@ -175,10 +188,12 @@ template <FloatingPoint T>
 
 template <FloatingPoint T>
 [[nodiscard]] constexpr Mat4<T> transpose(const Mat4<T>& matrix) noexcept {
-	return {{matrix.col0.x, matrix.col1.x, matrix.col2.x, matrix.col3.x},
-	        {matrix.col0.y, matrix.col1.y, matrix.col2.y, matrix.col3.y},
-	        {matrix.col0.z, matrix.col1.z, matrix.col2.z, matrix.col3.z},
-	        {matrix.col0.w, matrix.col1.w, matrix.col2.w, matrix.col3.w}};
+	return {
+	    {matrix.col0.x, matrix.col1.x, matrix.col2.x, matrix.col3.x},
+	    {matrix.col0.y, matrix.col1.y, matrix.col2.y, matrix.col3.y},
+	    {matrix.col0.z, matrix.col1.z, matrix.col2.z, matrix.col3.z},
+	    {matrix.col0.w, matrix.col1.w, matrix.col2.w, matrix.col3.w},
+	};
 }
 template <std::floating_point T>
 [[nodiscard]] constexpr bool nearlyEqual(const Mat4<T>& lhs, const Mat4<T>& rhs, T epsilon) noexcept {
@@ -188,8 +203,8 @@ template <std::floating_point T>
 using Mat4f = Mat4<float>;
 using Mat4d = Mat4<double>;
 
-static_assert(sizeof(Mat4f) == sizeof(float) * 16);
-static_assert(sizeof(Mat4d) == sizeof(double) * 16);
+static_assert(sizeof(Mat4f) == sizeof(float) * 16);  // NOLINT(readability-magic-numbers)
+static_assert(sizeof(Mat4d) == sizeof(double) * 16); // NOLINT(readability-magic-numbers)
 
 static_assert(alignof(Mat4f) == alignof(Vec4f));
 static_assert(alignof(Mat4d) == alignof(Vec4d));

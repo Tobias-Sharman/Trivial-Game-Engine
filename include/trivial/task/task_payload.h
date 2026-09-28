@@ -25,14 +25,14 @@ class TaskPayload { // NOLINT(cppcoreguidelines-pro-type-member-init)
 public:
 	template <typename Callable>
 	    requires(!std::is_same_v<std::remove_cvref_t<Callable>, TaskPayload>
-	             && std::is_nothrow_constructible_v<std::decay_t<Callable>, Callable &&>
+	             && std::is_nothrow_constructible_v<std::decay_t<Callable>, Callable&&>
 	             && std::is_nothrow_invocable_v<std::decay_t<Callable>&>
 	             && !std::is_reference_v<std::invoke_result_t<std::decay_t<Callable>&>>
 	             && std::is_nothrow_destructible_v<std::decay_t<Callable>>)
-	TaskPayload(Callable&& callable) noexcept { // NOLINT(cppcoreguidelines-pro-type-member-init)
+	explicit TaskPayload(Callable&& callable) noexcept { // NOLINT(cppcoreguidelines-pro-type-member-init)
 		using StoredCallable = std::decay_t<Callable>;
 
-		if constexpr (kCanStoreInline<StoredCallable>) {
+		if constexpr (s_kCanStoreInline<StoredCallable>) {
 			std::construct_at(rawStoragePointer<StoredCallable>(m_storage.data()), std::forward<Callable>(callable));
 
 			m_operations = &getInlineOperations<StoredCallable>();
@@ -90,14 +90,14 @@ public:
 	}
 
 private:
-	static constexpr std::size_t kInlineStorageSize = 40; // TODO: Profile and adjust
-	static constexpr std::size_t kInlineStorageAlignment = alignof(std::max_align_t);
+	static constexpr std::size_t s_kInlineStorageSize = 40; // TODO: Profile and adjust
+	static constexpr std::size_t s_kInlineStorageAlignment = alignof(std::max_align_t);
 
 #if TRIVIAL_CONFIG_DEBUG
 	enum class OperationsKind : std::uint8_t {
 		Callable,
 		Result,
-		Empty
+		Empty,
 	};
 #endif // TRIVIAL_CONFIG_DEBUG
 
@@ -114,8 +114,8 @@ private:
 	};
 
 	template <typename Callable>
-	static constexpr bool kCanStoreInline
-	    = sizeof(Callable) <= kInlineStorageSize && alignof(Callable) <= kInlineStorageAlignment
+	static constexpr bool s_kCanStoreInline
+	    = sizeof(Callable) <= s_kInlineStorageSize && alignof(Callable) <= s_kInlineStorageAlignment
 	      && std::is_nothrow_move_constructible_v<Callable>;
 
 	template <typename Object>
@@ -145,8 +145,8 @@ private:
 	template <typename Callable>
 	[[nodiscard]]
 	static Callable** getHeapPointerSlot(std::byte* storage) noexcept {
-		static_assert(sizeof(Callable*) <= kInlineStorageSize);
-		static_assert(alignof(Callable*) <= kInlineStorageAlignment);
+		static_assert(sizeof(Callable*) <= s_kInlineStorageSize);
+		static_assert(alignof(Callable*) <= s_kInlineStorageAlignment);
 
 		return getStoredObject<Callable*>(storage);
 	}
@@ -182,7 +182,8 @@ private:
 
 		    .getConst = [](const std::byte*) noexcept -> const void* {
 			    return nullptr;
-		    }};
+		    },
+		};
 
 		return s_kOperations;
 	}
@@ -206,11 +207,12 @@ private:
 
 				    return &getEmptyOperations();
 			    } else {
+				    // NOLINTNEXTLINE(misc-const-correctness)
 				    StoredResult result = std::invoke(*callable);
 
 				    std::destroy_at(callable);
 
-				    if constexpr (kCanStoreInline<StoredResult>) {
+				    if constexpr (s_kCanStoreInline<StoredResult>) {
 					    std::construct_at(rawStoragePointer<StoredResult>(storage), std::move(result));
 
 					    return &getInlineResultOperations<StoredResult>();
@@ -244,7 +246,8 @@ private:
 
 		    .getConst = [](const std::byte* storage) noexcept -> const void* {
 			    return rawStoragePointer<Callable>(storage);
-		    }};
+		    },
+		};
 
 		return s_kOperations;
 	}
@@ -261,7 +264,7 @@ private:
 			    using StoredResult = std::remove_cv_t<InvokeResult>;
 
 			    Callable** slot = getHeapPointerSlot<Callable>(storage);
-			    Callable* callable = *slot;
+			    Callable* callable = *slot; // NOLINT(misc-const-correctness)
 
 			    if constexpr (std::is_void_v<InvokeResult>) {
 				    std::invoke(*callable);
@@ -276,7 +279,7 @@ private:
 				    std::destroy_at(slot);
 				    delete callable;
 
-				    if constexpr (kCanStoreInline<StoredResult>) {
+				    if constexpr (s_kCanStoreInline<StoredResult>) {
 					    std::construct_at(rawStoragePointer<StoredResult>(storage), std::move(result));
 
 					    return &getInlineResultOperations<StoredResult>();
@@ -305,7 +308,7 @@ private:
 		        [](std::byte* storage) noexcept {
 			        Callable** slot = getHeapPointerSlot<Callable>(storage);
 
-			        Callable* object = *slot;
+			        const Callable* object = *slot;
 
 			        std::destroy_at(slot);
 			        delete object; // TODO: Custom allocator
@@ -317,7 +320,8 @@ private:
 
 		    .getConst = [](const std::byte* storage) noexcept -> const void* {
 			    return *rawStoragePointer<Callable*>(storage);
-		    }};
+		    },
+		};
 
 		return s_kOperations;
 	}
@@ -351,7 +355,8 @@ private:
 
 		    .getConst = [](const std::byte* storage) noexcept -> const void* {
 			    return rawStoragePointer<Result>(storage);
-		    }};
+		    },
+		};
 
 		return s_kOperations;
 	}
@@ -379,7 +384,7 @@ private:
 		    .destroy =
 		        [](std::byte* storage) noexcept {
 			        Result** slot = getHeapPointerSlot<Result>(storage);
-			        Result* result = *slot;
+			        const Result* result = *slot;
 
 			        std::destroy_at(slot);
 			        delete result;
@@ -391,7 +396,8 @@ private:
 
 		    .getConst = [](const std::byte* storage) noexcept -> const void* {
 			    return *rawStoragePointer<Result*>(storage);
-		    }};
+		    },
+		};
 
 		return s_kOperations;
 	}
@@ -420,12 +426,12 @@ private:
 		m_operations = operations;
 	}
 
-	alignas(kInlineStorageAlignment) std::array<std::byte, kInlineStorageSize> m_storage;
+	alignas(s_kInlineStorageAlignment) std::array<std::byte, s_kInlineStorageSize> m_storage;
 	const Operations* m_operations = nullptr;
 };
 
 // NOTE: If later caring about support for different pointer sizes will need adjustment
-static_assert(sizeof(TaskPayload) == 48);
+static_assert(sizeof(TaskPayload) == 48); // NOLINT(readability-magic-numbers)
 static_assert(alignof(TaskPayload) == alignof(std::max_align_t));
 
 static_assert(std::is_nothrow_move_constructible_v<TaskPayload>);

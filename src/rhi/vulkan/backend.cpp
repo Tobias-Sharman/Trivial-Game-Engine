@@ -6,16 +6,27 @@
 #include <string>
 #include <vector>
 
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan_core.h>
 
+#include <trivial/core/application_info.h>
 #include <trivial/core/assert.h>
-#include <trivial/core/config.h>
+#include <trivial/core/graphics_api.h>
+#include <trivial/core/math/affine2.h>
+#include <trivial/core/math/vec4.h>
+#include <trivial/platform/window.h>
+#include <trivial/platform/window_types.h>
+#include <trivial/rhi/mesh_types.h>
 
+#include "rhi/vulkan/allocator.h"
+#include "rhi/vulkan/command.h"
 #include "rhi/vulkan/device.h"
 #include "rhi/vulkan/instance.h"
+#include "rhi/vulkan/mesh.h"
 #include "rhi/vulkan/physical_device.h"
 #include "rhi/vulkan/pipeline.h"
 #include "rhi/vulkan/result.h"
+#include "rhi/vulkan/swapchain.h"
+#include "rhi/vulkan/sync.h"
 
 #if TRIVIAL_ENABLE_VULKAN_VALIDATION
 #include "rhi/vulkan/debug_messenger.h"
@@ -174,7 +185,6 @@ Backend::~Backend() {
 	}
 }
 
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 bool Backend::beginFrame(std::uint64_t frameIndex) noexcept {
 	if (m_swapchainState.imageExtent.width == 0 || m_swapchainState.imageExtent.height == 0) {
 		return false;
@@ -183,7 +193,8 @@ bool Backend::beginFrame(std::uint64_t frameIndex) noexcept {
 	const auto kImageCount = static_cast<std::uint32_t>(m_swapchainState.images.size());
 	m_currentImageSlot = static_cast<std::uint32_t>(frameIndex % kImageCount);
 
-	VkFence_T* const kFence = m_syncState.inFlightFences[m_currentImageSlot];
+	// NOLINTNEXTLINE(misc-const-correctness, misc-misplaced-const)
+	const VkFence kFence = m_syncState.inFlightFences[m_currentImageSlot];
 
 	VkResult result = vkWaitForFences(m_device, 1, &kFence, VK_TRUE, UINT64_MAX);
 
@@ -288,7 +299,8 @@ void Backend::endFrame() noexcept {
 
 	TRIVIAL_VK_CHECK("vkQueueSubmit2 failed", result);
 
-	VkSwapchainKHR_T* const kSwapchain = m_swapchainState.swapchain;
+	// NOLINTNEXTLINE(misc-const-correctness, misc-misplaced-const)
+	const VkSwapchainKHR kSwapchain = m_swapchainState.swapchain;
 
 	const VkPresentInfoKHR kPresentInfo = {
 	    .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,

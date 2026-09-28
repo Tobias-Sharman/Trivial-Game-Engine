@@ -62,7 +62,7 @@ AlwaysBreakTemplateDeclarations: Yes
 PointerAlignment: Left
 ReferenceAlignment: Pointer
 DerivePointerAlignment: false
-QualifierAlignment: Leave
+QualifierAlignment: Left
 
 # =============================================================================
 # Spacing

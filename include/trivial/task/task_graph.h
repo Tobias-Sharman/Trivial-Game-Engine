@@ -119,20 +119,21 @@ public:
 	[[nodiscard]] void* getResultPointer(TaskHandle handle) noexcept;
 
 private:
-	static constexpr std::uint32_t kTaskSlotsPerPage = 256;
-	static constexpr std::uint32_t kMaxTaskCount = 65'536;
+	static constexpr std::uint32_t s_kTaskSlotsPerPage = 256;
+	static constexpr std::uint32_t s_kMaxTaskCount = 65'536;
 
-	static constexpr std::uint32_t kMaxPageCount
-	    = (kMaxTaskCount / kTaskSlotsPerPage) + static_cast<std::uint32_t>(kMaxTaskCount % kTaskSlotsPerPage != 0);
+	static constexpr std::uint32_t s_kMaxPageCount
+	    = (s_kMaxTaskCount / s_kTaskSlotsPerPage)
+	      + static_cast<std::uint32_t>(s_kMaxTaskCount % s_kTaskSlotsPerPage != 0);
 
-	using TaskPage = std::array<TaskSlot, kTaskSlotsPerPage>;
+	using TaskPage = std::array<TaskSlot, s_kTaskSlotsPerPage>;
 
 	[[nodiscard]] static constexpr std::uint32_t pageIndexFor(std::uint32_t taskIndex) noexcept {
-		return taskIndex / kTaskSlotsPerPage;
+		return taskIndex / s_kTaskSlotsPerPage;
 	}
 
 	[[nodiscard]] static constexpr std::uint32_t slotIndexFor(std::uint32_t taskIndex) noexcept {
-		return taskIndex % kTaskSlotsPerPage;
+		return taskIndex % s_kTaskSlotsPerPage;
 	}
 
 	[[nodiscard]] TaskPage* pageAt(std::uint32_t pageIndex) noexcept;
@@ -160,7 +161,7 @@ private:
 	                                    TaskHandle prerequisiteHandle) const noexcept;
 #endif // TRIVIAL_CONFIG_DEBUG
 
-	std::array<std::atomic<TaskPage*>, kMaxPageCount> m_pages{};
+	std::array<std::atomic<TaskPage*>, s_kMaxPageCount> m_pages{};
 
 	sync::Mutex m_pageCreationMutex;
 	sync::Mutex m_allocationMutex;
@@ -172,9 +173,9 @@ private:
 	std::vector<std::uint32_t> m_freeTaskIndices; // TODO: replace when having custom allocator
 	std::uint32_t m_nextUnusedTaskIndex = 0;
 
-	static_assert(kTaskSlotsPerPage > 0);
-	static_assert(kMaxTaskCount > 0);
-	static_assert(kMaxPageCount > 0);
+	static_assert(s_kTaskSlotsPerPage > 0);
+	static_assert(s_kMaxTaskCount > 0);
+	static_assert(s_kMaxPageCount > 0);
 };
 
 } // namespace trivial::task

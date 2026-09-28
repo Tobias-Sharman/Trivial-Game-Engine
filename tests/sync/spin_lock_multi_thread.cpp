@@ -17,7 +17,7 @@ struct LockCounterContext {
 };
 
 void lockWorker(void* arg) {
-	auto* context = static_cast<LockCounterContext*>(arg);
+	const LockCounterContext* context = static_cast<LockCounterContext*>(arg);
 
 	for (std::size_t i = 0; i < g_kConcurrentIterations; ++i) {
 		context->lock->lock();
@@ -27,7 +27,7 @@ void lockWorker(void* arg) {
 }
 
 void tryLockWorker(void* arg) {
-	auto* context = static_cast<LockCounterContext*>(arg);
+	const LockCounterContext* context = static_cast<LockCounterContext*>(arg);
 
 	for (std::size_t i = 0; i < g_kConcurrentIterations; ++i) {
 		while (!context->lock->tryLock()) {}

@@ -14,7 +14,7 @@
 #endif // TRIVIAL_PLATFORM_POSIX
 
 #if TRIVIAL_PLATFORM_MACOS
-#include <pthread/qos.h>
+#include <sys/qos.h>
 #endif // TRIVIAL_PLATFORM_MACOS
 
 namespace trivial::thread {
@@ -83,7 +83,7 @@ struct ThreadConfig {
 
 class Thread {
 public:
-	static constexpr std::size_t kMaxNameLength = 16;
+	static constexpr std::size_t s_kMaxNameLength = 16;
 
 	Thread() noexcept = default;
 
@@ -149,7 +149,7 @@ private:
 	ThreadType m_type = ThreadType::Unknown;
 	std::atomic<ThreadState> m_state{ThreadState::NotStarted};
 
-	std::array<char, kMaxNameLength> m_name{};
+	std::array<char, s_kMaxNameLength> m_name{};
 
 	ThreadStartRoutine m_startRoutine = nullptr;
 	void* m_arg = nullptr;

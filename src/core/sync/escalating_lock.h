@@ -14,7 +14,7 @@ public:
 	EscalatingLock() noexcept = default;
 
 	~EscalatingLock() noexcept {
-		TRIVIAL_ASSERT((m_state.load(std::memory_order_relaxed) & (kLockedBit | kQueueMask)) == 0);
+		TRIVIAL_ASSERT((m_state.load(std::memory_order_relaxed) & (s_kLockedBit | s_kQueueMask)) == 0);
 	}
 
 	EscalatingLock(const EscalatingLock&) = delete;
@@ -25,7 +25,10 @@ public:
 
 	TRIVIAL_FORCE_INLINE void lock() noexcept {
 		std::uintptr_t expected = 0;
-		if (m_state.compare_exchange_weak(expected, kLockedBit, std::memory_order_acquire, std::memory_order_relaxed)) {
+		if (m_state.compare_exchange_weak(expected,
+		                                  s_kLockedBit,
+		                                  std::memory_order_acquire,
+		                                  std::memory_order_relaxed)) {
 			return;
 		}
 
@@ -33,10 +36,10 @@ public:
 	}
 
 	TRIVIAL_FORCE_INLINE void unlock() noexcept {
-		const std::uintptr_t kPreviousState = m_state.fetch_sub(kLockedBit, std::memory_order_release);
-		TRIVIAL_ASSERT((kPreviousState & kLockedBit) != 0);
+		const std::uintptr_t kPreviousState = m_state.fetch_sub(s_kLockedBit, std::memory_order_release);
+		TRIVIAL_ASSERT((kPreviousState & s_kLockedBit) != 0);
 
-		if ((kPreviousState & kQueueLockedBit) != 0 || (kPreviousState & kQueueMask) == 0) {
+		if ((kPreviousState & s_kQueueLockedBit) != 0 || (kPreviousState & s_kQueueMask) == 0) {
 			return;
 		}
 
@@ -47,9 +50,9 @@ private:
 	TRIVIAL_COLD void lockSlow() noexcept;
 	TRIVIAL_COLD void unlockSlow() noexcept;
 
-	static constexpr std::uintptr_t kLockedBit = 1;
-	static constexpr std::uintptr_t kQueueLockedBit = 2;
-	static constexpr std::uintptr_t kQueueMask = ~static_cast<std::uintptr_t>(3);
+	static constexpr std::uintptr_t s_kLockedBit = 1;
+	static constexpr std::uintptr_t s_kQueueLockedBit = 2;
+	static constexpr std::uintptr_t s_kQueueMask = ~static_cast<std::uintptr_t>(3);
 
 	std::atomic<std::uintptr_t> m_state{0};
 };

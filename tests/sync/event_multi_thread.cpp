@@ -3,6 +3,7 @@
 
 #include <gtest/gtest.h>
 
+#include <trivial/core/platform.h>
 #include <trivial/core/sync/event.h>
 #include <trivial/core/thread/thread.h>
 
@@ -19,13 +20,13 @@ struct EventWaitContext {
 };
 
 void waitWorker(void* arg) {
-	auto* context = static_cast<EventWaitContext*>(arg);
+	const EventWaitContext* context = static_cast<EventWaitContext*>(arg);
 	context->event->wait();
 	context->wokeCount->fetch_add(1, std::memory_order_acq_rel);
 }
 
 TEST(EventMultiThreadTest, TriggerUnblocksWaiter) {
-	trivial::tests::ScopedParkingLot parkingLotScope(1);
+	const trivial::tests::ScopedParkingLot kParkingLotScope(1);
 
 	trivial::sync::Event event;
 	std::atomic<std::size_t> wokeCount{0};
@@ -37,8 +38,8 @@ TEST(EventMultiThreadTest, TriggerUnblocksWaiter) {
 	trivial::tests::attachStackAllocator(config);
 #endif // TRIVIAL_PLATFORM_POSIX
 
-	trivial::thread::ThreadCreateResult result = waiter.create(config, &waitWorker, &context);
-	ASSERT_EQ(result.error, trivial::thread::ThreadCreateError::None);
+	const trivial::thread::ThreadCreateResult kResult = waiter.create(config, &waitWorker, &context);
+	ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
 
 	event.trigger();
 
@@ -49,7 +50,7 @@ TEST(EventMultiThreadTest, TriggerUnblocksWaiter) {
 }
 
 TEST(EventMultiThreadTest, TriggerUnblocksAllWaiters) {
-	trivial::tests::ScopedParkingLot parkingLotScope(g_kWaiterThreads);
+	const trivial::tests::ScopedParkingLot kParkingLotScope(g_kWaiterThreads);
 
 	trivial::sync::Event event;
 	std::atomic<std::size_t> wokeCount{0};
@@ -62,8 +63,8 @@ TEST(EventMultiThreadTest, TriggerUnblocksAllWaiters) {
 		trivial::tests::attachStackAllocator(config);
 #endif // TRIVIAL_PLATFORM_POSIX
 
-		trivial::thread::ThreadCreateResult result = waiters[i].create(config, &waitWorker, &context);
-		ASSERT_EQ(result.error, trivial::thread::ThreadCreateError::None);
+		const trivial::thread::ThreadCreateResult kResult = waiters[i].create(config, &waitWorker, &context);
+		ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
 	}
 
 	event.trigger();

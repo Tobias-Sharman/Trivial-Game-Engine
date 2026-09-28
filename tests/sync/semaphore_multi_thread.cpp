@@ -3,6 +3,7 @@
 
 #include <gtest/gtest.h>
 
+#include <trivial/core/platform.h>
 #include <trivial/core/sync/semaphore.h>
 #include <trivial/core/thread/thread.h>
 
@@ -19,7 +20,7 @@ struct SemaphoreCounterContext {
 };
 
 void incrementWorker(void* arg) {
-	auto* context = static_cast<SemaphoreCounterContext*>(arg);
+	const SemaphoreCounterContext* context = static_cast<SemaphoreCounterContext*>(arg);
 
 	for (std::size_t i = 0; i < g_kConcurrentIterations; ++i) {
 		context->semaphore->acquire();
@@ -44,13 +45,13 @@ struct SemaphoreReleaseContext {
 };
 
 void releaseWorker(void* arg) {
-	auto* context = static_cast<SemaphoreReleaseContext*>(arg);
+	const SemaphoreReleaseContext* context = static_cast<SemaphoreReleaseContext*>(arg);
 	context->released->store(true, std::memory_order_release);
 	context->semaphore->release();
 }
 
 TEST(SemaphoreMultiThreadTest, AcquireUnblocksAfterRelease) {
-	trivial::tests::ScopedParkingLot parkingLotScope(1);
+	const trivial::tests::ScopedParkingLot kParkingLotScope(1);
 
 	trivial::thread::Thread mainThread;
 	mainThread.adoptCurrentThread({.name = "main-test-thread", .type = trivial::thread::ThreadType::Main});
@@ -65,8 +66,8 @@ TEST(SemaphoreMultiThreadTest, AcquireUnblocksAfterRelease) {
 	trivial::tests::attachStackAllocator(config);
 #endif // TRIVIAL_PLATFORM_POSIX
 
-	trivial::thread::ThreadCreateResult result = releaser.create(config, &releaseWorker, &context);
-	ASSERT_EQ(result.error, trivial::thread::ThreadCreateError::None);
+	const trivial::thread::ThreadCreateResult kResult = releaser.create(config, &releaseWorker, &context);
+	ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
 
 	semaphore.acquire();
 

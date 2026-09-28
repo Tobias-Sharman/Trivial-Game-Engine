@@ -33,7 +33,7 @@ public:
 
 		PriorityBucket& bucket = m_buckets[static_cast<std::size_t>(priority)];
 
-		sync::LockGuard<sync::Mutex> lock(bucket.mutex);
+		const sync::LockGuard<sync::Mutex> kLock(bucket.mutex);
 		bucket.queue.push_back(handle);
 	}
 
@@ -44,7 +44,7 @@ public:
 
 			PriorityBucket& bucket = m_buckets[kIndex];
 
-			sync::LockGuard<sync::Mutex> lock(bucket.mutex);
+			const sync::LockGuard<sync::Mutex> kLock(bucket.mutex);
 
 			if (bucket.queue.empty()) {
 				continue;
@@ -70,13 +70,13 @@ public:
 			ReadyQueue taken;
 
 			{
-				sync::LockGuard<sync::Mutex> lock(sourceBucket.mutex);
+				const sync::LockGuard<sync::Mutex> kLock(sourceBucket.mutex);
 
 				if (sourceBucket.queue.empty()) {
 					continue;
 				}
 
-				kTake = std::min(kShares[i], sourceBucket.queue.size());
+				kTake = std::min(s_kShares[i], sourceBucket.queue.size());
 
 				for (std::size_t j = 0; j < kTake; ++j) {
 					taken.push_back(sourceBucket.queue.front());
@@ -85,10 +85,10 @@ public:
 			}
 
 			{
-				sync::LockGuard<sync::Mutex> lock(destBucket.mutex);
+				const sync::LockGuard<sync::Mutex> kLock(destBucket.mutex);
 
-				for (TaskHandle handle : taken) {
-					destBucket.queue.push_back(handle);
+				for (const TaskHandle kHandle : taken) {
+					destBucket.queue.push_back(kHandle);
 				}
 			}
 
@@ -100,7 +100,7 @@ public:
 
 	[[nodiscard]] bool empty() const noexcept {
 		for (const PriorityBucket& bucket : m_buckets) {
-			sync::LockGuard<sync::Mutex> lock(bucket.mutex);
+			const sync::LockGuard<sync::Mutex> kLock(bucket.mutex);
 
 			if (!bucket.queue.empty()) {
 				return false;
@@ -118,7 +118,7 @@ private:
 		ReadyQueue queue;
 	};
 
-	static constexpr std::array<std::size_t, static_cast<std::size_t>(TaskPriority::Count)> kShares = []() consteval {
+	static constexpr std::array<std::size_t, static_cast<std::size_t>(TaskPriority::Count)> s_kShares = []() consteval {
 		constexpr std::array<std::size_t, static_cast<std::size_t>(TaskPriority::Count)> kWeights{
 		    TRIVIAL_TASK_PRIORITY_WEIGHT_BACKGROUND,
 		    TRIVIAL_TASK_PRIORITY_WEIGHT_NORMAL,

@@ -1,6 +1,7 @@
 #include <trivial/core/math/mat4.h>
 
 #include <trivial/core/math/math_config.h>
+#include <trivial/core/math/vec4.h>
 #include <trivial/core/platform.h>
 
 #if TRIVIAL_MATH_USE_SIMD

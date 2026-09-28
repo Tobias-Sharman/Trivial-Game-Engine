@@ -3,6 +3,7 @@
 #include <trivial/core/assert.h>
 #include <trivial/core/log.h>
 #include <trivial/core/profile.h>
+#include <trivial/ecs/entity.h>
 
 namespace trivial::world {
 
@@ -15,7 +16,7 @@ Entity World::create() {
 
 		TRIVIAL_ASSERT(kIndex < m_entities.size());
 		TRIVIAL_ASSERT(!m_entities[kIndex].alive);
-		TRIVIAL_ASSERT(m_entities[kIndex].generation <= Entity::kMaxGeneration);
+		TRIVIAL_ASSERT(m_entities[kIndex].generation <= Entity::s_kMaxGeneration);
 
 		m_entities[kIndex].alive = true;
 		++m_aliveCount;
@@ -24,7 +25,7 @@ Entity World::create() {
 	}
 
 	// TODO: Profile this in release when testing game to see if worth dropping check
-	if (m_entities.size() >= Entity::kInvalidIndex) {
+	if (m_entities.size() >= Entity::s_kInvalidIndex) {
 		TRIVIAL_LOG_ERROR("Maximum entity count reached");
 
 		return Entity{};
@@ -57,14 +58,14 @@ void World::destroy(Entity entity) {
 	m_positions2D.remove(entity);
 	m_velocities2D.remove(entity);
 
-	for (auto& [_, store] : m_componentStores) {
+	for (auto& [_, store] : m_componentStores) { // NOLINT(readability-identifier-naming)
 		store->remove(entity);
 	}
 
 	slot.alive = false;
 	--m_aliveCount;
 
-	if (slot.generation == Entity::kMaxGeneration) {
+	if (slot.generation == Entity::s_kMaxGeneration) {
 		TRIVIAL_LOG_WARNING("Hit the max generation, think about increasing the number of bits for generation");
 
 		return;

@@ -1,6 +1,10 @@
 #include <trivial/render/renderer.h>
 
+#include <cstdint>
+#include <span>
+
 #include <trivial/core/assert.h>
+#include <trivial/gpu/context.h>
 
 namespace trivial::render {
 

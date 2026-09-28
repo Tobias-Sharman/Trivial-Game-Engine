@@ -26,9 +26,11 @@ namespace trivial::core {
 
 #if TRIVIAL_ENABLE_ASSERTS
 #define TRIVIAL_ASSERT(expr) TRIVIAL_ASSERT_IMPLEMENTATION(expr)
+#define TRIVIAL_VERIFY(expr) TRIVIAL_ASSERT_IMPLEMENTATION(expr)
 
 #else
 #define TRIVIAL_ASSERT(expr) ((void)0)
+#define TRIVIAL_VERIFY(expr) ((void)(expr))
 
 #endif // TRIVIAL_ENABLE_ASSERTS
 

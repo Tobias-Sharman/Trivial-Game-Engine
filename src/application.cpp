@@ -1,9 +1,14 @@
 #include <trivial/application.h>
 
+#include <memory>
 #include <utility>
+#include <vector>
 
+#include <trivial/layers.h>
 #include <trivial/core/assert.h>
-#include <trivial/core/config.h>
+#include <trivial/frame/frame_context.h>
+#include <trivial/gpu/context.h>
+#include <trivial/render/renderer.h>
 
 namespace trivial {
 

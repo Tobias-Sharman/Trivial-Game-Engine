@@ -7,15 +7,15 @@
 namespace trivial::task {
 
 struct TaskHandle {
-	static constexpr std::uint32_t kInvalidIndex = std::numeric_limits<std::uint32_t>::max();
+	static constexpr std::uint32_t s_kInvalidIndex = std::numeric_limits<std::uint32_t>::max();
 
-	std::uint32_t index = kInvalidIndex;
+	std::uint32_t index = s_kInvalidIndex;
 	std::uint32_t generation = 0;
 
 	[[nodiscard]] constexpr bool operator==(const TaskHandle& other) const noexcept {
 		return index == other.index && generation == other.generation;
 	}
-	[[nodiscard]] constexpr bool isValid() const noexcept { return index != kInvalidIndex; }
+	[[nodiscard]] constexpr bool isValid() const noexcept { return index != s_kInvalidIndex; }
 };
 
 } // namespace trivial::task

@@ -7,7 +7,7 @@
 #include <trivial/core/platform.h>
 
 #ifndef TRIVIAL_THREAD_DEFAULT_STACK_SIZE_BYTES
-#define TRIVIAL_THREAD_DEFAULT_STACK_SIZE_BYTES (std::size_t{2} << 20) // 2 MiB
+#define TRIVIAL_THREAD_DEFAULT_STACK_SIZE_BYTES (std::size_t{2} << 20U) // 2 MiB
 #endif
 
 #ifndef TRIVIAL_THREAD_WINDOWS_YIELD_USE_SLEEP_ZERO

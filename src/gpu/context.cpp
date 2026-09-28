@@ -1,7 +1,13 @@
 #include <trivial/gpu/context.h>
 
+#include <memory>
+
+#include <trivial/core/application_info.h>
 #include <trivial/core/assert.h>
+#include <trivial/core/graphics_api.h>
 #include <trivial/core/log.h>
+#include <trivial/platform/window.h>
+#include <trivial/rhi/backend.h>
 
 #include "rhi/vulkan/backend.h"
 

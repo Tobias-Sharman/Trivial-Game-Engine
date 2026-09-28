@@ -1,5 +1,9 @@
 #include <trivial/core/thread/thread_stack_allocator.h>
 
+#include <cstddef>
+
+#include <trivial/core/platform.h>
+
 #if TRIVIAL_PLATFORM_POSIX
 
 #include <trivial/core/assert.h>

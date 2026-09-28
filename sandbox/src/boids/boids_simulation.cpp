@@ -2,13 +2,25 @@
 
 #include <array>
 #include <cmath>
+#include <cstddef>
+#include <cstdint>
 #include <numbers>
+#include <random>
 #include <span>
+#include <utility>
+#include <vector>
 
 #include <trivial/core/math/affine2.h>
 #include <trivial/core/math/angle.h>
+#include <trivial/core/math/vec2.h>
+#include <trivial/gpu/context.h>
+#include <trivial/rhi/mesh_types.h>
 #include <trivial/task/task.h>
+#include <trivial/task/task_handle.h>
+#include <trivial/task/task_launch_options.h>
+#include <trivial/task/task_payload.h>
 
+#include "boid.h"
 #include "boid_rules.h"
 
 namespace {
@@ -155,8 +167,8 @@ void BoidsSimulation::update(float deltaTime) noexcept {
 
 	trivial::task::wait(std::span<const trivial::task::TaskHandle>{kFinalHandles});
 
-	for (trivial::task::TaskHandle handle : m_frameHandles) {
-		(void)trivial::task::release(handle);
+	for (const trivial::task::TaskHandle kHandle : m_frameHandles) {
+		(void)trivial::task::release(kHandle);
 	}
 
 	std::swap(m_boids, m_boidsNext);

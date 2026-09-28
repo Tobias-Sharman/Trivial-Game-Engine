@@ -8,7 +8,7 @@
 namespace {
 
 TEST(ConditionVariableSingleThreadTest, NotifyWithNoWaitersIsSafe) {
-	trivial::tests::ScopedParkingLot parkingLotScope(0);
+	const trivial::tests::ScopedParkingLot kParkingLotScope(0);
 
 	trivial::sync::Mutex mutex;
 	trivial::sync::ConditionVariable conditionVariable;

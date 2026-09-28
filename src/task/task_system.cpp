@@ -1,14 +1,28 @@
 #include <trivial/task/task_system.h>
 
+#include <array>
+#include <atomic>
 #include <cstdint>
 #include <cstdlib>
+#include <span>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <trivial/core/assert.h>
 #include <trivial/core/log.h>
+#include <trivial/core/platform.h>
 #include <trivial/core/profile.h>
+#include <trivial/core/sync/latch.h>
 #include <trivial/core/sync/lock_guard.h>
+#include <trivial/core/sync/mutex.h>
+#include <trivial/core/thread/thread.h>
+#include <trivial/task/task_graph.h>
+#include <trivial/task/task_handle.h>
+#include <trivial/task/task_launch_options.h>
+#include <trivial/task/task_payload.h>
+#include <trivial/task/task_status.h>
+#include <trivial/task/worker.h>
 
 #include "core/sync/parking_lot.h"
 
@@ -51,7 +65,7 @@ TaskSystem::TaskSystem(const TaskSystemConfig& config)
 		m_workers.emplace_back();
 	}
 
-	thread::ThreadConfig threadConfig{
+	const thread::ThreadConfig kThreadConfig{
 	    .name = "Worker",
 	    .type = thread::ThreadType::Worker,
 #if TRIVIAL_PLATFORM_POSIX
@@ -61,7 +75,7 @@ TaskSystem::TaskSystem(const TaskSystemConfig& config)
 
 	for (Worker& worker : m_workers) {
 		const thread::ThreadCreateResult kResult
-		    = worker.thread.create(threadConfig, &TaskSystem::workerThreadEntry, static_cast<void*>(this));
+		    = worker.thread.create(kThreadConfig, &TaskSystem::workerThreadEntry, static_cast<void*>(this));
 
 		if (kResult.error != thread::ThreadCreateError::None) [[unlikely]] {
 			TRIVIAL_LOG_FATAL_PREFIX("TaskSystem", "Failed to create worker thread");
@@ -183,7 +197,7 @@ void TaskSystem::wait(TaskHandle task) noexcept {
 
 	const std::size_t kWorkerIndex = tryGetCurrentWorkerIndex();
 
-	if (kWorkerIndex == kInvalidWorkerIndex) {
+	if (kWorkerIndex == s_kInvalidWorkerIndex) {
 		latch.wait();
 		return;
 	}
@@ -206,14 +220,14 @@ void TaskSystem::wait(TaskHandle task) noexcept {
 void TaskSystem::wait(std::span<const TaskHandle> tasks) noexcept {
 	bool allComplete = true;
 
-	for (TaskHandle task : tasks) {
-		TRIVIAL_ASSERT(task.isValid());
+	for (const TaskHandle kTask : tasks) {
+		TRIVIAL_ASSERT(kTask.isValid());
 
-		if (isComplete(task)) {
+		if (isComplete(kTask)) {
 			continue;
 		}
 
-		if (tryHelpComplete(task, TaskAffinity::AnyWorker, m_waitHelpMaxDepth)) {
+		if (tryHelpComplete(kTask, TaskAffinity::AnyWorker, m_waitHelpMaxDepth)) {
 			continue;
 		}
 
@@ -227,8 +241,8 @@ void TaskSystem::wait(std::span<const TaskHandle> tasks) noexcept {
 	// Extra slot to account for race of tasks finshing before all waiters area attached
 	sync::Latch latch{tasks.size() + 1};
 
-	for (TaskHandle task : tasks) {
-		if (m_graph.tryAttachWaiter(task, latch) == TaskAttachWaiterResult::AlreadyComplete) {
+	for (const TaskHandle kTask : tasks) {
+		if (m_graph.tryAttachWaiter(kTask, latch) == TaskAttachWaiterResult::AlreadyComplete) {
 			latch.countDown();
 		}
 	}
@@ -237,7 +251,7 @@ void TaskSystem::wait(std::span<const TaskHandle> tasks) noexcept {
 
 	const std::size_t kWorkerIndex = tryGetCurrentWorkerIndex();
 
-	if (kWorkerIndex == kInvalidWorkerIndex) {
+	if (kWorkerIndex == s_kInvalidWorkerIndex) {
 		latch.wait();
 		return;
 	}
@@ -287,9 +301,10 @@ void TaskSystem::runMainThreadReadyTasks() noexcept {
 	}
 }
 
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 std::size_t TaskSystem::tryGetCurrentWorkerIndex() const noexcept {
 	if (g_currentWorker == nullptr) {
-		return kInvalidWorkerIndex;
+		return s_kInvalidWorkerIndex;
 	}
 
 	TRIVIAL_ASSERT(g_currentWorkerSystem == this);
@@ -368,7 +383,7 @@ bool TaskSystem::parkWorker(std::size_t workerIndex) noexcept {
 	worker.state.store(WorkerState::Parked, std::memory_order_relaxed);
 
 	{
-		sync::LockGuard<sync::Mutex> parkedLock(m_parkedIndicesMutex);
+		const sync::LockGuard<sync::Mutex> kParkedLock(m_parkedIndicesMutex);
 		m_parkedWorkerIndices.push_back(workerIndex);
 	}
 
@@ -404,7 +419,7 @@ void TaskSystem::wakeOneIfUnderTarget() noexcept {
 	bool foundParked = false;
 
 	{
-		sync::LockGuard<sync::Mutex> parkedLock(m_parkedIndicesMutex);
+		const sync::LockGuard<sync::Mutex> kParkedLock(m_parkedIndicesMutex);
 
 		if (!m_parkedWorkerIndices.empty()) {
 			indexToWake = m_parkedWorkerIndices.back();
@@ -422,7 +437,7 @@ void TaskSystem::wakeOneIfUnderTarget() noexcept {
 }
 
 void TaskSystem::removeParkedIndex(std::size_t workerIndex) noexcept {
-	sync::LockGuard<sync::Mutex> parkedLock(m_parkedIndicesMutex);
+	const sync::LockGuard<sync::Mutex> kParkedLock(m_parkedIndicesMutex);
 
 	for (std::size_t i = 0; i < m_parkedWorkerIndices.size(); ++i) {
 		if (m_parkedWorkerIndices[i] == workerIndex) {
@@ -468,11 +483,11 @@ void TaskSystem::completeTask(TaskHandle handle) noexcept {
 	std::vector<TaskHandle> completionDependants; // TODO: Thread local vectors to reduce allocations
 	m_graph.completeAndCollectDependants(handle, completionDependants);
 
-	for (TaskHandle dependant : completionDependants) {
+	for (const TaskHandle kDependant : completionDependants) {
 		TaskReadyInfo readyInfo{};
 
-		if (m_graph.removePrerequisiteAndMarkReadyIfUnblocked(dependant, handle, readyInfo)) {
-			enqueueReadyTask(dependant, readyInfo.affinity, readyInfo.priority);
+		if (m_graph.removePrerequisiteAndMarkReadyIfUnblocked(kDependant, handle, readyInfo)) {
+			enqueueReadyTask(kDependant, readyInfo.affinity, readyInfo.priority);
 		}
 	}
 }
@@ -522,8 +537,8 @@ bool TaskSystem::tryHelpComplete(TaskHandle target, TaskAffinity callerAffinity,
 		stack.pop_back();
 
 		bool alreadyVisited = false;
-		for (TaskHandle visitedHandle : visited) {
-			if (visitedHandle == kEntry.handle) {
+		for (const TaskHandle kVisitedHandle : visited) {
+			if (kVisitedHandle == kEntry.handle) {
 				alreadyVisited = true;
 				break;
 			}
@@ -551,8 +566,8 @@ bool TaskSystem::tryHelpComplete(TaskHandle target, TaskAffinity callerAffinity,
 
 		if (info.status == TaskStatus::Waiting) {
 			if (kEntry.depth < maxDepth) {
-				for (TaskHandle prerequisite : prerequisitesScratch) {
-					stack.push_back({.handle = prerequisite, .depth = kEntry.depth + 1});
+				for (const TaskHandle kPrerequisite : prerequisitesScratch) {
+					stack.push_back({.handle = kPrerequisite, .depth = kEntry.depth + 1});
 				}
 			}
 

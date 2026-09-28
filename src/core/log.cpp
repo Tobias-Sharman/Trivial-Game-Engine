@@ -48,7 +48,7 @@ void logMessageWithPrefix(LogLevel level, const char* prefix, const char* messag
 }
 
 void logOomFailure(const char* prefix, const char* context, std::size_t requestedSize, int osErrorCode) {
-	(void)std::fprintf(stderr,
+	(void)std::fprintf(stderr, // NOLINT(cppcoreguidelines-pro-type-vararg)
 	                   "Trivial %s [%s]: %s (requested %zu bytes, os error %d)\n",
 	                   logLevelName(LogLevel::Fatal),
 	                   prefix,

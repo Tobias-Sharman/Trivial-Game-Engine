@@ -1,5 +1,8 @@
 #include <gtest/gtest.h>
 
+#include <trivial/core/math/vec2.h>
+#include <trivial/ecs/components.h>
+#include <trivial/ecs/entity.h>
 #include <trivial/world/world.h>
 
 namespace {
@@ -63,16 +66,16 @@ TEST(WorldTests, StoresStandardComponents) {
 }
 
 TEST(WorldTests, ReadsStandardComponents) {
-	constexpr float kX = 2.0f;
-	constexpr float kY = 3.0f;
+	constexpr float kX = 2.0F;
+	constexpr float kY = 3.0F;
 
 	trivial::world::World world;
 
 	const trivial::ecs::Entity kEntity = world.create();
 
-	trivial::ecs::Position2D position{trivial::math::Vec2f{kX, kY}};
+	const trivial::ecs::Position2D kPosition{trivial::math::Vec2f{.x = kX, .y = kY}};
 
-	world.add<trivial::ecs::Position2D>(kEntity, position);
+	world.add<trivial::ecs::Position2D>(kEntity, kPosition);
 
 	ASSERT_TRUE(world.has<trivial::ecs::Position2D>(kEntity));
 

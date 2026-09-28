@@ -1,9 +1,13 @@
 #include "rhi/vulkan/physical_device.h"
 
+#include <cstdint>
 #include <cstring>
+#include <span>
+#include <vector>
+
+#include <vulkan/vulkan_core.h>
 
 #include <trivial/core/assert.h>
-#include <trivial/core/log.h>
 
 #include "rhi/vulkan/result.h"
 
@@ -92,8 +96,6 @@ void initialiseDeviceFeatures(trivial::rhi::vulkan::DeviceFeatures* features) no
 	*features = {};
 
 	features->features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-	features->features.pNext = &features->vulkan13;
-
 	features->vulkan13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
 }
 
@@ -103,7 +105,9 @@ trivial::rhi::vulkan::DeviceFeatures queryDeviceFeatures(VkPhysicalDevice physic
 	trivial::rhi::vulkan::DeviceFeatures features = {};
 	initialiseDeviceFeatures(&features);
 
+	features.features.pNext = &features.vulkan13;
 	vkGetPhysicalDeviceFeatures2(physicalDevice, &features.features);
+	features.features.pNext = nullptr;
 
 	return features;
 }
@@ -160,7 +164,7 @@ bool hasDeviceExtension(std::span<const VkExtensionProperties> availableExtensio
 	TRIVIAL_ASSERT(extensionName != nullptr);
 
 	for (const VkExtensionProperties& availableExtension : availableExtensions) {
-		if (std::strcmp(availableExtension.extensionName, extensionName) == 0) {
+		if (std::strcmp(static_cast<const char*>(availableExtension.extensionName), extensionName) == 0) {
 			return true;
 		}
 	}

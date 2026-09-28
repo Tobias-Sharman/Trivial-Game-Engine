@@ -3,6 +3,7 @@
 
 #include <gtest/gtest.h>
 
+#include <trivial/core/platform.h>
 #include <trivial/core/sync/condition_variable.h>
 #include <trivial/core/sync/mutex.h>
 #include <trivial/core/thread/thread.h>
@@ -22,7 +23,7 @@ struct WaitContext {
 };
 
 void waitWorker(void* arg) {
-	auto* context = static_cast<WaitContext*>(arg);
+	const WaitContext* context = static_cast<WaitContext*>(arg);
 
 	context->mutex->lock();
 	while (!*context->ready) {
@@ -34,7 +35,7 @@ void waitWorker(void* arg) {
 }
 
 TEST(ConditionVariableMultiThreadTest, WaitUnblocksOnNotifyOne) {
-	trivial::tests::ScopedParkingLot parkingLotScope(1);
+	const trivial::tests::ScopedParkingLot kParkingLotScope(1);
 
 	trivial::sync::Mutex mutex;
 	trivial::sync::ConditionVariable conditionVariable;
@@ -53,8 +54,8 @@ TEST(ConditionVariableMultiThreadTest, WaitUnblocksOnNotifyOne) {
 	trivial::tests::attachStackAllocator(config);
 #endif // TRIVIAL_PLATFORM_POSIX
 
-	trivial::thread::ThreadCreateResult result = waiter.create(config, &waitWorker, &context);
-	ASSERT_EQ(result.error, trivial::thread::ThreadCreateError::None);
+	const trivial::thread::ThreadCreateResult kResult = waiter.create(config, &waitWorker, &context);
+	ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
 
 	mutex.lock();
 	ready = true;
@@ -67,7 +68,7 @@ TEST(ConditionVariableMultiThreadTest, WaitUnblocksOnNotifyOne) {
 }
 
 TEST(ConditionVariableMultiThreadTest, NotifyAllWakesEveryWaiter) {
-	trivial::tests::ScopedParkingLot parkingLotScope(g_kWaiterThreads);
+	const trivial::tests::ScopedParkingLot kParkingLotScope(g_kWaiterThreads);
 
 	trivial::sync::Mutex mutex;
 	trivial::sync::ConditionVariable conditionVariable;
@@ -87,8 +88,8 @@ TEST(ConditionVariableMultiThreadTest, NotifyAllWakesEveryWaiter) {
 		trivial::tests::attachStackAllocator(config);
 #endif // TRIVIAL_PLATFORM_POSIX
 
-		trivial::thread::ThreadCreateResult result = waiters[i].create(config, &waitWorker, &context);
-		ASSERT_EQ(result.error, trivial::thread::ThreadCreateError::None);
+		const trivial::thread::ThreadCreateResult kResult = waiters[i].create(config, &waitWorker, &context);
+		ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
 	}
 
 	mutex.lock();

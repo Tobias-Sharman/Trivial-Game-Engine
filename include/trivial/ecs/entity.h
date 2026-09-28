@@ -12,34 +12,34 @@ public:
 	using ValType = std::uint32_t;
 
 	// TODO: Decide what is the best split
-	static constexpr std::uint32_t kIndexBits = 24;
-	static constexpr std::uint32_t kGenerationBits = 8;
-	static constexpr std::uint32_t kGenerationShift = kIndexBits;
+	static constexpr std::uint32_t s_kIndexBits = 24;
+	static constexpr std::uint32_t s_kGenerationBits = 8;
+	static constexpr std::uint32_t s_kGenerationShift = s_kIndexBits;
 
-	static_assert(kIndexBits > 0);
-	static_assert(kGenerationBits > 0);
-	static_assert(kIndexBits + kGenerationBits == std::numeric_limits<ValType>::digits);
+	static_assert(s_kIndexBits > 0);
+	static_assert(s_kGenerationBits > 0);
+	static_assert(s_kIndexBits + s_kGenerationBits == std::numeric_limits<ValType>::digits);
 
-	static constexpr ValType kIndexMask = (ValType{1} << kIndexBits) - ValType{1};
-	static constexpr ValType kGenerationMask = ~kIndexMask;
+	static constexpr ValType s_kIndexMask = (ValType{1} << s_kIndexBits) - ValType{1};
+	static constexpr ValType s_kGenerationMask = ~s_kIndexMask;
 
-	static constexpr ValType kMaxGeneration = (ValType{1} << kGenerationBits) - ValType{1};
-	static constexpr ValType kInvalidIndex = kIndexMask;
+	static constexpr ValType s_kMaxGeneration = (ValType{1} << s_kGenerationBits) - ValType{1};
+	static constexpr ValType s_kInvalidIndex = s_kIndexMask;
 
 	constexpr Entity() = default;
 
 	// TODO: Cover delete, copy, move, etc. ro5/6
 
 	[[nodiscard]] static constexpr Entity make(ValType index, ValType generation) {
-		return Entity{(generation << kGenerationShift) | index};
+		return Entity{(generation << s_kGenerationShift) | index};
 	}
 
 	[[nodiscard]] static constexpr Entity fromValue(ValType value) { return Entity{value}; }
 
-	[[nodiscard]] constexpr bool valid() const { return index() != kInvalidIndex; }
+	[[nodiscard]] constexpr bool valid() const { return index() != s_kInvalidIndex; }
 
-	[[nodiscard]] constexpr ValType index() const { return m_value & kIndexMask; }
-	[[nodiscard]] constexpr ValType generation() const { return m_value >> kGenerationShift; }
+	[[nodiscard]] constexpr ValType index() const { return m_value & s_kIndexMask; }
+	[[nodiscard]] constexpr ValType generation() const { return m_value >> s_kGenerationShift; }
 	[[nodiscard]] constexpr ValType value() const { return m_value; }
 
 	[[nodiscard]] constexpr bool operator==(const Entity&) const = default;
@@ -48,7 +48,7 @@ private:
 	explicit constexpr Entity(ValType value)
 	    : m_value(value) {}
 
-	ValType m_value = kInvalidIndex;
+	ValType m_value = s_kInvalidIndex;
 };
 
 } // namespace trivial::ecs

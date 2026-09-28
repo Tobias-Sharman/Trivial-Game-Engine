@@ -1,0 +1,10 @@
+Diagnostics:
+  ClangTidy:
+    FastCheckFilter: None
+  MissingIncludes: Strict
+  UnusedIncludes: Strict
+  Includes:
+    IgnoreHeader:
+      - trivial_user_config\.h
+      - sys/_pthread/.*
+      - sys/_types/.*

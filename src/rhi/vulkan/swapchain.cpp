@@ -2,9 +2,14 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <span>
+#include <vector>
+
+#include <vulkan/vulkan_core.h>
 
 #include <trivial/core/assert.h>
+#include <trivial/platform/window_types.h>
 
 #include "rhi/vulkan/result.h"
 
@@ -139,25 +144,31 @@ VkImageView createSwapchainImageView(VkDevice device, VkImage image, VkFormat fo
 	TRIVIAL_ASSERT(device != VK_NULL_HANDLE);
 	TRIVIAL_ASSERT(image != VK_NULL_HANDLE);
 
-	VkImageViewCreateInfo createInfo = {.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-	                                    .pNext = nullptr,
-	                                    .flags = 0,
-	                                    .image = image,
-	                                    .viewType = VK_IMAGE_VIEW_TYPE_2D,
-	                                    .format = format,
-	                                    .components = {.r = VK_COMPONENT_SWIZZLE_IDENTITY,
-	                                                   .g = VK_COMPONENT_SWIZZLE_IDENTITY,
-	                                                   .b = VK_COMPONENT_SWIZZLE_IDENTITY,
-	                                                   .a = VK_COMPONENT_SWIZZLE_IDENTITY},
-	                                    .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-	                                                         .baseMipLevel = 0,
-	                                                         .levelCount = 1,
-	                                                         .baseArrayLayer = 0,
-	                                                         .layerCount = 1}};
+	const VkImageViewCreateInfo  kCreateInfo = {
+	    .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+	    .pNext = nullptr,
+	    .flags = 0,
+	    .image = image,
+	    .viewType = VK_IMAGE_VIEW_TYPE_2D,
+	    .format = format,
+	    .components = {
+	        .r = VK_COMPONENT_SWIZZLE_IDENTITY,
+	        .g = VK_COMPONENT_SWIZZLE_IDENTITY,
+	        .b = VK_COMPONENT_SWIZZLE_IDENTITY,
+	        .a = VK_COMPONENT_SWIZZLE_IDENTITY,
+	    },
+	    .subresourceRange = {
+	        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+	        .baseMipLevel = 0,
+	        .levelCount = 1,
+	        .baseArrayLayer = 0,
+	        .layerCount = 1,
+	    },
+	};
 
 	VkImageView imageView = VK_NULL_HANDLE;
 
-	const VkResult kResult = vkCreateImageView(device, &createInfo, nullptr, &imageView);
+	const VkResult kResult = vkCreateImageView(device, &kCreateInfo, nullptr, &imageView);
 
 	TRIVIAL_VK_CHECK("vkCreateImageView failed", kResult);
 	TRIVIAL_ASSERT(imageView != VK_NULL_HANDLE);
@@ -191,31 +202,32 @@ SwapchainState createSwapchain(const SwapchainCreateParams& params) noexcept {
 
 	const std::array<std::uint32_t, 2> kQueueFamilyIndices = {params.graphicsFamily, params.presentFamily};
 
-	VkSwapchainCreateInfoKHR createInfo
-	    = {.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-	       .pNext = nullptr,
-	       .flags = 0,
-	       .surface = params.surface,
-	       .minImageCount = kImageCount,
-	       .imageFormat = kSurfaceFormat.format,
-	       .imageColorSpace = kSurfaceFormat.colorSpace,
-	       .imageExtent = kExtent,
-	       .imageArrayLayers = 1,
-	       .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-	       .imageSharingMode = kSameQueueFamily ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT,
-	       .queueFamilyIndexCount = kSameQueueFamily ? 0U : static_cast<std::uint32_t>(kQueueFamilyIndices.size()),
-	       .pQueueFamilyIndices = kSameQueueFamily ? nullptr : kQueueFamilyIndices.data(),
-	       .preTransform = kCapabilities.currentTransform,
-	       .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-	       .presentMode = kPresentMode,
-	       .clipped = VK_TRUE,
-	       .oldSwapchain = params.oldSwapchain};
+	const VkSwapchainCreateInfoKHR kCreateInfo = {
+	    .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+	    .pNext = nullptr,
+	    .flags = 0,
+	    .surface = params.surface,
+	    .minImageCount = kImageCount,
+	    .imageFormat = kSurfaceFormat.format,
+	    .imageColorSpace = kSurfaceFormat.colorSpace,
+	    .imageExtent = kExtent,
+	    .imageArrayLayers = 1,
+	    .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+	    .imageSharingMode = kSameQueueFamily ? VK_SHARING_MODE_EXCLUSIVE : VK_SHARING_MODE_CONCURRENT,
+	    .queueFamilyIndexCount = kSameQueueFamily ? 0U : static_cast<std::uint32_t>(kQueueFamilyIndices.size()),
+	    .pQueueFamilyIndices = kSameQueueFamily ? nullptr : kQueueFamilyIndices.data(),
+	    .preTransform = kCapabilities.currentTransform,
+	    .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+	    .presentMode = kPresentMode,
+	    .clipped = VK_TRUE,
+	    .oldSwapchain = params.oldSwapchain,
+	};
 
 	SwapchainState state = {};
 	state.imageFormat = kSurfaceFormat.format;
 	state.imageExtent = kExtent;
 
-	const VkResult kResult = vkCreateSwapchainKHR(params.device, &createInfo, nullptr, &state.swapchain);
+	const VkResult kResult = vkCreateSwapchainKHR(params.device, &kCreateInfo, nullptr, &state.swapchain);
 
 	TRIVIAL_VK_CHECK("vkCreateSwapchainKHR failed", kResult);
 	TRIVIAL_ASSERT(state.swapchain != VK_NULL_HANDLE);

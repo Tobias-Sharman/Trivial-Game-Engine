@@ -2,8 +2,14 @@
 #include <memory>
 #include <vector>
 
+#include <trivial/application.h>
 #include <trivial/engine.h>
+#include <trivial/layers.h>
+#include <trivial/frame/frame_context.h>
+#include <trivial/gpu/context.h>
+#include <trivial/render/renderer.h>
 
+#include "boids/boid.h"
 #include "boids/boids_simulation.h"
 
 namespace {

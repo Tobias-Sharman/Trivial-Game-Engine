@@ -6,6 +6,7 @@
 #include <utility>
 
 #include <trivial/core/assert.h>
+#include <trivial/task/task_graph.h>
 #include <trivial/task/task_handle.h>
 #include <trivial/task/task_launch_options.h>
 #include <trivial/task/task_payload.h>
@@ -42,6 +43,7 @@ public:
 
 	[[nodiscard]] constexpr TaskHandle handle() const noexcept { return m_handle; }
 
+	// NOLINTNEXTLINE(cppcoreguidelines-explicit-constructor, misc-explicit-constructor)
 	[[nodiscard]] constexpr operator TaskHandle() const noexcept { return m_handle; }
 
 	[[nodiscard]] Result& getResult() const noexcept {
@@ -62,6 +64,7 @@ public:
 
 	[[nodiscard]] constexpr TaskHandle handle() const noexcept { return m_handle; }
 
+	// NOLINTNEXTLINE(cppcoreguidelines-explicit-constructor, misc-explicit-constructor)
 	[[nodiscard]] constexpr operator TaskHandle() const noexcept { return m_handle; }
 
 private:
@@ -94,9 +97,9 @@ template <typename Callable>
 
 	static_assert(!std::is_reference_v<Result>, "Task reference results are not currently supported");
 
-	TaskHandle handle = launch(TaskPayload{std::forward<Callable>(callable)}, options);
+	const TaskHandle kHandle = launch(TaskPayload{std::forward<Callable>(callable)}, options);
 
-	return Task<Result>{handle};
+	return Task<Result>{kHandle};
 }
 
 template <typename Callable>
@@ -108,9 +111,9 @@ template <typename Callable>
 
 	static_assert(!std::is_reference_v<Result>, "Task reference results are not currently supported");
 
-	TaskHandle handle = launch(TaskPayload{std::forward<Callable>(callable)}, prerequisite, options);
+	const TaskHandle kHandle = launch(TaskPayload{std::forward<Callable>(callable)}, prerequisite, options);
 
-	return Task<Result>{handle};
+	return Task<Result>{kHandle};
 }
 
 template <typename Callable>
@@ -122,9 +125,9 @@ template <typename Callable>
 
 	static_assert(!std::is_reference_v<Result>, "Task reference results are not currently supported");
 
-	TaskHandle handle = launch(TaskPayload{std::forward<Callable>(callable)}, prerequisites, options);
+	const TaskHandle kHandle = launch(TaskPayload{std::forward<Callable>(callable)}, prerequisites, options);
 
-	return Task<Result>{handle};
+	return Task<Result>{kHandle};
 }
 
 inline void wait(TaskHandle task) noexcept {

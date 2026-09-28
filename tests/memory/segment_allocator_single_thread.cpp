@@ -1,16 +1,19 @@
+#include <cstdint>
 #include <cstring>
 #include <vector>
 
 #include <gtest/gtest.h>
 
+#include <trivial/core/memory/memory_config.h>
+#include <trivial/core/memory/oom_handler.h>
 #include <trivial/core/memory/segment_allocator.h>
 
 using namespace trivial::memory;
 
 namespace {
 
-constexpr std::size_t kTestSegments = 32;
-constexpr std::size_t kTestReserve = kTestSegments * g_kSegmentSize;
+constexpr std::size_t g_kTestSegments = 32;
+constexpr std::size_t g_kTestReserve = g_kTestSegments * g_kSegmentSize;
 
 [[nodiscard]] std::size_t segmentOffset(const SegmentAllocator& allocator, const void* base, const void* ptr) {
 	(void)allocator;
@@ -19,11 +22,11 @@ constexpr std::size_t kTestReserve = kTestSegments * g_kSegmentSize;
 
 class SegmentAllocatorSingleThreadTest : public ::testing::Test {
 protected:
-	void SetUp() override { ASSERT_TRUE(allocator.init(kTestReserve)); }
+	void SetUp() override { ASSERT_TRUE(m_allocator.init(g_kTestReserve)); }
 
-	void TearDown() override { allocator.shutdown(); }
+	void TearDown() override { m_allocator.shutdown(); }
 
-	SegmentAllocator allocator;
+	SegmentAllocator m_allocator;
 };
 
 // -----------------------------------------------------------------------------
@@ -31,31 +34,33 @@ protected:
 // -----------------------------------------------------------------------------
 
 TEST_F(SegmentAllocatorSingleThreadTest, ReservationRoundsUpToSegments) {
-	EXPECT_GE(allocator.segmentCapacity(), kTestSegments);
+	EXPECT_GE(m_allocator.segmentCapacity(), g_kTestSegments);
 }
 
 TEST(SegmentAllocatorSingleThreadStandalone, UnalignedReserveRoundsUp) {
 	SegmentAllocator allocator;
 	ASSERT_TRUE(allocator.init(g_kSegmentSize + 1));
-	EXPECT_EQ(allocator.segmentCapacity(), 2u);
+	EXPECT_EQ(allocator.segmentCapacity(), 2U);
 	allocator.shutdown();
 }
 
 TEST_F(SegmentAllocatorSingleThreadTest, SegmentsAreSegmentAligned) {
-	void* segment = allocator.allocSegments(1, SegmentKind::Small);
+	void* segment = m_allocator.allocSegments(1, SegmentKind::Small);
 	ASSERT_NE(segment, nullptr);
-	EXPECT_EQ(reinterpret_cast<std::uintptr_t>(segment) & g_kSegmentMask, 0u);
-	allocator.freeSegments(segment, 1);
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+	EXPECT_EQ(reinterpret_cast<std::uintptr_t>(segment) & g_kSegmentMask, 0U);
+	m_allocator.freeSegments(segment, 1);
 }
 
 TEST_F(SegmentAllocatorSingleThreadTest, SegmentBaseMasksInteriorPointers) {
-	void* segment = allocator.allocSegments(1, SegmentKind::Small);
+	void* segment = m_allocator.allocSegments(1, SegmentKind::Small);
 	ASSERT_NE(segment, nullptr);
 
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 	char* interior = static_cast<char*>(segment) + (g_kSegmentSize / 2);
 	EXPECT_EQ(SegmentAllocator::segmentBase(interior), segment);
 
-	allocator.freeSegments(segment, 1);
+	m_allocator.freeSegments(segment, 1);
 }
 
 // -----------------------------------------------------------------------------
@@ -64,18 +69,19 @@ TEST_F(SegmentAllocatorSingleThreadTest, SegmentBaseMasksInteriorPointers) {
 
 TEST_F(SegmentAllocatorSingleThreadTest, OwnsRejectsOutsidePointers) {
 	int stackValue = 0;
-	EXPECT_FALSE(allocator.owns(&stackValue));
-	EXPECT_FALSE(allocator.owns(nullptr));
+	EXPECT_FALSE(m_allocator.owns(&stackValue));
+	EXPECT_FALSE(m_allocator.owns(nullptr));
 }
 
 TEST_F(SegmentAllocatorSingleThreadTest, OwnsAcceptsInteriorPointers) {
-	void* segment = allocator.allocSegments(1, SegmentKind::Small);
+	void* segment = m_allocator.allocSegments(1, SegmentKind::Small);
 	ASSERT_NE(segment, nullptr);
 
-	EXPECT_TRUE(allocator.owns(segment));
-	EXPECT_TRUE(allocator.owns(static_cast<char*>(segment) + g_kSegmentSize - 1));
+	EXPECT_TRUE(m_allocator.owns(segment));
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+	EXPECT_TRUE(m_allocator.owns(static_cast<char*>(segment) + g_kSegmentSize - 1));
 
-	allocator.freeSegments(segment, 1);
+	m_allocator.freeSegments(segment, 1);
 }
 
 TEST_F(SegmentAllocatorSingleThreadTest, OwnsRejectsOnePastReservationEnd) {
@@ -84,19 +90,21 @@ TEST_F(SegmentAllocatorSingleThreadTest, OwnsRejectsOnePastReservationEnd) {
 	// Sequential single-segment allocations on a fresh allocator land at
 	// ascending indices, so the last one handed out sits at the top of the
 	// reservation
-	while (void* segment = allocator.allocSegments(1, SegmentKind::Small)) {
+	while (void* segment = m_allocator.allocSegments(1, SegmentKind::Small)) {
 		held.push_back(segment);
 	}
 
 	ASSERT_FALSE(held.empty());
 
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 	const char* kOnePastEnd = static_cast<char*>(held.back()) + g_kSegmentSize;
 
-	EXPECT_TRUE(allocator.owns(static_cast<char*>(held.back()) + g_kSegmentSize - 1));
-	EXPECT_FALSE(allocator.owns(kOnePastEnd));
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+	EXPECT_TRUE(m_allocator.owns(static_cast<char*>(held.back()) + g_kSegmentSize - 1));
+	EXPECT_FALSE(m_allocator.owns(kOnePastEnd));
 
 	for (void* segment : held) {
-		allocator.freeSegments(segment, 1);
+		m_allocator.freeSegments(segment, 1);
 	}
 }
 
@@ -105,109 +113,113 @@ TEST_F(SegmentAllocatorSingleThreadTest, OwnsRejectsOnePastReservationEnd) {
 // -----------------------------------------------------------------------------
 
 TEST_F(SegmentAllocatorSingleThreadTest, AllocatesDistinctSegments) {
-	void* first = allocator.allocSegments(1, SegmentKind::Small);
-	void* second = allocator.allocSegments(1, SegmentKind::Small);
+	void* first = m_allocator.allocSegments(1, SegmentKind::Small);
+	void* second = m_allocator.allocSegments(1, SegmentKind::Small);
 
 	ASSERT_NE(first, nullptr);
 	ASSERT_NE(second, nullptr);
 	EXPECT_NE(first, second);
 
-	allocator.freeSegments(first, 1);
-	allocator.freeSegments(second, 1);
+	m_allocator.freeSegments(first, 1);
+	m_allocator.freeSegments(second, 1);
 }
 
 TEST_F(SegmentAllocatorSingleThreadTest, MultiSegmentRunIsContiguous) {
 	constexpr std::size_t kRunSegments = 4;
 
-	void* run = allocator.allocSegments(kRunSegments, SegmentKind::HugeHead);
+	void* run = m_allocator.allocSegments(kRunSegments, SegmentKind::HugeHead);
 	ASSERT_NE(run, nullptr);
 
 	// Segments only reserve address space, so each one needs its own commit
 	// before it can be written
-	const std::size_t kPagesPerSegment = g_kSegmentSize / allocator.capabilities().pageSize;
+	// NOLINTNEXTLINE(readability-static-accessed-through-instance)
+	const std::size_t kPagesPerSegment = g_kSegmentSize / m_allocator.capabilities().pageSize;
 	int error = 0;
 
 	for (std::size_t segment = 0; segment < kRunSegments; ++segment) {
+		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 		void* segmentBase = static_cast<char*>(run) + (segment * g_kSegmentSize);
-		ASSERT_TRUE(allocator.ensureCommittedPages(segmentBase, kPagesPerSegment, error));
+		ASSERT_TRUE(m_allocator.ensureCommittedPages(segmentBase, kPagesPerSegment, error));
 	}
 
 	// Writing across the whole run proves the address space is one contiguous range
 	std::memset(run, 0xCD, kRunSegments * g_kSegmentSize);
-	EXPECT_EQ(static_cast<unsigned char*>(run)[kRunSegments * g_kSegmentSize - 1], 0xCD);
 
-	allocator.freeSegments(run, kRunSegments);
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+	EXPECT_EQ(static_cast<unsigned char*>(run)[(kRunSegments * g_kSegmentSize) - 1], 0xCD);
+
+	m_allocator.freeSegments(run, kRunSegments);
 }
 
 TEST_F(SegmentAllocatorSingleThreadTest, ExhaustionReturnsNullptr) {
 	std::vector<void*> held;
 
-	while (void* segment = allocator.allocSegments(1, SegmentKind::Small)) {
+	while (void* segment = m_allocator.allocSegments(1, SegmentKind::Small)) {
 		held.push_back(segment);
 	}
 
 	EXPECT_FALSE(held.empty());
-	EXPECT_EQ(allocator.allocSegments(1, SegmentKind::Small), nullptr);
+	EXPECT_EQ(m_allocator.allocSegments(1, SegmentKind::Small), nullptr);
 
 	for (void* segment : held) {
-		allocator.freeSegments(segment, 1);
+		m_allocator.freeSegments(segment, 1);
 	}
 }
 
 TEST_F(SegmentAllocatorSingleThreadTest, RunLargerThanCapacityFails) {
-	EXPECT_EQ(allocator.allocSegments(allocator.segmentCapacity() + 1, SegmentKind::HugeHead), nullptr);
+	EXPECT_EQ(m_allocator.allocSegments(m_allocator.segmentCapacity() + 1, SegmentKind::HugeHead), nullptr);
 }
 
 TEST_F(SegmentAllocatorSingleThreadTest, FragmentationBlocksContiguousRun) {
 	std::vector<void*> held;
 
-	while (void* segment = allocator.allocSegments(1, SegmentKind::Small)) {
+	while (void* segment = m_allocator.allocSegments(1, SegmentKind::Small)) {
 		held.push_back(segment);
 	}
 
-	ASSERT_GE(held.size(), 4u);
+	ASSERT_GE(held.size(), 4U);
 
 	// Free alternating segments, so plenty is free but nothing is adjacent
 	for (std::size_t index = 0; index < held.size(); index += 2) {
-		allocator.freeSegments(held[index], 1);
+		m_allocator.freeSegments(held[index], 1);
 		held[index] = nullptr;
 	}
 
-	EXPECT_EQ(allocator.allocSegments(2, SegmentKind::HugeHead), nullptr);
+	EXPECT_EQ(m_allocator.allocSegments(2, SegmentKind::HugeHead), nullptr);
 
 	for (void* segment : held) {
 		if (segment != nullptr) {
-			allocator.freeSegments(segment, 1);
+			m_allocator.freeSegments(segment, 1);
 		}
 	}
 }
 
 TEST_F(SegmentAllocatorSingleThreadTest, FreedRunIsReusable) {
-	void* first = allocator.allocSegments(3, SegmentKind::HugeHead);
+	void* first = m_allocator.allocSegments(3, SegmentKind::HugeHead);
 	ASSERT_NE(first, nullptr);
-	allocator.freeSegments(first, 3);
+	m_allocator.freeSegments(first, 3);
 
-	void* second = allocator.allocSegments(3, SegmentKind::HugeHead);
+	void* second = m_allocator.allocSegments(3, SegmentKind::HugeHead);
 	EXPECT_EQ(second, first);
-	allocator.freeSegments(second, 3);
+	m_allocator.freeSegments(second, 3);
 }
 
 TEST_F(SegmentAllocatorSingleThreadTest, AdjacentFreedSegmentsCoalesce) {
-	void* first = allocator.allocSegments(1, SegmentKind::Small);
-	void* second = allocator.allocSegments(1, SegmentKind::Small);
+	void* first = m_allocator.allocSegments(1, SegmentKind::Small);
+	void* second = m_allocator.allocSegments(1, SegmentKind::Small);
 	ASSERT_NE(first, nullptr);
 	ASSERT_NE(second, nullptr);
 
-	allocator.freeSegments(first, 1);
-	allocator.freeSegments(second, 1);
+	m_allocator.freeSegments(first, 1);
+	m_allocator.freeSegments(second, 1);
 
 	// Adjacency in the bitmap is adjacency in memory, so no work is needed for
 	// two singles to satisfy a run of two
-	void* run = allocator.allocSegments(2, SegmentKind::HugeHead);
+	void* run = m_allocator.allocSegments(2, SegmentKind::HugeHead);
 	EXPECT_NE(run, nullptr);
 
 	if (run != nullptr) {
-		allocator.freeSegments(run, 2);
+		m_allocator.freeSegments(run, 2);
 	}
 }
 
@@ -216,107 +228,113 @@ TEST_F(SegmentAllocatorSingleThreadTest, AdjacentFreedSegmentsCoalesce) {
 // -----------------------------------------------------------------------------
 
 TEST_F(SegmentAllocatorSingleThreadTest, FreshSegmentHasNoCommittedPages) {
-	void* segment = allocator.allocSegments(1, SegmentKind::Small);
+	void* segment = m_allocator.allocSegments(1, SegmentKind::Small);
 	ASSERT_NE(segment, nullptr);
 
-	EXPECT_EQ(allocator.committedPages(segment), 0u);
+	EXPECT_EQ(m_allocator.committedPages(segment), 0U);
 
-	allocator.freeSegments(segment, 1);
+	m_allocator.freeSegments(segment, 1);
 }
 
 TEST_F(SegmentAllocatorSingleThreadTest, CommitGrowsPrefixAndMemoryIsWritable) {
-	void* segment = allocator.allocSegments(1, SegmentKind::Small);
+	void* segment = m_allocator.allocSegments(1, SegmentKind::Small);
 	ASSERT_NE(segment, nullptr);
 
 	int error = 0;
-	ASSERT_TRUE(allocator.ensureCommittedPages(segment, 4, error));
-	EXPECT_EQ(allocator.committedPages(segment), 4u);
+	ASSERT_TRUE(m_allocator.ensureCommittedPages(segment, 4, error));
+	EXPECT_EQ(m_allocator.committedPages(segment), 4U);
 
-	const std::size_t kBytes = 4 * allocator.capabilities().pageSize;
+	// NOLINTNEXTLINE(readability-static-accessed-through-instance)
+	const std::size_t kBytes = 4 * m_allocator.capabilities().pageSize;
 	std::memset(segment, 0xEF, kBytes);
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 	EXPECT_EQ(static_cast<unsigned char*>(segment)[kBytes - 1], 0xEF);
 
-	allocator.freeSegments(segment, 1);
+	m_allocator.freeSegments(segment, 1);
 }
 
 TEST_F(SegmentAllocatorSingleThreadTest, CommitIsIdempotent) {
-	void* segment = allocator.allocSegments(1, SegmentKind::Small);
+	void* segment = m_allocator.allocSegments(1, SegmentKind::Small);
 	ASSERT_NE(segment, nullptr);
 
 	int error = 0;
-	ASSERT_TRUE(allocator.ensureCommittedPages(segment, 8, error));
-	ASSERT_TRUE(allocator.ensureCommittedPages(segment, 8, error));
-	ASSERT_TRUE(allocator.ensureCommittedPages(segment, 4, error));
+	ASSERT_TRUE(m_allocator.ensureCommittedPages(segment, 8, error));
+	ASSERT_TRUE(m_allocator.ensureCommittedPages(segment, 8, error));
+	ASSERT_TRUE(m_allocator.ensureCommittedPages(segment, 4, error));
 
 	// The prefix is a target, not an increment, and it never shrinks on commit
-	EXPECT_EQ(allocator.committedPages(segment), 8u);
+	EXPECT_EQ(m_allocator.committedPages(segment), 8U);
 
-	allocator.freeSegments(segment, 1);
+	m_allocator.freeSegments(segment, 1);
 }
 
 TEST_F(SegmentAllocatorSingleThreadTest, CommitOnlyGrowsTheDelta) {
-	void* segment = allocator.allocSegments(1, SegmentKind::Small);
+	void* segment = m_allocator.allocSegments(1, SegmentKind::Small);
 	ASSERT_NE(segment, nullptr);
 
 	int error = 0;
-	ASSERT_TRUE(allocator.ensureCommittedPages(segment, 4, error));
-	ASSERT_TRUE(allocator.ensureCommittedPages(segment, 10, error));
-	EXPECT_EQ(allocator.committedPages(segment), 10u);
+	ASSERT_TRUE(m_allocator.ensureCommittedPages(segment, 4, error));
+	ASSERT_TRUE(m_allocator.ensureCommittedPages(segment, 10, error));
+	EXPECT_EQ(m_allocator.committedPages(segment), 10U);
 
 	// Pages committed by the first call must still be writable after the second
-	std::memset(segment, 0x11, 10 * allocator.capabilities().pageSize);
+	// NOLINTNEXTLINE(readability-static-accessed-through-instance)
+	std::memset(segment, 0x11, 10 * m_allocator.capabilities().pageSize);
 
-	allocator.freeSegments(segment, 1);
+	m_allocator.freeSegments(segment, 1);
 }
 
 #if TRIVIAL_MEMORY_ENABLE_COMMIT_BUDGET && !TRIVIAL_MEMORY_FIXED_COMMIT_BUDGET
 TEST_F(SegmentAllocatorSingleThreadTest, CommitBudgetRejectsOverBudgetCommits) {
-	static bool oomFired = false;
-	oomFired = false;
+	static bool s_oomFired = false;
+	s_oomFired = false;
 
-	const std::size_t kPageSize = allocator.capabilities().pageSize;
-	allocator.setCommitBudget(2 * kPageSize);
+	// NOLINTNEXTLINE(readability-static-accessed-through-instance)
+	const std::size_t kPageSize = m_allocator.capabilities().pageSize;
+	m_allocator.setCommitBudget(2 * kPageSize);
 
-	void* segment = allocator.allocSegments(1, SegmentKind::Small);
+	void* segment = m_allocator.allocSegments(1, SegmentKind::Small);
 	ASSERT_NE(segment, nullptr);
 
 	int error = 0;
-	ASSERT_TRUE(allocator.ensureCommittedPages(segment, 2, error));
+	ASSERT_TRUE(m_allocator.ensureCommittedPages(segment, 2, error));
 
-	allocator.setOomHandler([](const OomInfo& info) {
+	m_allocator.setOomHandler([](const OomInfo& info) {
 		(void)info;
-		oomFired = true;
+		s_oomFired = true;
 	});
 
 	// Growing the prefix by even one more page would exceed the budget
-	EXPECT_FALSE(allocator.ensureCommittedPages(segment, 3, error));
-	EXPECT_TRUE(oomFired);
-	EXPECT_EQ(allocator.committedPages(segment), 2u);
+	EXPECT_FALSE(m_allocator.ensureCommittedPages(segment, 3, error));
+	EXPECT_TRUE(s_oomFired);
+	EXPECT_EQ(m_allocator.committedPages(segment), 2U);
 
-	allocator.freeSegments(segment, 1);
+	m_allocator.freeSegments(segment, 1);
 }
 #endif // TRIVIAL_MEMORY_ENABLE_COMMIT_BUDGET && !TRIVIAL_MEMORY_FIXED_COMMIT_BUDGET
 
 TEST_F(SegmentAllocatorSingleThreadTest, CommitFillsEntireSegment) {
-	void* segment = allocator.allocSegments(1, SegmentKind::Small);
+	void* segment = m_allocator.allocSegments(1, SegmentKind::Small);
 	ASSERT_NE(segment, nullptr);
 
-	const std::size_t kPagesPerSegment = g_kSegmentSize / allocator.capabilities().pageSize;
+	// NOLINTNEXTLINE(readability-static-accessed-through-instance)
+	const std::size_t kPagesPerSegment = g_kSegmentSize / m_allocator.capabilities().pageSize;
 
 	int error = 0;
-	ASSERT_TRUE(allocator.ensureCommittedPages(segment, kPagesPerSegment, error));
-	EXPECT_EQ(allocator.committedPages(segment), kPagesPerSegment);
+	ASSERT_TRUE(m_allocator.ensureCommittedPages(segment, kPagesPerSegment, error));
+	EXPECT_EQ(m_allocator.committedPages(segment), kPagesPerSegment);
 
 	// The full segment must be writable right up to its last byte
 	std::memset(segment, 0x77, g_kSegmentSize);
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 	EXPECT_EQ(static_cast<unsigned char*>(segment)[g_kSegmentSize - 1], 0x77);
 
-	allocator.freeSegments(segment, 1);
+	m_allocator.freeSegments(segment, 1);
 }
 
 TEST_F(SegmentAllocatorSingleThreadTest, CommittedPagesRejectsForeignPointers) {
 	int stackValue = 0;
-	EXPECT_EQ(allocator.committedPages(&stackValue), 0u);
+	EXPECT_EQ(m_allocator.committedPages(&stackValue), 0U);
 }
 
 // -----------------------------------------------------------------------------
@@ -324,83 +342,85 @@ TEST_F(SegmentAllocatorSingleThreadTest, CommittedPagesRejectsForeignPointers) {
 // -----------------------------------------------------------------------------
 
 TEST_F(SegmentAllocatorSingleThreadTest, FreedSegmentKeepsCommittedPrefix) {
-	void* segment = allocator.allocSegments(1, SegmentKind::Small);
+	void* segment = m_allocator.allocSegments(1, SegmentKind::Small);
 	ASSERT_NE(segment, nullptr);
 
 	int error = 0;
-	ASSERT_TRUE(allocator.ensureCommittedPages(segment, 6, error));
-	allocator.freeSegments(segment, 1);
+	ASSERT_TRUE(m_allocator.ensureCommittedPages(segment, 6, error));
+	m_allocator.freeSegments(segment, 1);
 
-	void* adopted = allocator.allocSegments(1, SegmentKind::Medium);
+	void* adopted = m_allocator.allocSegments(1, SegmentKind::Medium);
 	ASSERT_EQ(adopted, segment);
-	EXPECT_EQ(allocator.committedPages(adopted), 6u);
+	EXPECT_EQ(m_allocator.committedPages(adopted), 6U);
 
-	allocator.freeSegments(adopted, 1);
+	m_allocator.freeSegments(adopted, 1);
 }
 
 TEST_F(SegmentAllocatorSingleThreadTest, CachedSegmentIsPreferredOverFreshOne) {
-	void* first = allocator.allocSegments(1, SegmentKind::Small);
-	void* second = allocator.allocSegments(1, SegmentKind::Small);
+	void* first = m_allocator.allocSegments(1, SegmentKind::Small);
+	void* second = m_allocator.allocSegments(1, SegmentKind::Small);
 	ASSERT_NE(first, nullptr);
 	ASSERT_NE(second, nullptr);
 
 	int error = 0;
-	ASSERT_TRUE(allocator.ensureCommittedPages(second, 2, error));
+	ASSERT_TRUE(m_allocator.ensureCommittedPages(second, 2, error));
 
 	// first is released with nothing committed, second with a live prefix, so
 	// only second enters the cache and should win despite the lower index
-	allocator.freeSegments(first, 1);
-	allocator.freeSegments(second, 1);
+	m_allocator.freeSegments(first, 1);
+	m_allocator.freeSegments(second, 1);
 
-	void* adopted = allocator.allocSegments(1, SegmentKind::Small);
+	void* adopted = m_allocator.allocSegments(1, SegmentKind::Small);
 	EXPECT_EQ(adopted, second);
 
-	allocator.freeSegments(adopted, 1);
+	m_allocator.freeSegments(adopted, 1);
 }
 
 #if TRIVIAL_MEMORY_ENABLE_DECOMMIT
 TEST_F(SegmentAllocatorSingleThreadTest, TrimShrinksPrefix) {
-	void* segment = allocator.allocSegments(1, SegmentKind::ScratchArena);
+	void* segment = m_allocator.allocSegments(1, SegmentKind::ScratchArena);
 	ASSERT_NE(segment, nullptr);
 
 	int error = 0;
-	ASSERT_TRUE(allocator.ensureCommittedPages(segment, 10, error));
+	ASSERT_TRUE(m_allocator.ensureCommittedPages(segment, 10, error));
 
-	allocator.trimCommittedPagesTo(segment, 4);
-	EXPECT_EQ(allocator.committedPages(segment), 4u);
+	m_allocator.trimCommittedPagesTo(segment, 4);
+	EXPECT_EQ(m_allocator.committedPages(segment), 4U);
 
 	// The surviving prefix must still be backed
-	std::memset(segment, 0x22, 4 * allocator.capabilities().pageSize);
+	// NOLINTNEXTLINE(readability-static-accessed-through-instance)
+	std::memset(segment, 0x22, 4 * m_allocator.capabilities().pageSize);
 
-	allocator.freeSegments(segment, 1);
+	m_allocator.freeSegments(segment, 1);
 }
 
 TEST_F(SegmentAllocatorSingleThreadTest, TrimAboveCurrentPrefixDoesNothing) {
-	void* segment = allocator.allocSegments(1, SegmentKind::ScratchArena);
+	void* segment = m_allocator.allocSegments(1, SegmentKind::ScratchArena);
 	ASSERT_NE(segment, nullptr);
 
 	int error = 0;
-	ASSERT_TRUE(allocator.ensureCommittedPages(segment, 4, error));
+	ASSERT_TRUE(m_allocator.ensureCommittedPages(segment, 4, error));
 
-	allocator.trimCommittedPagesTo(segment, 8);
-	EXPECT_EQ(allocator.committedPages(segment), 4u);
+	m_allocator.trimCommittedPagesTo(segment, 8);
+	EXPECT_EQ(m_allocator.committedPages(segment), 4U);
 
-	allocator.freeSegments(segment, 1);
+	m_allocator.freeSegments(segment, 1);
 }
 
 TEST_F(SegmentAllocatorSingleThreadTest, RecommitAfterTrimIsWritable) {
-	void* segment = allocator.allocSegments(1, SegmentKind::ScratchArena);
+	void* segment = m_allocator.allocSegments(1, SegmentKind::ScratchArena);
 	ASSERT_NE(segment, nullptr);
 
 	int error = 0;
-	ASSERT_TRUE(allocator.ensureCommittedPages(segment, 8, error));
-	allocator.trimCommittedPagesTo(segment, 2);
-	ASSERT_TRUE(allocator.ensureCommittedPages(segment, 8, error));
+	ASSERT_TRUE(m_allocator.ensureCommittedPages(segment, 8, error));
+	m_allocator.trimCommittedPagesTo(segment, 2);
+	ASSERT_TRUE(m_allocator.ensureCommittedPages(segment, 8, error));
 
-	std::memset(segment, 0x33, 8 * allocator.capabilities().pageSize);
-	EXPECT_EQ(allocator.committedPages(segment), 8u);
+	// NOLINTNEXTLINE(readability-static-accessed-through-instance)
+	std::memset(segment, 0x33, 8 * m_allocator.capabilities().pageSize);
+	EXPECT_EQ(m_allocator.committedPages(segment), 8U);
 
-	allocator.freeSegments(segment, 1);
+	m_allocator.freeSegments(segment, 1);
 }
 #endif // TRIVIAL_MEMORY_ENABLE_DECOMMIT
 
@@ -410,39 +430,39 @@ TEST_F(SegmentAllocatorSingleThreadTest, RecommitAfterTrimIsWritable) {
 
 #if TRIVIAL_MEMORY_ENABLE_DECOMMIT
 TEST_F(SegmentAllocatorSingleThreadTest, DecayPurgesCachedSegments) {
-	void* segment = allocator.allocSegments(1, SegmentKind::Small);
+	void* segment = m_allocator.allocSegments(1, SegmentKind::Small);
 	ASSERT_NE(segment, nullptr);
 
 	int error = 0;
-	ASSERT_TRUE(allocator.ensureCommittedPages(segment, 4, error));
-	allocator.freeSegments(segment, 1);
+	ASSERT_TRUE(m_allocator.ensureCommittedPages(segment, 4, error));
+	m_allocator.freeSegments(segment, 1);
 
 	for (std::uint32_t tick = 0; tick <= g_kDecayTicks + 1; ++tick) {
-		allocator.tick();
+		m_allocator.tick();
 	}
 
-	void* adopted = allocator.allocSegments(1, SegmentKind::Small);
+	void* adopted = m_allocator.allocSegments(1, SegmentKind::Small);
 	ASSERT_EQ(adopted, segment);
-	EXPECT_EQ(allocator.committedPages(adopted), 0u);
+	EXPECT_EQ(m_allocator.committedPages(adopted), 0U);
 
-	allocator.freeSegments(adopted, 1);
+	m_allocator.freeSegments(adopted, 1);
 }
 
 TEST_F(SegmentAllocatorSingleThreadTest, CachedSegmentSurvivesInsideDecayWindow) {
-	void* segment = allocator.allocSegments(1, SegmentKind::Small);
+	void* segment = m_allocator.allocSegments(1, SegmentKind::Small);
 	ASSERT_NE(segment, nullptr);
 
 	int error = 0;
-	ASSERT_TRUE(allocator.ensureCommittedPages(segment, 4, error));
-	allocator.freeSegments(segment, 1);
+	ASSERT_TRUE(m_allocator.ensureCommittedPages(segment, 4, error));
+	m_allocator.freeSegments(segment, 1);
 
-	allocator.tick();
+	m_allocator.tick();
 
-	void* adopted = allocator.allocSegments(1, SegmentKind::Small);
+	void* adopted = m_allocator.allocSegments(1, SegmentKind::Small);
 	ASSERT_EQ(adopted, segment);
-	EXPECT_EQ(allocator.committedPages(adopted), 4u);
+	EXPECT_EQ(m_allocator.committedPages(adopted), 4U);
 
-	allocator.freeSegments(adopted, 1);
+	m_allocator.freeSegments(adopted, 1);
 }
 
 TEST(SegmentAllocatorSingleThreadStandalone, CacheOverflowPurgesInsteadOfCaching) {
@@ -476,7 +496,7 @@ TEST(SegmentAllocatorSingleThreadStandalone, CacheOverflowPurgesInsteadOfCaching
 	for (std::size_t i = 0; i < g_kMaxCachedSegments; ++i) {
 		void* segment = allocator.allocSegments(1, SegmentKind::Small);
 		ASSERT_NE(segment, nullptr);
-		EXPECT_EQ(allocator.committedPages(segment), 2u);
+		EXPECT_EQ(allocator.committedPages(segment), 2U);
 		reclaimed.push_back(segment);
 	}
 
@@ -484,7 +504,7 @@ TEST(SegmentAllocatorSingleThreadStandalone, CacheOverflowPurgesInsteadOfCaching
 	// overflowed the cache and was purged on free
 	void* overflowed = allocator.allocSegments(1, SegmentKind::Small);
 	ASSERT_NE(overflowed, nullptr);
-	EXPECT_EQ(allocator.committedPages(overflowed), 0u);
+	EXPECT_EQ(allocator.committedPages(overflowed), 0U);
 
 	allocator.freeSegments(overflowed, 1);
 
@@ -502,65 +522,67 @@ TEST(SegmentAllocatorSingleThreadStandalone, CacheOverflowPurgesInsteadOfCaching
 
 #if TRIVIAL_ENABLE_MEMORY_DEBUG_STATS
 TEST_F(SegmentAllocatorSingleThreadTest, KindIsRecordedAndCleared) {
-	void* segment = allocator.allocSegments(1, SegmentKind::EcsChunks);
+	void* segment = m_allocator.allocSegments(1, SegmentKind::EcsChunks);
 	ASSERT_NE(segment, nullptr);
 
-	EXPECT_EQ(allocator.kindOf(segment), SegmentKind::EcsChunks);
-	EXPECT_EQ(allocator.kindOf(static_cast<char*>(segment) + 128), SegmentKind::EcsChunks);
+	EXPECT_EQ(m_allocator.kindOf(segment), SegmentKind::EcsChunks);
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+	EXPECT_EQ(m_allocator.kindOf(static_cast<char*>(segment) + 128), SegmentKind::EcsChunks);
 
-	allocator.freeSegments(segment, 1);
-	EXPECT_EQ(allocator.kindOf(segment), SegmentKind::Invalid);
+	m_allocator.freeSegments(segment, 1);
+	EXPECT_EQ(m_allocator.kindOf(segment), SegmentKind::Invalid);
 }
 
 TEST_F(SegmentAllocatorSingleThreadTest, KindOfForeignPointerIsInvalid) {
 	int stackValue = 0;
-	EXPECT_EQ(allocator.kindOf(&stackValue), SegmentKind::Invalid);
+	EXPECT_EQ(m_allocator.kindOf(&stackValue), SegmentKind::Invalid);
 }
 
 TEST_F(SegmentAllocatorSingleThreadTest, RecordOfReflectsKindAndCommittedPages) {
-	void* segment = allocator.allocSegments(1, SegmentKind::TexturePool);
+	void* segment = m_allocator.allocSegments(1, SegmentKind::TexturePool);
 	ASSERT_NE(segment, nullptr);
 
 	int error = 0;
-	ASSERT_TRUE(allocator.ensureCommittedPages(segment, 3, error));
+	ASSERT_TRUE(m_allocator.ensureCommittedPages(segment, 3, error));
 
-	const SegmentRecord kRecord = allocator.recordOf(segment);
+	const SegmentRecord kRecord = m_allocator.recordOf(segment);
 	EXPECT_EQ(kRecord.kind, SegmentKind::TexturePool);
-	EXPECT_EQ(kRecord.committedPages, 3u);
-	EXPECT_EQ(kRecord.runLength, 1u);
+	EXPECT_EQ(kRecord.committedPages, 3U);
+	EXPECT_EQ(kRecord.runLength, 1U);
 
-	allocator.freeSegments(segment, 1);
+	m_allocator.freeSegments(segment, 1);
 
 	int stackValue = 0;
-	EXPECT_EQ(allocator.recordOf(&stackValue).kind, SegmentKind::Invalid);
+	EXPECT_EQ(m_allocator.recordOf(&stackValue).kind, SegmentKind::Invalid);
 }
 
 TEST_F(SegmentAllocatorSingleThreadTest, HighWaterOnlyGrows) {
-	void* first = allocator.allocSegments(2, SegmentKind::Small);
+	void* first = m_allocator.allocSegments(2, SegmentKind::Small);
 	ASSERT_NE(first, nullptr);
 
-	const std::size_t kAfterAlloc = allocator.highWaterSegments();
-	EXPECT_GE(kAfterAlloc, 2u);
+	const std::size_t kAfterAlloc = m_allocator.highWaterSegments();
+	EXPECT_GE(kAfterAlloc, 2U);
 
-	allocator.freeSegments(first, 2);
-	EXPECT_EQ(allocator.highWaterSegments(), kAfterAlloc);
+	m_allocator.freeSegments(first, 2);
+	EXPECT_EQ(m_allocator.highWaterSegments(), kAfterAlloc);
 }
 #endif // TRIVIAL_ENABLE_MEMORY_DEBUG_STATS
 
 #if TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
 TEST_F(SegmentAllocatorSingleThreadTest, CommittedBytesTracksCommits) {
-	const std::size_t kBefore = allocator.committedBytes();
+	const std::size_t kBefore = m_allocator.committedBytes();
 
-	void* segment = allocator.allocSegments(1, SegmentKind::Small);
+	void* segment = m_allocator.allocSegments(1, SegmentKind::Small);
 	ASSERT_NE(segment, nullptr);
 
 	int error = 0;
-	ASSERT_TRUE(allocator.ensureCommittedPages(segment, 4, error));
+	ASSERT_TRUE(m_allocator.ensureCommittedPages(segment, 4, error));
 
-	const std::size_t kPageSize = allocator.capabilities().pageSize;
-	EXPECT_EQ(allocator.committedBytes(), kBefore + (4 * kPageSize));
+	// NOLINTNEXTLINE(readability-static-accessed-through-instance)
+	const std::size_t kPageSize = m_allocator.capabilities().pageSize;
+	EXPECT_EQ(m_allocator.committedBytes(), kBefore + (4 * kPageSize));
 
-	allocator.freeSegments(segment, 1);
+	m_allocator.freeSegments(segment, 1);
 }
 #endif // TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
 
@@ -569,20 +591,20 @@ TEST_F(SegmentAllocatorSingleThreadTest, CommittedBytesTracksCommits) {
 // -----------------------------------------------------------------------------
 
 TEST(SegmentAllocatorSingleThreadStandalone, FailedInitLeavesStateClean) {
-	static bool handlerFired = false;
-	handlerFired = false;
+	static bool s_handlerFired = false;
+	s_handlerFired = false;
 
 	SegmentAllocator allocator;
 	allocator.setOomHandler([](const OomInfo& info) {
 		(void)info;
-		handlerFired = true;
+		s_handlerFired = true;
 	});
 
 	EXPECT_FALSE(allocator.init(SIZE_MAX / 2));
-	EXPECT_TRUE(handlerFired);
+	EXPECT_TRUE(s_handlerFired);
 
 	// A failed init must not leave a mapping or partial state behind
-	EXPECT_TRUE(allocator.init(kTestReserve));
+	EXPECT_TRUE(allocator.init(g_kTestReserve));
 	EXPECT_NE(allocator.allocSegments(1, SegmentKind::Small), nullptr);
 
 	allocator.shutdown();
@@ -590,25 +612,25 @@ TEST(SegmentAllocatorSingleThreadStandalone, FailedInitLeavesStateClean) {
 
 TEST(SegmentAllocatorSingleThreadStandalone, ShutdownIsIdempotent) {
 	SegmentAllocator allocator;
-	ASSERT_TRUE(allocator.init(kTestReserve));
+	ASSERT_TRUE(allocator.init(g_kTestReserve));
 
 	allocator.shutdown();
 	allocator.shutdown();
 }
 
 TEST(SegmentAllocatorSingleThreadStandalone, OomHandlerReportsRequestedSize) {
-	static std::size_t capturedSize = 0;
-	capturedSize = 0;
+	static std::size_t s_capturedSize = 0;
+	s_capturedSize = 0;
 
 	SegmentAllocator allocator;
 	ASSERT_TRUE(allocator.init(g_kSegmentSize));
 
 	allocator.setOomHandler([](const OomInfo& info) {
-		capturedSize = info.requestedSize;
+		s_capturedSize = info.requestedSize;
 	});
 
 	EXPECT_EQ(allocator.allocSegments(4, SegmentKind::HugeHead), nullptr);
-	EXPECT_EQ(capturedSize, 4 * g_kSegmentSize);
+	EXPECT_EQ(s_capturedSize, 4 * g_kSegmentSize);
 
 	allocator.shutdown();
 }

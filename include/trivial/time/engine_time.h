@@ -7,10 +7,10 @@
 class EngineTime {
 	using Clock = std::chrono::steady_clock;
 
-	constexpr static double kBaseMaxDeltaSeconds = 0.25;
+	constexpr static double s_kBaseMaxDeltaSeconds = 0.25;
 
 public:
-	explicit EngineTime(double maximumDeltaSeconds = kBaseMaxDeltaSeconds)
+	explicit EngineTime(double maximumDeltaSeconds = s_kBaseMaxDeltaSeconds)
 	    : m_maximumDeltaSeconds(maximumDeltaSeconds) {
 		reset();
 	}
@@ -50,7 +50,7 @@ private:
 
 	// NOTE: Maybe add a frame counter and elapsed seconds when making a proper debug overlay
 
-	double m_maximumDeltaSeconds = kBaseMaxDeltaSeconds;
+	double m_maximumDeltaSeconds = s_kBaseMaxDeltaSeconds;
 };
 
 #endif // TRIVIAL_TIME_ENGINE_TIME_H

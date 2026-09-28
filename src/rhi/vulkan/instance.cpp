@@ -1,16 +1,22 @@
 #include "rhi/vulkan/instance.h"
 
+#include <cstdint>
 #include <cstring>
 #include <span>
 #include <vector>
 
+#include <vulkan/vulkan_core.h>
+
+#include <trivial/core/application_info.h>
 #include <trivial/core/assert.h>
-#include <trivial/core/config.h>
 #include <trivial/core/log.h>
 #include <trivial/platform/window.h>
 
-#include "rhi/vulkan/debug_messenger.h"
 #include "rhi/vulkan/result.h"
+
+#if TRIVIAL_ENABLE_VULKAN_VALIDATION
+#include "rhi/vulkan/debug_messenger.h"
+#endif // TRIVIAL_ENABLE_VULKAN_VALIDATION
 
 namespace {
 
@@ -25,19 +31,7 @@ bool hasInstanceExtension(std::span<const VkExtensionProperties> availableExtens
 	TRIVIAL_ASSERT(extensionName != nullptr);
 
 	for (const VkExtensionProperties& availableExtension : availableExtensions) {
-		if (std::strcmp(availableExtension.extensionName, extensionName) == 0) {
-			return true;
-		}
-	}
-
-	return false;
-}
-
-bool hasInstanceLayer(std::span<const VkLayerProperties> availableLayers, const char* layerName) noexcept {
-	TRIVIAL_ASSERT(layerName != nullptr);
-
-	for (const VkLayerProperties& availableLayer : availableLayers) {
-		if (std::strcmp(availableLayer.layerName, layerName) == 0) {
+		if (std::strcmp(static_cast<const char*>(availableExtension.extensionName), extensionName) == 0) {
 			return true;
 		}
 	}
@@ -63,26 +57,6 @@ std::vector<VkExtensionProperties> enumerateInstanceExtensions() noexcept {
 	TRIVIAL_VK_CHECK("vkEnumerateInstanceExtensionProperties failed", result);
 
 	return extensions;
-}
-
-std::vector<VkLayerProperties> enumerateInstanceLayers() noexcept {
-	std::uint32_t layerCount = 0;
-
-	VkResult result = vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-
-	TRIVIAL_VK_CHECK("vkEnumerateInstanceLayerProperties failed", result);
-
-	std::vector<VkLayerProperties> layers(layerCount);
-
-	if (layerCount == 0) {
-		return layers;
-	}
-
-	result = vkEnumerateInstanceLayerProperties(&layerCount, layers.data());
-
-	TRIVIAL_VK_CHECK("vkEnumerateInstanceLayerProperties failed", result);
-
-	return layers;
 }
 
 void requireInstanceExtension(InstanceSelection* selection,
@@ -117,20 +91,6 @@ bool enableOptionalInstanceExtension(InstanceSelection* selection,
 	return true;
 }
 
-bool enableOptionalInstanceLayer(InstanceSelection* selection,
-                                 std::span<const VkLayerProperties> availableLayers,
-                                 const char* layerName) noexcept {
-	TRIVIAL_ASSERT(selection != nullptr);
-	TRIVIAL_ASSERT(layerName != nullptr);
-
-	if (!hasInstanceLayer(availableLayers, layerName)) {
-		return false;
-	}
-
-	selection->layers.push_back(layerName);
-	return true;
-}
-
 void addRequiredExtensions(InstanceSelection* selection,
                            std::span<const char* const> requiredExtensions,
                            std::span<const VkExtensionProperties> availableExtensions) noexcept {
@@ -153,11 +113,58 @@ void enableOptionalPortability(InstanceSelection* selection,
 
 #if TRIVIAL_ENABLE_VULKAN_VALIDATION
 
+bool hasInstanceLayer(std::span<const VkLayerProperties> availableLayers, const char* layerName) noexcept {
+	TRIVIAL_ASSERT(layerName != nullptr);
+
+	for (const VkLayerProperties& availableLayer : availableLayers) {
+		if (std::strcmp(static_cast<const char*>(availableLayer.layerName), layerName) == 0) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+std::vector<VkLayerProperties> enumerateInstanceLayers() noexcept {
+	std::uint32_t layerCount = 0;
+
+	VkResult result = vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+
+	TRIVIAL_VK_CHECK("vkEnumerateInstanceLayerProperties failed", result);
+
+	std::vector<VkLayerProperties> layers(layerCount);
+
+	if (layerCount == 0) {
+		return layers;
+	}
+
+	result = vkEnumerateInstanceLayerProperties(&layerCount, layers.data());
+
+	TRIVIAL_VK_CHECK("vkEnumerateInstanceLayerProperties failed", result);
+
+	return layers;
+}
+
+bool enableOptionalInstanceLayer(InstanceSelection* selection,
+                                 std::span<const VkLayerProperties> availableLayers,
+                                 const char* layerName) noexcept {
+	TRIVIAL_ASSERT(selection != nullptr);
+	TRIVIAL_ASSERT(layerName != nullptr);
+
+	if (!hasInstanceLayer(availableLayers, layerName)) {
+		return false;
+	}
+
+	selection->layers.push_back(layerName);
+	return true;
+}
+
 void enableOptionalValidation(InstanceSelection* selection,
-                              std::span<const VkExtensionProperties> availableExtensions,
-                              std::span<const VkLayerProperties> availableLayers) noexcept {
+                              std::span<const VkExtensionProperties> availableExtensions) noexcept {
+	const std::vector<VkLayerProperties> kAvailableLayers = enumerateInstanceLayers();
+
 	const bool kValidationLayerEnabled
-	    = enableOptionalInstanceLayer(selection, availableLayers, g_kValidationLayerName);
+	    = enableOptionalInstanceLayer(selection, kAvailableLayers, g_kValidationLayerName);
 
 	if (!kValidationLayerEnabled) {
 		TRIVIAL_LOG_WARNING("VK_LAYER_KHRONOS_validation is not available");
@@ -174,8 +181,7 @@ void enableOptionalValidation(InstanceSelection* selection,
 #endif // TRIVIAL_ENABLE_VULKAN_VALIDATION
 
 InstanceSelection makeInstanceSelection(std::span<const char* const> requiredExtensions,
-                                        std::span<const VkExtensionProperties> availableExtensions,
-                                        std::span<const VkLayerProperties> availableLayers) noexcept {
+                                        std::span<const VkExtensionProperties> availableExtensions) noexcept {
 	TRIVIAL_ASSERT(!requiredExtensions.empty());
 
 	InstanceSelection selection = {};
@@ -184,7 +190,7 @@ InstanceSelection makeInstanceSelection(std::span<const char* const> requiredExt
 	enableOptionalPortability(&selection, availableExtensions);
 
 #if TRIVIAL_ENABLE_VULKAN_VALIDATION
-	enableOptionalValidation(&selection, availableExtensions, availableLayers);
+	enableOptionalValidation(&selection, availableExtensions);
 #endif // TRIVIAL_ENABLE_VULKAN_VALIDATION
 
 	return selection;
@@ -244,14 +250,7 @@ VkInstance createInstance(const ApplicationInfo& applicationInfo) noexcept {
 
 	const std::vector<VkExtensionProperties> kAvailableExtensions = enumerateInstanceExtensions();
 
-#if TRIVIAL_ENABLE_VULKAN_VALIDATION
-	const std::vector<VkLayerProperties> kAvailableLayers = enumerateInstanceLayers();
-#else
-	const std::vector<VkLayerProperties> kAvailableLayers = {};
-#endif
-
-	const InstanceSelection kSelection
-	    = makeInstanceSelection(kRequiredExtensions, kAvailableExtensions, kAvailableLayers);
+	const InstanceSelection kSelection = makeInstanceSelection(kRequiredExtensions, kAvailableExtensions);
 
 	const VkApplicationInfo kApplicationInfo = makeApplicationInfo(applicationInfo);
 

@@ -55,13 +55,15 @@ struct Affine2 {
 	[[nodiscard]] constexpr T determinant() const noexcept { return a * d - b * c; }
 
 	[[nodiscard]] constexpr Affine2 operator*(const Affine2& rhs) const noexcept {
-		return {a * rhs.a + b * rhs.c,
-		        a * rhs.b + b * rhs.d,
-		        a * rhs.tx + b * rhs.ty + tx,
+		return {
+		    a * rhs.a + b * rhs.c,
+		    a * rhs.b + b * rhs.d,
+		    a * rhs.tx + b * rhs.ty + tx,
 
-		        c * rhs.a + d * rhs.c,
-		        c * rhs.b + d * rhs.d,
-		        c * rhs.tx + d * rhs.ty + ty};
+		    c * rhs.a + d * rhs.c,
+		    c * rhs.b + d * rhs.d,
+		    c * rhs.tx + d * rhs.ty + ty,
+		};
 	}
 
 	constexpr Affine2& operator*=(const Affine2& rhs) noexcept {

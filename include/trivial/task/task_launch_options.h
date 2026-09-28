@@ -29,12 +29,12 @@ enum class TaskLifetime : std::uint8_t {
 };
 
 struct TaskScopeHandle {
-	static constexpr std::uint32_t kInvalidIndex = std::numeric_limits<std::uint32_t>::max();
+	static constexpr std::uint32_t s_kInvalidIndex = std::numeric_limits<std::uint32_t>::max();
 
-	std::uint32_t index = kInvalidIndex;
+	std::uint32_t index = s_kInvalidIndex;
 	std::uint32_t generation = 0;
 
-	[[nodiscard]] bool isValid() const noexcept { return index != kInvalidIndex; }
+	[[nodiscard]] bool isValid() const noexcept { return index != s_kInvalidIndex; }
 };
 
 struct TaskLaunchOptions {

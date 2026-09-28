@@ -5,8 +5,8 @@
 namespace {
 
 TEST(LatchSingleThreadTest, RemainingMatchesInitialCount) {
-	trivial::sync::Latch latch(3);
-	EXPECT_EQ(latch.remaining(), 3U);
+	const trivial::sync::Latch kLatch(3);
+	EXPECT_EQ(kLatch.remaining(), 3U);
 }
 
 TEST(LatchSingleThreadTest, CountDownDecrementsRemaining) {

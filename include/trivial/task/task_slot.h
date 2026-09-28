@@ -11,6 +11,7 @@
 #include <trivial/core/assert.h>
 #include <trivial/core/sync/mutex.h>
 #include <trivial/task/task_handle.h>
+#include <trivial/task/task_launch_options.h>
 #include <trivial/task/task_payload.h>
 #include <trivial/task/task_state.h>
 
@@ -23,7 +24,7 @@ enum class TaskSlotState : std::uint8_t {
 
 class TaskSlot { // NOLINT(cppcoreguidelines-pro-type-member-init)
 public:
-	TaskSlot() noexcept = default;
+	TaskSlot() noexcept = default; // NOLINT(cppcoreguidelines-pro-type-member-init)
 
 	~TaskSlot() noexcept {
 		if (isOccupied()) {

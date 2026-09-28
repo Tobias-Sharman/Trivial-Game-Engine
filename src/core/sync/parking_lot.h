@@ -48,7 +48,7 @@ public:
 	explicit ParkingLot(const std::size_t kCapacity) noexcept
 	    : m_slots(kCapacity)
 	    , m_buckets(bucketCountFor(kCapacity))
-	    , m_bucketBits(std::countr_zero(bucketCountFor(kCapacity))) {}
+	    , m_bucketBits(static_cast<std::uint32_t>(std::countr_zero(bucketCountFor(kCapacity)))) {}
 
 	~ParkingLot() noexcept = default;
 
@@ -149,12 +149,7 @@ public:
 				continue;
 			}
 
-#if TRIVIAL_ENABLE_ASSERTS
-			const bool kWasRemoved = removeFromQueue(currentBucket, kSlotIndex);
-			TRIVIAL_ASSERT(kWasRemoved);
-#else
-			removeFromQueue(currentBucket, kSlotIndex);
-#endif
+			TRIVIAL_VERIFY(removeFromQueue(currentBucket, kSlotIndex));
 
 			currentBucket.lock.unlock();
 			slot.key.store(0, std::memory_order_relaxed);
@@ -205,12 +200,7 @@ public:
 				continue;
 			}
 
-#if TRIVIAL_ENABLE_ASSERTS
-			const bool kWasRemoved = removeFromQueue(currentBucket, kSlotIndex);
-			TRIVIAL_ASSERT(kWasRemoved);
-#else
-			removeFromQueue(currentBucket, kSlotIndex);
-#endif
+			TRIVIAL_VERIFY(removeFromQueue(currentBucket, kSlotIndex));
 
 			currentBucket.lock.unlock();
 			slot.key.store(0, std::memory_order_relaxed);
@@ -281,7 +271,7 @@ public:
 			} else {
 				std::size_t scanIndex = kNextIndex;
 				while (scanIndex != g_kInvalidParkingLotSlotIndex) {
-					ParkingLotSlot& scan = m_slots[scanIndex];
+					const ParkingLotSlot& scan = m_slots[scanIndex];
 					if (scan.key.load(std::memory_order_relaxed) == kAddress) {
 						hasMoreWaiters = true;
 						break;
@@ -521,7 +511,7 @@ private:
 
 	trivial::core::HeapArray<ParkingLotSlot> m_slots;
 	trivial::core::HeapArray<Bucket> m_buckets;
-	int m_bucketBits;
+	std::uint32_t m_bucketBits;
 };
 
 namespace detail {

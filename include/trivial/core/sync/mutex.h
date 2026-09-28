@@ -24,7 +24,10 @@ public:
 
 	TRIVIAL_FORCE_INLINE void lock() noexcept {
 		std::uint8_t expected = 0;
-		if (m_state.compare_exchange_weak(expected, kLockedBit, std::memory_order_acquire, std::memory_order_relaxed)) {
+		if (m_state.compare_exchange_weak(expected,
+		                                  s_kLockedBit,
+		                                  std::memory_order_acquire,
+		                                  std::memory_order_relaxed)) {
 			return;
 		}
 
@@ -32,7 +35,7 @@ public:
 	}
 
 	TRIVIAL_FORCE_INLINE void unlock() noexcept {
-		std::uint8_t expected = kLockedBit;
+		std::uint8_t expected = s_kLockedBit;
 		if (m_state.compare_exchange_strong(expected, 0, std::memory_order_release, std::memory_order_relaxed)) {
 			return;
 		}
@@ -45,12 +48,12 @@ public:
 		std::uint8_t state = m_state.load(std::memory_order_relaxed);
 
 		for (;;) {
-			if ((state & kLockedBit) == 0) {
+			if ((state & s_kLockedBit) == 0) {
 				return false;
 			}
 
 			if (m_state.compare_exchange_weak(state,
-			                                  static_cast<std::uint8_t>(state | kParkedBit),
+			                                  static_cast<std::uint8_t>(state | s_kParkedBit),
 			                                  std::memory_order_relaxed,
 			                                  std::memory_order_relaxed)) {
 				return true;
@@ -58,14 +61,14 @@ public:
 		}
 	}
 
-	TRIVIAL_FORCE_INLINE void markParked() noexcept { m_state.fetch_or(kParkedBit, std::memory_order_relaxed); }
+	TRIVIAL_FORCE_INLINE void markParked() noexcept { m_state.fetch_or(s_kParkedBit, std::memory_order_relaxed); }
 
 private:
 	TRIVIAL_COLD void lockSlow() noexcept;
 	TRIVIAL_COLD void unlockSlow() noexcept;
 
-	static constexpr std::uint8_t kLockedBit = 0b01;
-	static constexpr std::uint8_t kParkedBit = 0b10;
+	static constexpr std::uint8_t s_kLockedBit = 0b01;
+	static constexpr std::uint8_t s_kParkedBit = 0b10;
 
 	std::atomic<std::uint8_t> m_state{0};
 };

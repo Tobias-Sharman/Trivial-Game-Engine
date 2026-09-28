@@ -30,10 +30,10 @@ neglected prior to a proper version 1.0.0.
 
 ## Current plan of action
 
-- Rework config for engine and task system to match style taken through other
-engine components and move some such config to compile time over runtime.
-- Custom Chrono with suitable types
+- Header include hygiene, then windows and linux basic testing
 - Function decoration with const args and compiler attributes where appropriate
+- Custom Chrono with suitable types
+- Documentation update and create new documentation
 - Allocator
   - Arenas allocator
   - general allocator
@@ -46,15 +46,16 @@ engine components and move some such config to compile time over runtime.
   - Full testing of allocator (segment allocator is briefly yet importantly not
   fully tested)
 - Basic physics system to test and profile the task system
+- First party parallel running tasks
+- Proper automatic handle release, mark a flag on destruction (i.e. not some
+reference counted form)
 - Fibre backing to task system with context switching
   - Context switching from defined points and not called from outside of the
   running thread to keep the register handling simple, clean, and consistent
     - A need for context switching from outside would go in contrast to some of
     the intended principles of the task system with clean tasks run to
     completion independently, and without side effects
-- First party parallel running tasks
-- Proper automatic handle release, mark a flag on destruction (i.e. not some
-reference counted form)
+- Async support
 - Overhaul of the ECS system to have a proper efficient storage rather than the
 current placeholder mockup
   - Will be chunked archtype unless I can narrow done how to implement a sparse
@@ -62,7 +63,7 @@ current placeholder mockup
   would want the same attribute with good cache locality for all the systems
   that benefit from it
 - More fleshed out physics system with parallel operation and SIMD backing
-- Extend graphics support to be more general to then visualise some basic 2d physics
+- Extend graphics support
 
 The engine architecture can be seen below:
 

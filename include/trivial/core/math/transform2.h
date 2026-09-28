@@ -19,11 +19,11 @@ struct Transform2 {
 	[[nodiscard]] static constexpr Transform2 identity() noexcept { return {}; }
 
 	[[nodiscard]] Affine2<T> affine() const noexcept {
-		Affine2<T> translation = Affine2<T>::translation(position);
-		Affine2<T> rotationTransform = Affine2<T>::rotation(rotation);
-		Affine2<T> scaleTransform = Affine2<T>::scale(scale);
+		const Affine2<T> kTranslation = Affine2<T>::translation(position);
+		const Affine2<T> kRotationTransform = Affine2<T>::rotation(rotation);
+		const Affine2<T> kScaleTransform = Affine2<T>::scale(scale);
 
-		return translation * rotationTransform * scaleTransform;
+		return kTranslation * kRotationTransform * kScaleTransform;
 	}
 
 	[[nodiscard]] constexpr bool operator==(const Transform2& rhs) const noexcept = default;

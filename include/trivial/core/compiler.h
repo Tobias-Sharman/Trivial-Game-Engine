@@ -1,17 +1,17 @@
 #ifndef TRIVIAL_CORE_COMPILER_H
 #define TRIVIAL_CORE_COMPILER_H
 
-#if defined(__clang__)
+#ifdef __clang__
 #define TRIVIAL_COMPILER_CLANG 1
 #define TRIVIAL_COMPILER_GCC 0
 #define TRIVIAL_COMPILER_MSVC 0
 
-#elif defined(_MSC_VER)
+#elifdef _MSC_VER
 #define TRIVIAL_COMPILER_CLANG 0
 #define TRIVIAL_COMPILER_GCC 0
 #define TRIVIAL_COMPILER_MSVC 1
 
-#elif defined(__GNUC__)
+#elifdef __GNUC__
 #define TRIVIAL_COMPILER_CLANG 0
 #define TRIVIAL_COMPILER_GCC 1
 #define TRIVIAL_COMPILER_MSVC 0
@@ -29,7 +29,7 @@
 
 #endif // For Clang on windows
 
-#if defined(_MSC_VER)
+#ifdef _MSC_VER
 #define TRIVIAL_FORCE_INLINE inline __forceinline
 #define TRIVIAL_NO_INLINE __declspec(noinline)
 #define TRIVIAL_COLD
@@ -45,20 +45,20 @@
 #define TRIVIAL_DEBUG_BREAK() __debugbreak()
 
 #elif (TRIVIAL_COMPILER_CLANG || TRIVIAL_COMPILER_GCC) && (defined(__i386__) || defined(__x86_64__))
-#define TRIVIAL_DEBUG_BREAK() __asm__ volatile("int3")
+#define TRIVIAL_DEBUG_BREAK() __asm__ volatile("int3") // NOLINT(portability-no-assembler)
 
 #elif (TRIVIAL_COMPILER_CLANG || TRIVIAL_COMPILER_GCC) && defined(__aarch64__)
-#define TRIVIAL_DEBUG_BREAK() __asm__ volatile("brk #0")
+#define TRIVIAL_DEBUG_BREAK() __asm__ volatile("brk #0") // NOLINT(portability-no-assembler)
 
 #else
 #define TRIVIAL_DEBUG_BREAK() __builtin_trap()
 
 #endif // Debug break
 
-#if defined(__SANITIZE_THREAD__)
+#ifdef __SANITIZE_THREAD__
 #define TRIVIAL_THREAD_SANITIZER_ENABLED 1
 
-#elif defined(__has_feature)
+#elifdef __has_feature
 #if __has_feature(thread_sanitizer)
 #define TRIVIAL_THREAD_SANITIZER_ENABLED 1
 #endif // __has_feature(thread_sanitizer)

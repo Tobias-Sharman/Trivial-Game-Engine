@@ -1,12 +1,15 @@
 #include <atomic>
+#include <cstdint>
 #include <cstring>
 #include <span>
 #include <vector>
 
 #include <gtest/gtest.h>
 
+#include <trivial/core/memory/memory_config.h>
 #include <trivial/core/memory/segment_allocator.h>
 #include <trivial/core/thread/thread.h>
+#include <trivial/task/task_handle.h>
 #include <trivial/task/task_payload.h>
 #include <trivial/task/task_system.h>
 
@@ -54,8 +57,8 @@ protected:
 
 		m_taskSystem.wait(std::span<const trivial::task::TaskHandle>{handles});
 
-		for (trivial::task::TaskHandle handle : handles) {
-			(void)m_taskSystem.release(handle);
+		for (const trivial::task::TaskHandle kHandle : handles) {
+			(void)m_taskSystem.release(kHandle);
 		}
 	}
 
@@ -91,10 +94,12 @@ TEST_F(SegmentAllocatorMultiThreadTest, AllocFreeNeverHandsOutSameSegment) {
 				continue;
 			}
 
+			// NOLINTNEXTLINE(readability-static-accessed-through-instance)
 			const std::size_t kBytes = m_allocator.capabilities().pageSize;
 			std::memset(segment, kPattern, kBytes);
 
 			for (std::size_t byte = 0; byte < kBytes; ++byte) {
+				// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 				if (static_cast<unsigned char*>(segment)[byte] != kPattern) {
 					mismatches.fetch_add(1, std::memory_order_relaxed);
 					break;
@@ -105,7 +110,7 @@ TEST_F(SegmentAllocatorMultiThreadTest, AllocFreeNeverHandsOutSameSegment) {
 		}
 	});
 
-	EXPECT_EQ(mismatches.load(), 0u);
+	EXPECT_EQ(mismatches.load(), 0U);
 
 	// Everything must be free again, so the whole reservation is available
 	std::vector<void*> held;
@@ -121,6 +126,7 @@ TEST_F(SegmentAllocatorMultiThreadTest, AllocFreeNeverHandsOutSameSegment) {
 	}
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_F(SegmentAllocatorMultiThreadTest, MultiSegmentRunsStayContiguous) {
 	std::atomic<std::size_t> mismatches{0};
 
@@ -139,20 +145,25 @@ TEST_F(SegmentAllocatorMultiThreadTest, MultiSegmentRunsStayContiguous) {
 			bool committed = true;
 
 			for (std::size_t offset = 0; offset < kCount && committed; ++offset) {
+				// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 				void* segment = static_cast<char*>(run) + (offset * g_kSegmentSize);
 				committed = m_allocator.ensureCommittedPages(segment, 1, error);
 			}
 
 			if (committed) {
+				// NOLINTNEXTLINE(readability-static-accessed-through-instance)
 				const std::size_t kPageSize = m_allocator.capabilities().pageSize;
 
 				for (std::size_t offset = 0; offset < kCount; ++offset) {
+					// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 					std::memset(static_cast<char*>(run) + (offset * g_kSegmentSize), kPattern, kPageSize);
 				}
 
 				for (std::size_t offset = 0; offset < kCount; ++offset) {
+					// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 					const unsigned char* page = static_cast<const unsigned char*>(run) + (offset * g_kSegmentSize);
 
+					// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 					if (page[0] != kPattern || page[kPageSize - 1] != kPattern) {
 						mismatches.fetch_add(1, std::memory_order_relaxed);
 						break;
@@ -164,7 +175,7 @@ TEST_F(SegmentAllocatorMultiThreadTest, MultiSegmentRunsStayContiguous) {
 		}
 	});
 
-	EXPECT_EQ(mismatches.load(), 0u);
+	EXPECT_EQ(mismatches.load(), 0U);
 }
 
 // -----------------------------------------------------------------------------
@@ -200,7 +211,7 @@ TEST_F(SegmentAllocatorMultiThreadTest, CommitKeepsPrefixConsistent) {
 		}
 	});
 
-	EXPECT_EQ(inconsistencies.load(), 0u);
+	EXPECT_EQ(inconsistencies.load(), 0U);
 }
 
 #if TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES

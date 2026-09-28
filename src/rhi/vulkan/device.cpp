@@ -1,11 +1,15 @@
 #include "rhi/vulkan/device.h"
 
+#include <cstdint>
 #include <span>
 #include <vector>
+
+#include <vulkan/vulkan_core.h>
 
 #include <trivial/core/assert.h>
 #include <trivial/core/log.h>
 
+#include "rhi/vulkan/physical_device.h"
 #include "rhi/vulkan/result.h"
 
 namespace {
@@ -61,13 +65,14 @@ DeviceSelection makeDeviceSelection(std::span<const VkExtensionProperties> avail
 VkDeviceQueueCreateInfo makeDeviceQueueCreateInfo(std::uint32_t queueFamily) noexcept {
 	static constexpr float s_kQueuePriority = 1.0F;
 
-	VkDeviceQueueCreateInfo createInfo
-	    = {.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-	       .pNext = nullptr,
-	       .flags = 0,
-	       .queueFamilyIndex = queueFamily,
-	       .queueCount = 1, // Multiple queues -> mutex anyway so just use my own later as needed
-	       .pQueuePriorities = &s_kQueuePriority};
+	VkDeviceQueueCreateInfo createInfo = {
+	    .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+	    .pNext = nullptr,
+	    .flags = 0,
+	    .queueFamilyIndex = queueFamily,
+	    .queueCount = 1, // Multiple queues -> mutex anyway so just use my own later as needed
+	    .pQueuePriorities = &s_kQueuePriority,
+	};
 
 	return createInfo;
 }
@@ -96,16 +101,18 @@ VkDeviceCreateInfo makeDeviceCreateInfo(std::span<const VkDeviceQueueCreateInfo>
 	TRIVIAL_ASSERT(requiredFeatures != nullptr);
 	TRIVIAL_ASSERT(selection != nullptr);
 
-	VkDeviceCreateInfo createInfo = {.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-	                                 .pNext = &requiredFeatures->vulkan13,
-	                                 .flags = 0,
-	                                 .queueCreateInfoCount = static_cast<std::uint32_t>(queueCreateInfos.size()),
-	                                 .pQueueCreateInfos = queueCreateInfos.data(),
-	                                 .enabledLayerCount = 0,
-	                                 .ppEnabledLayerNames = nullptr,
-	                                 .enabledExtensionCount = static_cast<std::uint32_t>(selection->extensions.size()),
-	                                 .ppEnabledExtensionNames = selection->extensions.data(),
-	                                 .pEnabledFeatures = nullptr};
+	VkDeviceCreateInfo createInfo = {
+	    .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+	    .pNext = &requiredFeatures->vulkan13,
+	    .flags = 0,
+	    .queueCreateInfoCount = static_cast<std::uint32_t>(queueCreateInfos.size()),
+	    .pQueueCreateInfos = queueCreateInfos.data(),
+	    .enabledLayerCount = 0,
+	    .ppEnabledLayerNames = nullptr,
+	    .enabledExtensionCount = static_cast<std::uint32_t>(selection->extensions.size()),
+	    .ppEnabledExtensionNames = selection->extensions.data(),
+	    .pEnabledFeatures = nullptr,
+	};
 
 	return createInfo;
 }

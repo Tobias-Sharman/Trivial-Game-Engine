@@ -1,6 +1,12 @@
 #include "rhi/vulkan/debug_messenger.h"
 
+#if TRIVIAL_ENABLE_VULKAN_VALIDATION
+
 #include <array>
+#include <cstdint>
+
+#include <vulkan/vk_platform.h>
+#include <vulkan/vulkan_core.h>
 
 #include <trivial/core/assert.h>
 #include <trivial/core/log.h>
@@ -11,23 +17,24 @@ namespace {
 
 const char* debugMessageTypePrefix(VkDebugUtilsMessageTypeFlagsEXT messageType) noexcept {
 	// NOTE: Address binding needs toggling on if wanting to use, apparently VK_EXT_device_address_binding_report
-	static constexpr std::array<const char*, 16> s_kPrefixes
-	    = {"[unknown] ",
-	       "[general] ",
-	       "[validation] ",
-	       "[general validation] ",
-	       "[performance] ",
-	       "[general performance] ",
-	       "[validation performance] ",
-	       "[general validation performance] ",
-	       "[device address binding] ",
-	       "[general device address binding] ",
-	       "[validation device address binding] ",
-	       "[general validation device address binding] ",
-	       "[performance device address binding] ",
-	       "[general performance device address binding] ",
-	       "[validation performance device address binding] ",
-	       "[general validation performance device address binding] "};
+	static constexpr std::array<const char*, 16> s_kPrefixes = {
+	    "[unknown] ",
+	    "[general] ",
+	    "[validation] ",
+	    "[general validation] ",
+	    "[performance] ",
+	    "[general performance] ",
+	    "[validation performance] ",
+	    "[general validation performance] ",
+	    "[device address binding] ",
+	    "[general device address binding] ",
+	    "[validation device address binding] ",
+	    "[general validation device address binding] ",
+	    "[performance device address binding] ",
+	    "[general performance device address binding] ",
+	    "[validation performance device address binding] ",
+	    "[general validation performance device address binding] ",
+	};
 
 	// NOTE: Will need to change if vulkan changes their style
 	const std::uint32_t kIndex = static_cast<std::uint32_t>(messageType) & 0xFU;
@@ -50,12 +57,11 @@ void logDebugMessage(VkDebugUtilsMessageSeverityFlagBitsEXT severity, const char
 		TRIVIAL_LOG_DEBUG_PREFIX(prefix, message);
 	}
 }
+
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
                                              VkDebugUtilsMessageTypeFlagsEXT messageType,
                                              const VkDebugUtilsMessengerCallbackDataEXT* callbackData,
-                                             void* userData) noexcept {
-	(void)userData;
-
+                                             void* /*userData*/) noexcept {
 	TRIVIAL_ASSERT(callbackData != nullptr);
 	TRIVIAL_ASSERT(callbackData->pMessage != nullptr);
 
@@ -65,16 +71,19 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBits
 }
 
 VkDebugUtilsMessengerCreateInfoEXT makeDebugMessengerCreateInfo() noexcept {
-	static constexpr VkDebugUtilsMessengerCreateInfoEXT s_kCreateInfo
-	    = {.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-	       .pNext = nullptr,
-	       .flags = 0,
-	       .messageSeverity
-	       = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
-	       .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
-	                      | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
-	       .pfnUserCallback = debugCallback,
-	       .pUserData = nullptr};
+	static constexpr VkDebugUtilsMessengerCreateInfoEXT s_kCreateInfo = {
+	    .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+	    .pNext = nullptr,
+	    .flags = 0,
+	    .messageSeverity
+	    = static_cast<VkDebugUtilsMessageSeverityFlagsEXT>(VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+	      | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+	    .messageType = static_cast<VkDebugUtilsMessageTypeFlagsEXT>(VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT)
+	                   | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
+	                   | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+	    .pfnUserCallback = debugCallback,
+	    .pUserData = nullptr,
+	};
 
 	return s_kCreateInfo;
 }
@@ -126,3 +135,5 @@ void destroyDebugMessenger(VkInstance instance, VkDebugUtilsMessengerEXT debugMe
 }
 
 } // namespace trivial::rhi::vulkan
+
+#endif // TRIVIAL_ENABLE_VULKAN_VALIDATION

@@ -1,7 +1,7 @@
 #ifndef TRIVIAL_CORE_CONFIG_H
 #define TRIVIAL_CORE_CONFIG_H
 
-#if defined(TRIVIAL_USER_CONFIG)
+#ifdef TRIVIAL_USER_CONFIG
 #include TRIVIAL_USER_CONFIG
 #elif __has_include(<trivial_user_config.h>)
 #include <trivial_user_config.h>

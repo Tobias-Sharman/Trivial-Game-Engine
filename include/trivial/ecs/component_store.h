@@ -79,10 +79,10 @@ private:
 			return;
 		}
 
-		auto requiredIndex = index + 1;
+		const Entity::ValType kRequiredIndex = index + 1;
 
-		m_components.resize(requiredIndex);
-		m_active.resize(requiredIndex, false);
+		m_components.resize(kRequiredIndex);
+		m_active.resize(kRequiredIndex, false);
 	}
 
 	std::vector<T> m_components;

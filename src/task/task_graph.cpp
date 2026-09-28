@@ -1,21 +1,35 @@
 #include <trivial/task/task_graph.h>
 
+#include <atomic>
+#include <cstddef>
+#include <cstdint>
 #include <new>
+#include <span>
+#include <utility>
+#include <vector>
 
 #include <trivial/core/assert.h>
 #include <trivial/core/log.h>
+#include <trivial/core/sync/latch.h>
 #include <trivial/core/sync/lock_guard.h>
+#include <trivial/core/sync/mutex.h>
+#include <trivial/task/task_handle.h>
+#include <trivial/task/task_launch_options.h>
+#include <trivial/task/task_payload.h>
+#include <trivial/task/task_slot.h>
+#include <trivial/task/task_state.h>
+#include <trivial/task/task_status.h>
 
 namespace trivial::task {
 
 TaskGraph::~TaskGraph() noexcept {
-	for (std::atomic<TaskPage*>& pageEntry : m_pages) {
-		TaskPage* page = pageEntry.load(std::memory_order_relaxed);
+	for (const std::atomic<TaskPage*>& pageEntry : m_pages) {
+		const TaskPage* page = pageEntry.load(std::memory_order_relaxed);
 
 #if TRIVIAL_CONFIG_DEBUG
 		// NOTE: Only valid if no workers or tasks are running
 		if (page != nullptr) {
-			for (TaskSlot& slot : *page) {
+			for (const TaskSlot& slot : *page) {
 				if (!slot.isOccupied()) {
 					continue;
 				}
@@ -49,7 +63,7 @@ TaskCreateDispatchOutcome TaskGraph::createDispatched(TaskPayload payload,
 
 	TaskSlot* slot = slotInPage(*page, taskIndex);
 
-	sync::LockGuard<sync::Mutex> lock(slot->mutex());
+	const sync::LockGuard<sync::Mutex> kLock(slot->mutex());
 
 	TRIVIAL_ASSERT(!slot->isOccupied());
 
@@ -57,12 +71,16 @@ TaskCreateDispatchOutcome TaskGraph::createDispatched(TaskPayload payload,
 
 	const TaskHandle kHandle{.index = taskIndex, .generation = slot->generation()};
 
-	for (TaskHandle prerequisite : prerequisites) {
-		const TaskPrerequisiteResult kResult = addPrerequisiteLocked(kHandle, *slot, prerequisite);
+	for (const TaskHandle kPrerequisite : prerequisites) {
+#if TRIVIAL_ENABLE_ASSERTS
+		const TaskPrerequisiteResult kResult = addPrerequisiteLocked(kHandle, *slot, kPrerequisite);
 
 		// NOLINTNEXTLINE(readability-simplify-boolean-expr)
 		TRIVIAL_ASSERT(kResult == TaskPrerequisiteResult::Success
 		               || kResult == TaskPrerequisiteResult::DuplicateDependency);
+#else
+		(void)addPrerequisiteLocked(kHandle, *slot, kPrerequisite);
+#endif // TRIVIAL_ENABLE_ASSERTS
 	}
 
 	if (state.prerequisites.empty()) {
@@ -95,7 +113,7 @@ TaskClaimResult TaskGraph::tryClaim(TaskHandle handle) noexcept {
 		return TaskClaimResult::InvalidHandle;
 	}
 
-	sync::LockGuard<sync::Mutex> lock(slot->mutex());
+	const sync::LockGuard<sync::Mutex> kLock(slot->mutex());
 
 	if (!slot->isOccupiedBy(handle)) {
 		return TaskClaimResult::InvalidHandle;
@@ -123,7 +141,7 @@ TaskAttachWaiterResult TaskGraph::tryAttachWaiter(TaskHandle handle, sync::Latch
 		return TaskAttachWaiterResult::InvalidHandle;
 	}
 
-	sync::LockGuard<sync::Mutex> lock(slot->mutex());
+	const sync::LockGuard<sync::Mutex> kLock(slot->mutex());
 
 	if (!slot->isOccupiedBy(handle)) {
 		return TaskAttachWaiterResult::InvalidHandle;
@@ -152,7 +170,7 @@ void TaskGraph::executeClaimed(TaskHandle handle) noexcept {
 	TaskPayload* payload = nullptr;
 
 	{
-		sync::LockGuard<sync::Mutex> lock(slot->mutex());
+		const sync::LockGuard<sync::Mutex> kLock(slot->mutex());
 
 		TRIVIAL_ASSERT(slot->isOccupiedBy(handle));
 
@@ -175,7 +193,7 @@ void TaskGraph::completeAndCollectDependants(TaskHandle handle, std::vector<Task
 
 	TRIVIAL_ASSERT(slot != nullptr);
 
-	sync::LockGuard<sync::Mutex> lock(slot->mutex());
+	const sync::LockGuard<sync::Mutex> kLock(slot->mutex());
 
 	TRIVIAL_ASSERT(slot->isOccupiedBy(handle));
 
@@ -204,7 +222,7 @@ bool TaskGraph::removePrerequisiteAndMarkReadyIfUnblocked(TaskHandle dependant,
 
 	TRIVIAL_ASSERT(dependantSlot != nullptr);
 
-	sync::LockGuard<sync::Mutex> lock(dependantSlot->mutex());
+	const sync::LockGuard<sync::Mutex> kLock(dependantSlot->mutex());
 
 	TRIVIAL_ASSERT(dependantSlot->isOccupiedBy(dependant));
 
@@ -251,13 +269,13 @@ TaskReleaseResult TaskGraph::release(TaskHandle handle) noexcept {
 	}
 
 	{
-		sync::LockGuard<sync::Mutex> lock(slot->mutex());
+		const sync::LockGuard<sync::Mutex> kLock(slot->mutex());
 
 		if (!slot->isOccupiedBy(handle)) {
 			return TaskReleaseResult::InvalidHandle;
 		}
 
-		TaskState& state = slot->state();
+		const TaskState& state = slot->state();
 
 		if (state.status() != TaskStatus::Completed && state.status() != TaskStatus::Cancelled) {
 			return TaskReleaseResult::TaskNotComplete;
@@ -282,7 +300,7 @@ bool TaskGraph::tryGetStatus(TaskHandle handle, TaskStatus& outStatus) const noe
 		return false;
 	}
 
-	sync::LockGuard<sync::Mutex> lock(slot->mutex());
+	const sync::LockGuard<sync::Mutex> kLock(slot->mutex());
 
 	if (!slot->isOccupiedBy(handle)) {
 		return false;
@@ -306,7 +324,7 @@ bool TaskGraph::tryGetWalkInfo(TaskHandle handle,
 		return false;
 	}
 
-	sync::LockGuard<sync::Mutex> lock(slot->mutex());
+	const sync::LockGuard<sync::Mutex> kLock(slot->mutex());
 
 	if (!slot->isOccupiedBy(handle)) {
 		return false;
@@ -333,7 +351,7 @@ void* TaskGraph::getResultPointer(TaskHandle handle) noexcept {
 
 	TRIVIAL_ASSERT(slot != nullptr);
 
-	sync::LockGuard<sync::Mutex> lock(slot->mutex());
+	const sync::LockGuard<sync::Mutex> kLock(slot->mutex());
 
 	TRIVIAL_ASSERT(slot->isOccupiedBy(handle));
 
@@ -345,7 +363,7 @@ void* TaskGraph::getResultPointer(TaskHandle handle) noexcept {
 }
 
 TaskGraph::TaskPage* TaskGraph::pageAt(std::uint32_t pageIndex) noexcept {
-	if (pageIndex >= kMaxPageCount) {
+	if (pageIndex >= s_kMaxPageCount) {
 		return nullptr;
 	}
 
@@ -353,7 +371,7 @@ TaskGraph::TaskPage* TaskGraph::pageAt(std::uint32_t pageIndex) noexcept {
 }
 
 const TaskGraph::TaskPage* TaskGraph::pageAt(std::uint32_t pageIndex) const noexcept {
-	if (pageIndex >= kMaxPageCount) {
+	if (pageIndex >= s_kMaxPageCount) {
 		return nullptr;
 	}
 
@@ -361,7 +379,7 @@ const TaskGraph::TaskPage* TaskGraph::pageAt(std::uint32_t pageIndex) const noex
 }
 
 TaskGraph::TaskPage* TaskGraph::ensurePage(std::uint32_t pageIndex) noexcept {
-	if (pageIndex >= kMaxPageCount) {
+	if (pageIndex >= s_kMaxPageCount) {
 		return nullptr;
 	}
 
@@ -371,7 +389,7 @@ TaskGraph::TaskPage* TaskGraph::ensurePage(std::uint32_t pageIndex) noexcept {
 		return page;
 	}
 
-	sync::LockGuard<sync::Mutex> lock(m_pageCreationMutex);
+	const sync::LockGuard<sync::Mutex> kLock(m_pageCreationMutex);
 
 	page = m_pages[pageIndex].load(std::memory_order_relaxed);
 
@@ -392,7 +410,7 @@ TaskGraph::TaskPage* TaskGraph::ensurePage(std::uint32_t pageIndex) noexcept {
 }
 
 TaskSlot* TaskGraph::slotAt(std::uint32_t taskIndex) noexcept {
-	if (taskIndex >= kMaxTaskCount) {
+	if (taskIndex >= s_kMaxTaskCount) {
 		return nullptr;
 	}
 
@@ -406,7 +424,7 @@ TaskSlot* TaskGraph::slotAt(std::uint32_t taskIndex) noexcept {
 }
 
 const TaskSlot* TaskGraph::slotAt(std::uint32_t taskIndex) const noexcept {
-	if (taskIndex >= kMaxTaskCount) {
+	if (taskIndex >= s_kMaxTaskCount) {
 		return nullptr;
 	}
 
@@ -428,7 +446,7 @@ const TaskSlot* TaskGraph::slotInPage(const TaskPage& page, std::uint32_t taskIn
 }
 
 bool TaskGraph::allocateTaskIndex(std::uint32_t& taskIndex) noexcept {
-	sync::LockGuard<sync::Mutex> lock(m_allocationMutex);
+	const sync::LockGuard<sync::Mutex> kLock(m_allocationMutex);
 
 	if (!m_freeTaskIndices.empty()) {
 		taskIndex = m_freeTaskIndices.back();
@@ -436,7 +454,7 @@ bool TaskGraph::allocateTaskIndex(std::uint32_t& taskIndex) noexcept {
 		return true;
 	}
 
-	if (m_nextUnusedTaskIndex >= kMaxTaskCount) {
+	if (m_nextUnusedTaskIndex >= s_kMaxTaskCount) {
 		TRIVIAL_LOG_WARNING("TaskGraph capacity exhausted you should increase the max task count");
 		return false;
 	}
@@ -448,9 +466,9 @@ bool TaskGraph::allocateTaskIndex(std::uint32_t& taskIndex) noexcept {
 }
 
 void TaskGraph::releaseTaskIndex(std::uint32_t taskIndex) noexcept {
-	TRIVIAL_ASSERT(taskIndex < kMaxTaskCount);
+	TRIVIAL_ASSERT(taskIndex < s_kMaxTaskCount);
 
-	sync::LockGuard<sync::Mutex> lock(m_allocationMutex);
+	const sync::LockGuard<sync::Mutex> kLock(m_allocationMutex);
 
 	m_freeTaskIndices.push_back(taskIndex); // TODO: Custom allocator
 }
@@ -466,7 +484,7 @@ TaskPrerequisiteResult TaskGraph::addPrerequisiteLocked(TaskHandle dependantHand
 	}
 
 #if TRIVIAL_CONFIG_DEBUG
-	sync::LockGuard<sync::Mutex> topologyLock(m_debugTopologyMutex);
+	const sync::LockGuard<sync::Mutex> kTopologyLock(m_debugTopologyMutex);
 
 	if (wouldCreateCycle(dependantHandle, dependantSlot, prerequisiteHandle)) {
 		TRIVIAL_LOG_ERROR("Task graph tried to create a dependency loop/cycle");
@@ -481,7 +499,7 @@ TaskPrerequisiteResult TaskGraph::addPrerequisiteLocked(TaskHandle dependantHand
 		return TaskPrerequisiteResult::InvalidHandle;
 	}
 
-	sync::LockGuard<sync::Mutex> prerequisiteLock(prerequisiteSlot->mutex());
+	const sync::LockGuard<sync::Mutex> kPrerequisiteLock(prerequisiteSlot->mutex());
 
 	if (!prerequisiteSlot->isOccupiedBy(prerequisiteHandle)) {
 		return TaskPrerequisiteResult::InvalidHandle;
@@ -546,7 +564,7 @@ bool TaskGraph::wouldCreateCycle(TaskHandle taskHandle,
 
 		TRIVIAL_ASSERT(slot != nullptr);
 
-		sync::LockGuard<sync::Mutex> lock(slot->mutex());
+		const sync::LockGuard<sync::Mutex> kLock(slot->mutex());
 
 		TRIVIAL_ASSERT(slot->isOccupiedBy(kCurrentHandle));
 

@@ -1,27 +1,24 @@
 #include <trivial/platform/glfw/window.h>
 
+#include <cstddef>
 #include <cstdint>
+#include <span>
+
+#include <GLFW/glfw3.h>
+
+#include <vulkan/vulkan_core.h>
 
 #include <trivial/core/assert.h>
-#include <trivial/core/config.h>
-#include <trivial/core/log.h>
+#include <trivial/platform/window_types.h>
 
-#if TRIVIAL_ENABLE_ASSERTS
 #include "rhi/vulkan/result.h"
-#endif // TRIVIAL_ENABLE_ASSERTS
 
 namespace trivial::platform::glfw {
 
 namespace {
 
 void initializeGlfw() noexcept {
-#if TRIVIAL_ENABLE_ASSERTS
-	const int kResult = glfwInit();
-
-	TRIVIAL_ASSERT(kResult == GLFW_TRUE);
-#else
-	glfwInit();
-#endif // TRIVIAL_ENABLE_ASSERTS
+	TRIVIAL_VERIFY(glfwInit() == GLFW_TRUE);
 }
 
 } // namespace
@@ -72,11 +69,7 @@ WindowSize Window::framebufferSize() const noexcept {
 }
 
 std::span<const char* const> Window::requiredVulkanInstanceExtensions() noexcept {
-#if TRIVIAL_ENABLE_ASSERTS
-	const int kVulkanSupported = glfwVulkanSupported();
-
-	TRIVIAL_ASSERT(kVulkanSupported == GLFW_TRUE);
-#endif // TRIVIAL_ENABLE_ASSERTS
+	TRIVIAL_ASSERT(glfwVulkanSupported() == GLFW_TRUE);
 
 	std::uint32_t extensionCount = 0;
 	const char** extensions = glfwGetRequiredInstanceExtensions(&extensionCount);
@@ -95,12 +88,7 @@ VkSurfaceKHR Window::createVulkanSurface(VkInstance instance) const noexcept {
 
 	const VkResult kResult = glfwCreateWindowSurface(instance, m_handle, nullptr, &surface);
 
-	if (kResult != VK_SUCCESS) {
-		TRIVIAL_LOG_ERROR("glfwCreateWindowSurface failed");
-		TRIVIAL_LOG_ERROR(rhi::vulkan::resultName(kResult));
-	}
-
-	TRIVIAL_ASSERT(kResult == VK_SUCCESS);
+	TRIVIAL_VK_CHECK("glfwCreateWindowSurface failed", kResult);
 	TRIVIAL_ASSERT(surface != VK_NULL_HANDLE);
 
 	return surface;

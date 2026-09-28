@@ -1,13 +1,18 @@
 #include <trivial/engine.h>
 
 #include <cstdlib>
+#include <new>
+#include <vector>
 
-#include <trivial/core/assert.h>
-#include <trivial/core/config.h>
+#include <trivial/application.h>
 #include <trivial/core/log.h>
 #include <trivial/core/profile.h>
 #include <trivial/core/thread/thread.h>
+#include <trivial/frame/frame_context.h>
+#include <trivial/platform/window.h>
+#include <trivial/render/renderer.h>
 #include <trivial/task/task.h>
+#include <trivial/task/task_system.h>
 
 #include "core/sync/parking_lot.h"
 
@@ -15,7 +20,6 @@ namespace trivial {
 
 Engine::Engine(const EngineConfig& config) noexcept
     : m_requestedGraphicsApi(config.graphicsApi)
-    , m_frameIndex(0)
     , m_window(config.window)
     , m_gpu(config.graphicsApi, config.applicationInfo, m_window)
     , m_renderer(&m_gpu) {

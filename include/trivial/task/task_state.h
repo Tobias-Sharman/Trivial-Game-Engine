@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <trivial/core/assert.h>
+#include <trivial/core/compiler.h>
 #include <trivial/core/sync/latch.h>
 #include <trivial/task/task_handle.h>
 #include <trivial/task/task_launch_options.h>
@@ -33,39 +34,31 @@ struct TaskState {
 	TaskState& operator=(TaskState&&) = delete;
 
 	[[nodiscard]] TaskStatus status() const noexcept {
-		return static_cast<TaskStatus>((m_packed >> kStatusShift) & kStatusMask);
+		return static_cast<TaskStatus>(extractBits(s_kStatusShift, s_kStatusMask));
 	}
 	void setStatus(TaskStatus value) noexcept {
-		TRIVIAL_ASSERT(static_cast<std::uint16_t>(value) <= kStatusMask);
-		m_packed = static_cast<std::uint16_t>((m_packed & ~(kStatusMask << kStatusShift))
-		                                      | (static_cast<std::uint16_t>(value) << kStatusShift));
+		insertBits(s_kStatusShift, s_kStatusMask, static_cast<std::uint32_t>(value));
 	}
 
 	[[nodiscard]] TaskPriority priority() const noexcept {
-		return static_cast<TaskPriority>((m_packed >> kPriorityShift) & kPriorityMask);
+		return static_cast<TaskPriority>(extractBits(s_kPriorityShift, s_kPriorityMask));
 	}
 	void setPriority(TaskPriority value) noexcept {
-		TRIVIAL_ASSERT(static_cast<std::uint16_t>(value) <= kPriorityMask);
-		m_packed = static_cast<std::uint16_t>((m_packed & ~(kPriorityMask << kPriorityShift))
-		                                      | (static_cast<std::uint16_t>(value) << kPriorityShift));
+		insertBits(s_kPriorityShift, s_kPriorityMask, static_cast<std::uint32_t>(value));
 	}
 
 	[[nodiscard]] TaskAffinity affinity() const noexcept {
-		return static_cast<TaskAffinity>((m_packed >> kAffinityShift) & kAffinityMask);
+		return static_cast<TaskAffinity>(extractBits(s_kAffinityShift, s_kAffinityMask));
 	}
 	void setAffinity(TaskAffinity value) noexcept {
-		TRIVIAL_ASSERT(static_cast<std::uint16_t>(value) <= kAffinityMask);
-		m_packed = static_cast<std::uint16_t>((m_packed & ~(kAffinityMask << kAffinityShift))
-		                                      | (static_cast<std::uint16_t>(value) << kAffinityShift));
+		insertBits(s_kAffinityShift, s_kAffinityMask, static_cast<std::uint32_t>(value));
 	}
 
 	[[nodiscard]] TaskLifetime lifetime() const noexcept {
-		return static_cast<TaskLifetime>((m_packed >> kLifetimeShift) & kLifetimeMask);
+		return static_cast<TaskLifetime>(extractBits(s_kLifetimeShift, s_kLifetimeMask));
 	}
 	void setLifetime(TaskLifetime value) noexcept {
-		TRIVIAL_ASSERT(static_cast<std::uint16_t>(value) <= kLifetimeMask);
-		m_packed = static_cast<std::uint16_t>((m_packed & ~(kLifetimeMask << kLifetimeShift))
-		                                      | (static_cast<std::uint16_t>(value) << kLifetimeShift));
+		insertBits(s_kLifetimeShift, s_kLifetimeMask, static_cast<std::uint32_t>(value));
 	}
 
 	TaskPayload payload;
@@ -81,29 +74,41 @@ private:
 	                                                  TaskPriority priority,
 	                                                  TaskAffinity affinity,
 	                                                  TaskLifetime lifetime) noexcept {
-		TRIVIAL_ASSERT(static_cast<std::uint16_t>(status) <= kStatusMask);
-		TRIVIAL_ASSERT(static_cast<std::uint16_t>(priority) <= kPriorityMask);
-		TRIVIAL_ASSERT(static_cast<std::uint16_t>(affinity) <= kAffinityMask);
-		TRIVIAL_ASSERT(static_cast<std::uint16_t>(lifetime) <= kLifetimeMask);
+		TRIVIAL_ASSERT(static_cast<std::uint32_t>(status) <= s_kStatusMask);
+		TRIVIAL_ASSERT(static_cast<std::uint32_t>(priority) <= s_kPriorityMask);
+		TRIVIAL_ASSERT(static_cast<std::uint32_t>(affinity) <= s_kAffinityMask);
+		TRIVIAL_ASSERT(static_cast<std::uint32_t>(lifetime) <= s_kLifetimeMask);
 
-		return static_cast<std::uint16_t>((static_cast<std::uint16_t>(status) << kStatusShift)
-		                                  | (static_cast<std::uint16_t>(priority) << kPriorityShift)
-		                                  | (static_cast<std::uint16_t>(affinity) << kAffinityShift)
-		                                  | (static_cast<std::uint16_t>(lifetime) << kLifetimeShift));
+		return static_cast<std::uint16_t>((static_cast<std::uint32_t>(status) << s_kStatusShift)
+		                                  | (static_cast<std::uint32_t>(priority) << s_kPriorityShift)
+		                                  | (static_cast<std::uint32_t>(affinity) << s_kAffinityShift)
+		                                  | (static_cast<std::uint32_t>(lifetime) << s_kLifetimeShift));
 	}
 
-	static constexpr std::uint16_t kStatusMask = 0b111;
-	static constexpr std::uint16_t kPriorityMask = 0b111;
-	static constexpr std::uint16_t kAffinityMask = 0b111;
-	static constexpr std::uint16_t kLifetimeMask = 0b1;
+	[[nodiscard]] TRIVIAL_FORCE_INLINE std::uint32_t extractBits(std::uint32_t shift,
+	                                                             std::uint32_t mask) const noexcept {
+		return (static_cast<std::uint32_t>(m_packed) >> shift) & mask;
+	}
 
-	static constexpr std::uint16_t kStatusShift = 0;
-	static constexpr std::uint16_t kPriorityShift = kStatusShift + 3;
-	static constexpr std::uint16_t kAffinityShift = kPriorityShift + 3;
-	static constexpr std::uint16_t kLifetimeShift = kAffinityShift + 3;
+	TRIVIAL_FORCE_INLINE void insertBits(std::uint32_t shift, std::uint32_t mask, std::uint32_t value) noexcept {
+		TRIVIAL_ASSERT(value <= mask);
+
+		const std::uint32_t kCleared = static_cast<std::uint32_t>(m_packed) & ~(mask << shift);
+		m_packed = static_cast<std::uint16_t>(kCleared | (value << shift));
+	}
+
+	static constexpr std::uint32_t s_kStatusMask = 0b111U;
+	static constexpr std::uint32_t s_kPriorityMask = 0b111U;
+	static constexpr std::uint32_t s_kAffinityMask = 0b111U;
+	static constexpr std::uint32_t s_kLifetimeMask = 0b1U;
+
+	static constexpr std::uint32_t s_kStatusShift = 0U;
+	static constexpr std::uint32_t s_kPriorityShift = s_kStatusShift + 3U;
+	static constexpr std::uint32_t s_kAffinityShift = s_kPriorityShift + 3U;
+	static constexpr std::uint32_t s_kLifetimeShift = s_kAffinityShift + 3U;
 
 	// NOLINTNEXTLINE(readability-magic-numbers)
-	static_assert(kLifetimeShift + 1 <= 16, "Packed fields no longer fit in uint16_t");
+	static_assert(s_kLifetimeShift + 1U <= 16U, "Packed fields no longer fit in uint16_t");
 
 	std::uint16_t m_packed = 0;
 };

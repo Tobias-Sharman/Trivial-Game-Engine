@@ -2,8 +2,10 @@
 #define TRIVIAL_SRC_RHI_VULKAN_PIPELINE_H
 
 #include <string>
+#include <type_traits>
 
 #include <vulkan/vulkan.h>
+#include <vulkan/vulkan_core.h>
 
 #include <trivial/core/math/affine2.h>
 #include <trivial/core/math/vec4.h>
@@ -28,7 +30,7 @@ VkPipeline createGraphicsPipeline(VkDevice device,
                                   VkShaderModule fragmentModule) noexcept;
 void destroyGraphicsPipeline(VkDevice device, VkPipeline pipeline) noexcept;
 
-static_assert(sizeof(PushConstants) == 40);
+static_assert(sizeof(PushConstants) == 40); // NOLINT(readability-magic-numbers)
 static_assert(std::is_trivially_copyable_v<PushConstants>);
 static_assert(std::is_standard_layout_v<PushConstants>);
 

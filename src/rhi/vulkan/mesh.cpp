@@ -1,8 +1,13 @@
 #include "rhi/vulkan/mesh.h"
 
+#include <cstdint>
 #include <cstring>
+#include <span>
+
+#include <vulkan/vulkan_core.h>
 
 #include <trivial/core/assert.h>
+#include <trivial/rhi/mesh_types.h>
 
 #include "rhi/vulkan/result.h"
 
@@ -19,25 +24,28 @@ MeshData createMeshData(VmaAllocator allocator,
 	const VkDeviceSize kIndexBytes = indices.size_bytes();
 	const VkDeviceSize kTotalBytes = kVertexBytes + kIndexBytes;
 
-	const VkBufferCreateInfo kBufferCreateInfo
-	    = {.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-	       .pNext = nullptr,
-	       .flags = 0,
-	       .size = kTotalBytes,
-	       .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-	       .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-	       .queueFamilyIndexCount = 0,
-	       .pQueueFamilyIndices = nullptr};
+	const VkBufferCreateInfo kBufferCreateInfo = {
+	    .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+	    .pNext = nullptr,
+	    .flags = 0,
+	    .size = kTotalBytes,
+	    .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+	    .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+	    .queueFamilyIndexCount = 0,
+	    .pQueueFamilyIndices = nullptr,
+	};
 
-	const VmaAllocationCreateInfo kAllocationCreateInfo
-	    = {.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
-	       .usage = VMA_MEMORY_USAGE_AUTO,
-	       .requiredFlags = 0,
-	       .preferredFlags = 0,
-	       .memoryTypeBits = 0,
-	       .pool = VK_NULL_HANDLE,
-	       .pUserData = nullptr,
-	       .priority = 0.0F};
+	const VmaAllocationCreateInfo kAllocationCreateInfo = {
+	    .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+	    .usage = VMA_MEMORY_USAGE_AUTO,
+	    .requiredFlags = 0,
+	    .preferredFlags = 0,
+	    .memoryTypeBits = 0,
+	    .pool = VK_NULL_HANDLE,
+	    .pUserData = nullptr,
+	    .priority = 0.0F,
+	    .minAlignment = 0,
+	};
 
 	MeshData mesh = {};
 	mesh.indexOffset = kVertexBytes;

@@ -11,7 +11,7 @@ enum class TaskStatus : std::uint8_t {
 	Ready,
 	Running,
 	Completed,
-	Cancelled
+	Cancelled,
 };
 
 } // namespace trivial::task

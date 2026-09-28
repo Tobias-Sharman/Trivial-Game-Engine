@@ -3,6 +3,7 @@
 
 #include <cstdint>
 
+#include <trivial/core/compiler.h>
 #include <trivial/core/cpu_hints.h>
 #include <trivial/core/sync/sync_config.h>
 #include <trivial/core/thread/thread.h>

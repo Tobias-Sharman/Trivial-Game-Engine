@@ -24,9 +24,9 @@ void Mutex::lockSlow() noexcept {
 	std::uint8_t state = m_state.load(std::memory_order_relaxed);
 
 	for (;;) {
-		if ((state & kLockedBit) == 0) {
+		if ((state & s_kLockedBit) == 0) {
 			if (m_state.compare_exchange_weak(state,
-			                                  static_cast<std::uint8_t>(state | kLockedBit),
+			                                  static_cast<std::uint8_t>(state | s_kLockedBit),
 			                                  std::memory_order_acquire,
 			                                  std::memory_order_relaxed)) {
 				return;
@@ -35,23 +35,22 @@ void Mutex::lockSlow() noexcept {
 			continue;
 		}
 
-		if ((state & kParkedBit) == 0 && spinCount < TRIVIAL_SYNC_MAX_SPIN_COUNT) {
+		if ((state & s_kParkedBit) == 0 && spinCount < TRIVIAL_SYNC_MAX_SPIN_COUNT) {
 			spinWaitForever(spinCount);
 			state = m_state.load(std::memory_order_relaxed);
 			continue;
 		}
 
-		if ((state & kParkedBit) == 0) {
-			if (!m_state.compare_exchange_weak(state,
-			                                   static_cast<std::uint8_t>(state | kParkedBit),
-			                                   std::memory_order_relaxed,
-			                                   std::memory_order_relaxed)) {
-				continue;
-			}
+		if (((state & s_kParkedBit) == 0)
+		    && (!m_state.compare_exchange_weak(state,
+		                                       static_cast<std::uint8_t>(state | s_kParkedBit),
+		                                       std::memory_order_relaxed,
+		                                       std::memory_order_relaxed))) {
+			continue;
 		}
 
 		(void)activeParkingLot().park(keyFor(this), [this] {
-			return m_state.load(std::memory_order_relaxed) == (kLockedBit | kParkedBit);
+			return m_state.load(std::memory_order_relaxed) == (s_kLockedBit | s_kParkedBit);
 		});
 
 		spinCount = 0;
@@ -62,7 +61,7 @@ void Mutex::lockSlow() noexcept {
 void Mutex::unlockSlow() noexcept {
 	activeParkingLot().unparkOne(keyFor(this), [this](const ParkingLot::UnparkOneResult kResult) {
 		if (kResult.hasMoreWaiters) {
-			m_state.store(kParkedBit, std::memory_order_release);
+			m_state.store(s_kParkedBit, std::memory_order_release);
 		} else {
 			m_state.store(0, std::memory_order_release);
 		}

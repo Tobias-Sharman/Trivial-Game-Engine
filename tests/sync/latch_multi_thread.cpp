@@ -3,6 +3,7 @@
 
 #include <gtest/gtest.h>
 
+#include <trivial/core/platform.h>
 #include <trivial/core/sync/latch.h>
 #include <trivial/core/thread/thread.h>
 
@@ -19,7 +20,7 @@ struct LatchCountDownContext {
 };
 
 void countDownWorker(void* arg) {
-	auto* context = static_cast<LatchCountDownContext*>(arg);
+	const LatchCountDownContext* context = static_cast<LatchCountDownContext*>(arg);
 	context->completed->fetch_add(1, std::memory_order_acq_rel);
 	context->latch->countDown();
 }
@@ -38,7 +39,7 @@ TEST(LatchMultiThreadTest, CountDownsNeverRace) {
 }
 
 TEST(LatchMultiThreadTest, WaitUnblocksAfterCountDown) {
-	trivial::tests::ScopedParkingLot parkingLotScope(g_kWorkerThreads);
+	const trivial::tests::ScopedParkingLot kParkingLotScope(g_kWorkerThreads);
 
 	trivial::thread::Thread mainThread;
 	mainThread.adoptCurrentThread({.name = "main-test-thread", .type = trivial::thread::ThreadType::Main});
@@ -54,8 +55,8 @@ TEST(LatchMultiThreadTest, WaitUnblocksAfterCountDown) {
 		trivial::tests::attachStackAllocator(config);
 #endif // TRIVIAL_PLATFORM_POSIX
 
-		trivial::thread::ThreadCreateResult result = threads[i].create(config, &countDownWorker, &context);
-		ASSERT_EQ(result.error, trivial::thread::ThreadCreateError::None);
+		const trivial::thread::ThreadCreateResult kResult = threads[i].create(config, &countDownWorker, &context);
+		ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
 	}
 
 	latch.wait();
