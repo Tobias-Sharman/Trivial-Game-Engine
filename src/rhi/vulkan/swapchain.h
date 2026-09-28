@@ -6,7 +6,7 @@
 
 #include <vulkan/vulkan.h>
 
-#include <trivial/engine_config.h> // TODO: Move window size out of engine config so no need to drag it all in
+#include <trivial/platform/window_types.h>
 
 namespace trivial::rhi::vulkan {
 
@@ -22,7 +22,7 @@ struct SwapchainCreateParams {
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 	VkDevice device = VK_NULL_HANDLE;
 	VkSurfaceKHR surface = VK_NULL_HANDLE;
-	WindowSize requestedSize = {.height = 0U, .width = 0U};
+	platform::WindowSize requestedSize = {.height = 0U, .width = 0U};
 	std::uint32_t graphicsFamily = 0;
 	std::uint32_t presentFamily = 0;
 	VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE;

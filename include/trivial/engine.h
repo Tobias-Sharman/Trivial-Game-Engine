@@ -2,18 +2,30 @@
 #define TRIVIAL_ENGINE_H
 
 #include <trivial/application.h>
-#include <trivial/engine_config.h>
+#include <trivial/core/application_info.h>
 #include <trivial/core/graphics_api.h>
 #include <trivial/gpu/context.h>
 #include <trivial/platform/window.h>
+#include <trivial/platform/window_types.h>
 #include <trivial/render/renderer.h>
+#include <trivial/task/task_system.h>
 #include <trivial/time/engine_time.h>
 
 namespace trivial {
 
+struct EngineConfig {
+	GraphicsApi graphicsApi = GraphicsApi::Auto;
+
+	ApplicationInfo applicationInfo = {};
+
+	platform::WindowConfig window = {};
+
+	task::TaskSystemConfig tasks = {};
+};
+
 class Engine {
 public:
-	explicit Engine(const EngineConfig* config) noexcept;
+	explicit Engine(const EngineConfig& config) noexcept;
 
 	~Engine();
 

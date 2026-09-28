@@ -5,7 +5,7 @@
 
 #include <vulkan/vulkan.h>
 
-#include <trivial/engine_config.h>
+#include <trivial/core/application_info.h>
 #include <trivial/platform/window.h>
 #include <trivial/rhi/backend.h>
 
@@ -19,7 +19,7 @@ namespace trivial::rhi::vulkan {
 
 class Backend final : public rhi::Backend {
 public:
-	explicit Backend(const EngineConfig* config, platform::Window* window) noexcept;
+	explicit Backend(const ApplicationInfo& applicationInfo, const platform::Window& window) noexcept;
 
 	~Backend() override;
 
@@ -41,7 +41,7 @@ public:
 
 	void waitIdle() noexcept override;
 
-	void resize(WindowSize size) noexcept override;
+	void resize(platform::WindowSize size) noexcept override;
 
 private:
 	void beginRendering() noexcept;

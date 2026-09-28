@@ -7,27 +7,23 @@
 
 namespace {
 
-trivial::GraphicsApi resolveGraphicsApi(const trivial::EngineConfig* config) {
-	TRIVIAL_ASSERT(config != nullptr);
-
+trivial::GraphicsApi resolveGraphicsApi(trivial::GraphicsApi requested) {
 	// TODO: Select based on system once there is support for multiple apis
-	if (config->graphicsApi == trivial::GraphicsApi::Auto) {
+	if (requested == trivial::GraphicsApi::Auto) {
 		return trivial::GraphicsApi::Vulkan;
 	}
 
-	return config->graphicsApi;
+	return requested;
 }
 
-std::unique_ptr<trivial::rhi::Backend> createBackend(const trivial::EngineConfig* config,
-                                                     trivial::platform::Window* window) {
-	TRIVIAL_ASSERT(config != nullptr);
-	TRIVIAL_ASSERT(window != nullptr);
-
-	const trivial::GraphicsApi kGraphicsApi = resolveGraphicsApi(config);
+std::unique_ptr<trivial::rhi::Backend> createBackend(trivial::GraphicsApi graphicsApi,
+                                                     const trivial::ApplicationInfo& applicationInfo,
+                                                     const trivial::platform::Window& window) {
+	const trivial::GraphicsApi kGraphicsApi = resolveGraphicsApi(graphicsApi);
 
 	switch (kGraphicsApi) {
 		case trivial::GraphicsApi::Vulkan:
-			return std::make_unique<trivial::rhi::vulkan::Backend>(config, window);
+			return std::make_unique<trivial::rhi::vulkan::Backend>(applicationInfo, window);
 
 		case trivial::GraphicsApi::Auto:
 			TRIVIAL_LOG_ERROR("Auto graphics api selection did not pick an api");
@@ -40,8 +36,8 @@ std::unique_ptr<trivial::rhi::Backend> createBackend(const trivial::EngineConfig
 
 namespace trivial::gpu {
 
-Context::Context(const EngineConfig* config, platform::Window* window)
-    : m_backend(createBackend(config, window)) {
+Context::Context(GraphicsApi graphicsApi, const ApplicationInfo& applicationInfo, const platform::Window& window)
+    : m_backend(createBackend(graphicsApi, applicationInfo, window)) {
 	TRIVIAL_ASSERT(m_backend != nullptr);
 }
 

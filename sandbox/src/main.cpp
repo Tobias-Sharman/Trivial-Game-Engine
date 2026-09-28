@@ -38,10 +38,11 @@ public:
 
 int main() {
 	trivial::EngineConfig config{};
+	config.applicationInfo.name = "Boids";
 	config.window.size = {.height = 500, .width = 500}; // NOLINT(readability-magic-numbers)
 	config.window.title = "Boids";
 
-	trivial::Engine engine(&config);
+	trivial::Engine engine(config);
 
 	trivial::Application game{std::make_unique<BoidsLayer>()};
 	TRIVIAL_ATTACH_DEBUG_LAYER(game, std::make_unique<DebugLayer>());

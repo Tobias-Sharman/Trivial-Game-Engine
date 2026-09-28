@@ -86,7 +86,8 @@ VkPresentModeKHR selectPresentMode(std::span<const VkPresentModeKHR> availablePr
 	return VK_PRESENT_MODE_FIFO_KHR;
 }
 
-VkExtent2D selectSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities, trivial::WindowSize requestedSize) noexcept {
+VkExtent2D selectSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities,
+                            trivial::platform::WindowSize requestedSize) noexcept {
 	constexpr std::uint32_t kSpecialExtentValue = 0xFFFFFFFFU;
 
 	// For non-sentinal value use the given size, for stuff like Wayland use the requested size within the limits of the

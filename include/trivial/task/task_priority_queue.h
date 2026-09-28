@@ -4,11 +4,9 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
-#include <cstdint>
 #include <deque>
 
 #include <trivial/core/assert.h>
-#include <trivial/core/config.h>
 #include <trivial/core/sync/lock_guard.h>
 #include <trivial/core/sync/mutex.h>
 #include <trivial/task/task_handle.h>
@@ -19,24 +17,7 @@ namespace trivial::task {
 
 class TaskPriorityQueue {
 public:
-	explicit TaskPriorityQueue(const TaskSchedulerConfig& config = {}) noexcept
-	    : m_weights{
-	          config.priorityWeights.background,
-	          config.priorityWeights.normal,
-	          config.priorityWeights.high,
-	          config.priorityWeights.critical,
-	      } // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
-	    , m_totalWeight(m_weights[0] + m_weights[1] + m_weights[2] + m_weights[3])
-	    , m_shares(computeShares(m_weights, m_totalWeight, config.batchSize)) {
-
-#if TRIVIAL_CONFIG_DEBUG
-		for (std::uint32_t weight : m_weights) {
-			TRIVIAL_ASSERT(weight > 0);
-		}
-
-		TRIVIAL_ASSERT(config.batchSize > 0);
-#endif // TRIVIAL_CONFIG_DEBUG
-	}
+	TaskPriorityQueue() noexcept = default;
 
 	~TaskPriorityQueue() noexcept = default;
 
@@ -58,7 +39,8 @@ public:
 	}
 
 	[[nodiscard]] bool tryPop(TaskHandle& outHandle) noexcept {
-		for (auto priorityIndex = static_cast<std::size_t>(TaskPriority::Count); priorityIndex > 0; --priorityIndex) {
+		for (std::size_t priorityIndex = static_cast<std::size_t>(TaskPriority::Count); priorityIndex > 0;
+		     --priorityIndex) {
 			const std::size_t kIndex = priorityIndex - 1;
 
 			// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
@@ -99,7 +81,7 @@ public:
 				}
 
 				// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
-				kTake = std::min(m_shares[i], sourceBucket.queue.size());
+				kTake = std::min(kShares[i], sourceBucket.queue.size());
 
 				for (std::size_t j = 0; j < kTake; ++j) {
 					taken.push_back(sourceBucket.queue.front());
@@ -141,28 +123,29 @@ private:
 		ReadyQueue queue;
 	};
 
-	[[nodiscard]] static std::array<std::size_t, static_cast<std::size_t>(TaskPriority::Count)> computeShares(
-	    const std::array<std::uint32_t, static_cast<std::size_t>(TaskPriority::Count)>& weights,
-	    std::uint32_t totalWeight,
-	    std::size_t batchSize) noexcept {
-		std::array<std::size_t, static_cast<std::size_t>(TaskPriority::Count)> shares{};
+	static constexpr std::array<std::size_t, static_cast<std::size_t>(TaskPriority::Count)> kShares = []() consteval {
+		constexpr std::array<std::size_t, static_cast<std::size_t>(TaskPriority::Count)> kWeights{
+		    TRIVIAL_TASK_PRIORITY_WEIGHT_BACKGROUND,
+		    TRIVIAL_TASK_PRIORITY_WEIGHT_NORMAL,
+		    TRIVIAL_TASK_PRIORITY_WEIGHT_HIGH,
+		    TRIVIAL_TASK_PRIORITY_WEIGHT_CRITICAL,
+		};
 
-		for (std::size_t i = 0; i < weights.size(); ++i) {
+		std::size_t totalWeight = 0;
+		for (const std::size_t kWeight : kWeights) {
+			totalWeight += kWeight;
+		}
+
+		std::array<std::size_t, kWeights.size()> shares{};
+		for (std::size_t i = 0; i < kWeights.size(); ++i) {
 			// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
-			shares[i] = (batchSize * static_cast<std::size_t>(weights[i])) / totalWeight;
-			// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
-			TRIVIAL_ASSERT(shares[i] > 0);
+			shares[i] = (std::size_t{TRIVIAL_TASK_BATCH_SIZE} * kWeights[i]) / totalWeight;
 		}
 
 		return shares;
-	}
+	}();
 
 	std::array<PriorityBucket, static_cast<std::size_t>(TaskPriority::Count)> m_buckets;
-
-	std::array<std::uint32_t, static_cast<std::size_t>(TaskPriority::Count)> m_weights;
-	std::uint32_t m_totalWeight;
-
-	std::array<std::size_t, static_cast<std::size_t>(TaskPriority::Count)> m_shares;
 };
 
 } // namespace trivial::task

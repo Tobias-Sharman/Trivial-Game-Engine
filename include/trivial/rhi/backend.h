@@ -4,10 +4,10 @@
 #include <cstdint>
 #include <span>
 
-#include <trivial/engine_config.h>
 #include <trivial/core/graphics_api.h>
 #include <trivial/core/math/affine2.h>
 #include <trivial/core/math/vec4.h>
+#include <trivial/platform/window_types.h>
 #include <trivial/rhi/mesh_types.h>
 
 namespace trivial::rhi {
@@ -36,7 +36,7 @@ public:
 
 	virtual void waitIdle() noexcept = 0;
 
-	virtual void resize(WindowSize size) noexcept = 0;
+	virtual void resize(platform::WindowSize size) noexcept = 0;
 };
 
 } // namespace trivial::rhi

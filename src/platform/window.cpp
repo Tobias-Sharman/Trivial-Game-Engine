@@ -6,23 +6,19 @@ namespace trivial::platform {
 
 namespace {
 
-WindowConfig readWindowConfig(const EngineConfig* config) noexcept {
-	TRIVIAL_ASSERT(config != nullptr);
-	TRIVIAL_ASSERT(config->window.size.height > 0);
-	TRIVIAL_ASSERT(config->window.size.width > 0);
-	TRIVIAL_ASSERT(!config->window.title.empty());
+WindowConfig readWindowConfig(const WindowConfig& config) noexcept {
+	TRIVIAL_ASSERT(config.size.height > 0);
+	TRIVIAL_ASSERT(config.size.width > 0);
+	TRIVIAL_ASSERT(!config.title.empty());
 
-	return config->window;
+	return config;
 }
 
 } // namespace
 
-Window::Window(const EngineConfig* config) noexcept
+Window::Window(const WindowConfig& config) noexcept
     : m_config(readWindowConfig(config))
-    , m_backend(&m_config) {
+    , m_backend(m_config) {
 }
-
-// Expected to get more complex so this is going here
-Window::~Window() = default;
 
 } // namespace trivial::platform

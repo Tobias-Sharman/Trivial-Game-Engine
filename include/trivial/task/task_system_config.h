@@ -1,45 +1,38 @@
 #ifndef TRIVIAL_TASK_TASK_SYSTEM_CONFIG_H
 #define TRIVIAL_TASK_TASK_SYSTEM_CONFIG_H
 
-#include <cstddef>
-#include <cstdint>
-
-#include <trivial/task/task_launch_options.h>
-
-namespace trivial::task {
-
-struct WorkerConfig {
-	std::uint32_t count = 0;
-
-	std::uint32_t maxStandbyWorkers = 2;
-};
+#include <trivial/core/config.h>
 
 // Match task priority ordering if changing - see task_launch_options.h
-struct TaskPriorityWeights {
-	std::uint32_t background = 1;
-	std::uint32_t normal = 2;
-	std::uint32_t high = 4;
-	std::uint32_t critical = 8; // NOLINT(readability-magic-numbers)
-};
+#ifndef TRIVIAL_TASK_PRIORITY_WEIGHT_BACKGROUND
+#define TRIVIAL_TASK_PRIORITY_WEIGHT_BACKGROUND 1
+#endif
 
-struct TaskSchedulerConfig {
-	TaskPriorityWeights priorityWeights{};
+#ifndef TRIVIAL_TASK_PRIORITY_WEIGHT_NORMAL
+#define TRIVIAL_TASK_PRIORITY_WEIGHT_NORMAL 2
+#endif
 
-	// Unless wanting a 0 selection of a priority (will require adjusting the
-	// assertion) batchsize > sum(TaskPriorityWeights)
-	std::size_t batchSize = 16; // NOLINT(readability-magic-numbers)
-};
+#ifndef TRIVIAL_TASK_PRIORITY_WEIGHT_HIGH
+#define TRIVIAL_TASK_PRIORITY_WEIGHT_HIGH 4
+#endif
 
-struct TaskSystemConfig {
-	WorkerConfig workers{};
+#ifndef TRIVIAL_TASK_PRIORITY_WEIGHT_CRITICAL
+#define TRIVIAL_TASK_PRIORITY_WEIGHT_CRITICAL 8
+#endif
 
-	TaskSchedulerConfig scheduler{};
+#ifndef TRIVIAL_TASK_BATCH_SIZE
+#define TRIVIAL_TASK_BATCH_SIZE 15
+#endif
 
-	std::uint32_t waitHelpMaxDepth = 0;
+static_assert(TRIVIAL_TASK_PRIORITY_WEIGHT_BACKGROUND > 0 && TRIVIAL_TASK_PRIORITY_WEIGHT_NORMAL > 0
+                  && TRIVIAL_TASK_PRIORITY_WEIGHT_HIGH > 0 && TRIVIAL_TASK_PRIORITY_WEIGHT_CRITICAL > 0,
+              "Every task priority weight must be non-zero");
 
-	// TODO: Config for dedicated worker threads, main, render etc.
-};
+static_assert(TRIVIAL_TASK_BATCH_SIZE > 0, "Task batch size must be non-zero");
 
-} // namespace trivial::task
+static_assert(TRIVIAL_TASK_BATCH_SIZE >= TRIVIAL_TASK_PRIORITY_WEIGHT_BACKGROUND + TRIVIAL_TASK_PRIORITY_WEIGHT_NORMAL
+                                             + TRIVIAL_TASK_PRIORITY_WEIGHT_HIGH
+                                             + TRIVIAL_TASK_PRIORITY_WEIGHT_CRITICAL,
+              "Task batch size must be at least the sum of the priority weights");
 
 #endif // TRIVIAL_TASK_TASK_SYSTEM_CONFIG_H

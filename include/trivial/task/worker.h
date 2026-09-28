@@ -9,7 +9,6 @@
 #include <trivial/core/platform.h>
 #include <trivial/core/thread/thread.h>
 #include <trivial/task/task_priority_queue.h>
-#include <trivial/task/task_system_config.h>
 
 namespace trivial::task {
 

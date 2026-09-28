@@ -3,7 +3,8 @@
 
 #include <memory>
 
-#include <trivial/engine_config.h>
+#include <trivial/core/application_info.h>
+#include <trivial/core/graphics_api.h>
 #include <trivial/platform/window.h>
 #include <trivial/rhi/backend.h>
 #include <trivial/rhi/mesh_types.h>
@@ -12,7 +13,7 @@ namespace trivial::gpu {
 
 class Context {
 public:
-	explicit Context(const EngineConfig* config, platform::Window* window);
+	explicit Context(GraphicsApi graphicsApi, const ApplicationInfo& applicationInfo, const platform::Window& window);
 
 	~Context();
 

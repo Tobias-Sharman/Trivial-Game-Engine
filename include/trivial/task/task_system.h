@@ -18,7 +18,6 @@
 #include <trivial/task/task_launch_options.h>
 #include <trivial/task/task_payload.h>
 #include <trivial/task/task_priority_queue.h>
-#include <trivial/task/task_system_config.h>
 #include <trivial/task/worker.h>
 
 #if TRIVIAL_PLATFORM_POSIX
@@ -26,6 +25,20 @@
 #endif // TRIVIAL_PLATFORM_POSIX
 
 namespace trivial::task {
+
+struct WorkerConfig {
+	std::uint32_t count = 0;
+
+	std::uint32_t maxStandbyWorkers = 2;
+};
+
+struct TaskSystemConfig {
+	WorkerConfig workers{};
+
+	std::uint32_t waitHelpMaxDepth = 0;
+
+	// TODO: Config for dedicated worker threads, main, render etc.
+};
 
 // TODO: Support for thread affinities beyond main
 

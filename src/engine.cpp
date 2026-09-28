@@ -13,21 +13,11 @@
 
 namespace trivial {
 
-namespace {
-
-GraphicsApi readRequestedGraphicsApi(const EngineConfig* config) {
-	TRIVIAL_ASSERT(config != nullptr);
-
-	return config->graphicsApi;
-}
-
-} // namespace
-
-Engine::Engine(const EngineConfig* config) noexcept
-    : m_requestedGraphicsApi(readRequestedGraphicsApi(config))
+Engine::Engine(const EngineConfig& config) noexcept
+    : m_requestedGraphicsApi(config.graphicsApi)
     , m_frameIndex(0)
-    , m_window(config)
-    , m_gpu(config, &m_window)
+    , m_window(config.window)
+    , m_gpu(config.graphicsApi, config.applicationInfo, m_window)
     , m_renderer(&m_gpu) {
 	auto* mainThread = new (std::nothrow) thread::Thread(); // TODO: Custom allocator
 	if (mainThread == nullptr) {
@@ -36,7 +26,7 @@ Engine::Engine(const EngineConfig* config) noexcept
 	}
 	mainThread->adoptCurrentThread({.name = "Main", .type = thread::ThreadType::Main});
 
-	task::TaskSystemConfig taskConfig = config->tasks;
+	task::TaskSystemConfig taskConfig = config.tasks;
 	taskConfig.workers.count = thread::Thread::resolveConcurrency(taskConfig.workers.count);
 
 	const std::size_t kCapacity = 1 + taskConfig.workers.count + taskConfig.workers.maxStandbyWorkers;

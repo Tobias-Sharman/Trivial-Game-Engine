@@ -8,13 +8,13 @@
 
 #include <vulkan/vulkan.h>
 
-#include <trivial/engine_config.h>
+#include <trivial/platform/window_types.h>
 
 namespace trivial::platform::glfw {
 
 class Window {
 public:
-	explicit Window(const WindowConfig* config) noexcept;
+	explicit Window(const WindowConfig& config) noexcept;
 
 	// TODO: Move GLFW init/terminate into a GLFW runtime object for multiple window support
 	~Window();

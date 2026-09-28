@@ -3,11 +3,11 @@
 
 #include <vulkan/vulkan.h>
 
-#include <trivial/engine_config.h>
+#include <trivial/core/application_info.h>
 
 namespace trivial::rhi::vulkan {
 
-VkInstance createInstance(const EngineConfig* config) noexcept;
+VkInstance createInstance(const ApplicationInfo& applicationInfo) noexcept;
 
 }
 

@@ -5,16 +5,16 @@
 
 #include <vulkan/vulkan.h>
 
-#include <trivial/engine_config.h>
 #include <trivial/platform/window_backend.h>
+#include <trivial/platform/window_types.h>
 
 namespace trivial::platform {
 
 class Window {
 public:
-	explicit Window(const EngineConfig* config) noexcept;
+	explicit Window(const WindowConfig& config) noexcept;
 
-	~Window();
+	~Window() = default;
 
 	Window(const Window&) = delete;
 	Window& operator=(const Window&) = delete;

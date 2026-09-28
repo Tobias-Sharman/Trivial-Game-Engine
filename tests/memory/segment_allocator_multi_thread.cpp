@@ -9,7 +9,6 @@
 #include <trivial/core/thread/thread.h>
 #include <trivial/task/task_payload.h>
 #include <trivial/task/task_system.h>
-#include <trivial/task/task_system_config.h>
 
 #include "support/helpers.h"
 

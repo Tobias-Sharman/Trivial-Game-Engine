@@ -1,12 +1,15 @@
 #include "rhi/vulkan/backend.h"
 
+#include <cstdint>
 #include <cstring>
 #include <span>
+#include <string>
 #include <vector>
+
+#include <vulkan/vulkan.h>
 
 #include <trivial/core/assert.h>
 #include <trivial/core/config.h>
-#include <trivial/core/log.h>
 
 #include "rhi/vulkan/device.h"
 #include "rhi/vulkan/instance.h"
@@ -15,9 +18,7 @@
 #include "rhi/vulkan/result.h"
 
 #if TRIVIAL_ENABLE_VULKAN_VALIDATION
-
 #include "rhi/vulkan/debug_messenger.h"
-
 #endif // TRIVIAL_ENABLE_VULKAN_VALIDATION
 
 namespace {
@@ -30,32 +31,38 @@ void transitionImageLayout(VkCommandBuffer commandBuffer,
                            VkAccessFlags2 srcAccess,
                            VkPipelineStageFlags2 dstStage,
                            VkAccessFlags2 dstAccess) noexcept {
-	const VkImageMemoryBarrier2 kBarrier = {.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-	                                        .pNext = nullptr,
-	                                        .srcStageMask = srcStage,
-	                                        .srcAccessMask = srcAccess,
-	                                        .dstStageMask = dstStage,
-	                                        .dstAccessMask = dstAccess,
-	                                        .oldLayout = oldLayout,
-	                                        .newLayout = newLayout,
-	                                        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-	                                        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-	                                        .image = image,
-	                                        .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-	                                                             .baseMipLevel = 0,
-	                                                             .levelCount = 1,
-	                                                             .baseArrayLayer = 0,
-	                                                             .layerCount = 1}};
+	const VkImageMemoryBarrier2 kBarrier = {
+	    .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+	    .pNext = nullptr,
+	    .srcStageMask = srcStage,
+	    .srcAccessMask = srcAccess,
+	    .dstStageMask = dstStage,
+	    .dstAccessMask = dstAccess,
+	    .oldLayout = oldLayout,
+	    .newLayout = newLayout,
+	    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+	    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+	    .image = image,
+	    .subresourceRange = {
+	        .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+	        .baseMipLevel = 0,
+	        .levelCount = 1,
+	        .baseArrayLayer = 0,
+	        .layerCount = 1,
+	    },
+	};
 
-	const VkDependencyInfo kDependencyInfo = {.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-	                                          .pNext = nullptr,
-	                                          .dependencyFlags = 0,
-	                                          .memoryBarrierCount = 0,
-	                                          .pMemoryBarriers = nullptr,
-	                                          .bufferMemoryBarrierCount = 0,
-	                                          .pBufferMemoryBarriers = nullptr,
-	                                          .imageMemoryBarrierCount = 1,
-	                                          .pImageMemoryBarriers = &kBarrier};
+	const VkDependencyInfo kDependencyInfo = {
+	    .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+	    .pNext = nullptr,
+	    .dependencyFlags = 0,
+	    .memoryBarrierCount = 0,
+	    .pMemoryBarriers = nullptr,
+	    .bufferMemoryBarrierCount = 0,
+	    .pBufferMemoryBarriers = nullptr,
+	    .imageMemoryBarrierCount = 1,
+	    .pImageMemoryBarriers = &kBarrier,
+	};
 
 	vkCmdPipelineBarrier2(commandBuffer, &kDependencyInfo);
 }
@@ -64,12 +71,15 @@ void transitionImageLayout(VkCommandBuffer commandBuffer,
 
 namespace trivial::rhi::vulkan {
 
-Backend::Backend(const EngineConfig* config, platform::Window* window) noexcept
-    : m_instance(createInstance(config))
+// Not member initialised first to make stored stuff correct to what is
+// actually wanted to be kept and cost on construction of this form is
+// negligable
+Backend::Backend(const ApplicationInfo& applicationInfo, const platform::Window& window) noexcept
+    : m_instance(createInstance(applicationInfo))
 #if TRIVIAL_ENABLE_VULKAN_VALIDATION
     , m_debugMessenger(createDebugMessenger(m_instance))
 #endif // TRIVIAL_ENABLE_VULKAN_VALIDATION
-    , m_surface(window->createVulkanSurface(m_instance)) {
+    , m_surface(window.createVulkanSurface(m_instance)) {
 	const std::vector<VkPhysicalDevice> kPhysicalDevices = enumeratePhysicalDevices(m_instance);
 	const PhysicalDeviceSelection kPhysicalDeviceSelection = selectPhysicalDevice(kPhysicalDevices, m_surface);
 
@@ -82,21 +92,25 @@ Backend::Backend(const EngineConfig* config, platform::Window* window) noexcept
 	m_graphicsQueue = getDeviceQueue(m_device, m_graphicsFamily);
 	m_presentQueue = getDeviceQueue(m_device, m_presentFamily);
 
+	// NOLINTNEXTLINE(cppcoreguidelines-prefer-member-initializer)
 	m_allocator = createAllocator(m_instance, m_physicalDevice, m_device);
 
-	m_swapchainState = createSwapchain({.physicalDevice = m_physicalDevice,
-	                                    .device = m_device,
-	                                    .surface = m_surface,
-	                                    .requestedSize = window->framebufferSize(),
-	                                    .graphicsFamily = m_graphicsFamily,
-	                                    .presentFamily = m_presentFamily,
-	                                    .oldSwapchain = VK_NULL_HANDLE});
+	m_swapchainState = createSwapchain({
+	    .physicalDevice = m_physicalDevice,
+	    .device = m_device,
+	    .surface = m_surface,
+	    .requestedSize = window.framebufferSize(),
+	    .graphicsFamily = m_graphicsFamily,
+	    .presentFamily = m_presentFamily,
+	    .oldSwapchain = VK_NULL_HANDLE,
+	});
 
 	const auto kImageCount = static_cast<std::uint32_t>(m_swapchainState.images.size());
 
 	m_syncState = createFrameSyncState(m_device, kImageCount);
 	m_commandState = createCommandState(m_device, m_graphicsFamily, kImageCount);
 
+	// NOLINTNEXTLINE(cppcoreguidelines-prefer-member-initializer)
 	m_pipelineLayout = createPipelineLayout(m_device);
 
 	VkShaderModule vertexModule
@@ -113,6 +127,7 @@ Backend::Backend(const EngineConfig* config, platform::Window* window) noexcept
 	destroyShaderModule(m_device, vertexModule);
 	destroyShaderModule(m_device, fragmentModule);
 }
+
 Backend::~Backend() {
 	waitIdle();
 
@@ -202,10 +217,12 @@ bool Backend::beginFrame(std::uint64_t frameIndex) noexcept {
 
 	TRIVIAL_VK_CHECK("vkResetCommandBuffer failed", result);
 
-	static constexpr VkCommandBufferBeginInfo s_kBeginInfo = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-	                                                          .pNext = nullptr,
-	                                                          .flags = 0,
-	                                                          .pInheritanceInfo = nullptr};
+	static constexpr VkCommandBufferBeginInfo s_kBeginInfo = {
+	    .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+	    .pNext = nullptr,
+	    .flags = 0,
+	    .pInheritanceInfo = nullptr,
+	};
 
 	result = vkBeginCommandBuffer(kCommandBuffer, &s_kBeginInfo);
 
@@ -228,34 +245,42 @@ void Backend::endFrame() noexcept {
 	VkSemaphore_T* const kWaitSemaphore = m_syncState.imageAvailableSemaphores[m_currentImageSlot];
 	VkSemaphore_T* const kSignalSemaphore = m_syncState.renderFinishedSemaphores[m_currentImageIndex];
 
-	const VkSemaphoreSubmitInfo kWaitSemaphoreInfo = {.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-	                                                  .pNext = nullptr,
-	                                                  .semaphore = kWaitSemaphore,
-	                                                  .value = 0,
-	                                                  .stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-	                                                  .deviceIndex = 0};
+	const VkSemaphoreSubmitInfo kWaitSemaphoreInfo = {
+	    .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+	    .pNext = nullptr,
+	    .semaphore = kWaitSemaphore,
+	    .value = 0,
+	    .stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+	    .deviceIndex = 0,
+	};
 
-	const VkCommandBufferSubmitInfo kCommandBufferSubmitInfo = {.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
-	                                                            .pNext = nullptr,
-	                                                            .commandBuffer = commandBuffer,
-	                                                            .deviceMask = 0};
+	const VkCommandBufferSubmitInfo kCommandBufferSubmitInfo = {
+	    .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
+	    .pNext = nullptr,
+	    .commandBuffer = commandBuffer,
+	    .deviceMask = 0,
+	};
 
-	const VkSemaphoreSubmitInfo kSignalSemaphoreInfo = {.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
-	                                                    .pNext = nullptr,
-	                                                    .semaphore = kSignalSemaphore,
-	                                                    .value = 0,
-	                                                    .stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-	                                                    .deviceIndex = 0};
+	const VkSemaphoreSubmitInfo kSignalSemaphoreInfo = {
+	    .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+	    .pNext = nullptr,
+	    .semaphore = kSignalSemaphore,
+	    .value = 0,
+	    .stageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+	    .deviceIndex = 0,
+	};
 
-	const VkSubmitInfo2 kSubmitInfo = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
-	                                   .pNext = nullptr,
-	                                   .flags = 0,
-	                                   .waitSemaphoreInfoCount = 1,
-	                                   .pWaitSemaphoreInfos = &kWaitSemaphoreInfo,
-	                                   .commandBufferInfoCount = 1,
-	                                   .pCommandBufferInfos = &kCommandBufferSubmitInfo,
-	                                   .signalSemaphoreInfoCount = 1,
-	                                   .pSignalSemaphoreInfos = &kSignalSemaphoreInfo};
+	const VkSubmitInfo2 kSubmitInfo = {
+	    .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2,
+	    .pNext = nullptr,
+	    .flags = 0,
+	    .waitSemaphoreInfoCount = 1,
+	    .pWaitSemaphoreInfos = &kWaitSemaphoreInfo,
+	    .commandBufferInfoCount = 1,
+	    .pCommandBufferInfos = &kCommandBufferSubmitInfo,
+	    .signalSemaphoreInfoCount = 1,
+	    .pSignalSemaphoreInfos = &kSignalSemaphoreInfo,
+	};
 
 	VkFence fence = m_syncState.inFlightFences[m_currentImageSlot];
 
@@ -265,14 +290,16 @@ void Backend::endFrame() noexcept {
 
 	VkSwapchainKHR_T* const kSwapchain = m_swapchainState.swapchain;
 
-	const VkPresentInfoKHR kPresentInfo = {.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-	                                       .pNext = nullptr,
-	                                       .waitSemaphoreCount = 1,
-	                                       .pWaitSemaphores = &kSignalSemaphore,
-	                                       .swapchainCount = 1,
-	                                       .pSwapchains = &kSwapchain,
-	                                       .pImageIndices = &m_currentImageIndex,
-	                                       .pResults = nullptr};
+	const VkPresentInfoKHR kPresentInfo = {
+	    .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+	    .pNext = nullptr,
+	    .waitSemaphoreCount = 1,
+	    .pWaitSemaphores = &kSignalSemaphore,
+	    .swapchainCount = 1,
+	    .pSwapchains = &kSwapchain,
+	    .pImageIndices = &m_currentImageIndex,
+	    .pResults = nullptr,
+	};
 
 	result = vkQueuePresentKHR(m_presentQueue, &kPresentInfo);
 
@@ -336,7 +363,7 @@ void Backend::waitIdle() noexcept {
 	TRIVIAL_VK_CHECK("vkDeviceWaitIdle failed", kResult);
 }
 
-void Backend::resize(WindowSize size) noexcept {
+void Backend::resize(platform::WindowSize size) noexcept {
 	if (size.width == 0 || size.height == 0) {
 		return;
 	}
@@ -348,13 +375,15 @@ void Backend::resize(WindowSize size) noexcept {
 
 	SwapchainState kOldSwapchainState = m_swapchainState;
 
-	m_swapchainState = createSwapchain({.physicalDevice = m_physicalDevice,
-	                                    .device = m_device,
-	                                    .surface = m_surface,
-	                                    .requestedSize = size,
-	                                    .graphicsFamily = m_graphicsFamily,
-	                                    .presentFamily = m_presentFamily,
-	                                    .oldSwapchain = kOldSwapchainState.swapchain});
+	m_swapchainState = createSwapchain({
+	    .physicalDevice = m_physicalDevice,
+	    .device = m_device,
+	    .surface = m_surface,
+	    .requestedSize = size,
+	    .graphicsFamily = m_graphicsFamily,
+	    .presentFamily = m_presentFamily,
+	    .oldSwapchain = kOldSwapchainState.swapchain,
+	});
 
 	destroySwapchain(m_device, &kOldSwapchainState);
 
@@ -379,37 +408,42 @@ void Backend::beginRendering() noexcept {
 
 	static constexpr VkClearValue s_kClearColor = {.color = {.float32 = {0.0F, 0.0F, 0.0F, 1.0F}}};
 
-	const VkRenderingAttachmentInfo kColorAttachment = {.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-	                                                    .pNext = nullptr,
-	                                                    .imageView = m_swapchainState.imageViews[m_currentImageIndex],
-	                                                    .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-	                                                    .resolveMode = VK_RESOLVE_MODE_NONE,
-	                                                    .resolveImageView = VK_NULL_HANDLE,
-	                                                    .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-	                                                    .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-	                                                    .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-	                                                    .clearValue = s_kClearColor};
+	const VkRenderingAttachmentInfo kColorAttachment = {
+	    .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+	    .pNext = nullptr,
+	    .imageView = m_swapchainState.imageViews[m_currentImageIndex],
+	    .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+	    .resolveMode = VK_RESOLVE_MODE_NONE,
+	    .resolveImageView = VK_NULL_HANDLE,
+	    .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+	    .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+	    .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+	    .clearValue = s_kClearColor,
+	};
 
-	const VkRenderingInfo kRenderingInfo
-	    = {.sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-	       .pNext = nullptr,
-	       .flags = 0,
-	       .renderArea = {.offset = {.x = 0, .y = 0}, .extent = m_swapchainState.imageExtent},
-	       .layerCount = 1,
-	       .viewMask = 0,
-	       .colorAttachmentCount = 1,
-	       .pColorAttachments = &kColorAttachment,
-	       .pDepthAttachment = nullptr,
-	       .pStencilAttachment = nullptr};
+	const VkRenderingInfo kRenderingInfo = {
+	    .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+	    .pNext = nullptr,
+	    .flags = 0,
+	    .renderArea = {.offset = {.x = 0, .y = 0}, .extent = m_swapchainState.imageExtent},
+	    .layerCount = 1,
+	    .viewMask = 0,
+	    .colorAttachmentCount = 1,
+	    .pColorAttachments = &kColorAttachment,
+	    .pDepthAttachment = nullptr,
+	    .pStencilAttachment = nullptr,
+	};
 
 	vkCmdBeginRendering(commandBuffer, &kRenderingInfo);
 
-	const VkViewport kViewport = {.x = 0.0F,
-	                              .y = 0.0F,
-	                              .width = static_cast<float>(m_swapchainState.imageExtent.width),
-	                              .height = static_cast<float>(m_swapchainState.imageExtent.height),
-	                              .minDepth = 0.0F,
-	                              .maxDepth = 1.0F};
+	const VkViewport kViewport = {
+	    .x = 0.0F,
+	    .y = 0.0F,
+	    .width = static_cast<float>(m_swapchainState.imageExtent.width),
+	    .height = static_cast<float>(m_swapchainState.imageExtent.height),
+	    .minDepth = 0.0F,
+	    .maxDepth = 1.0F,
+	};
 	vkCmdSetViewport(commandBuffer, 0, 1, &kViewport);
 
 	const VkRect2D kScissor = {.offset = {.x = 0, .y = 0}, .extent = m_swapchainState.imageExtent};

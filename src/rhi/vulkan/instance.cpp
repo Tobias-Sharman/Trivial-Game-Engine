@@ -194,18 +194,19 @@ std::uint32_t makeVulkanVersion(trivial::Version version) noexcept {
 	return VK_MAKE_VERSION(version.major, version.minor, version.patch);
 }
 
-VkApplicationInfo makeApplicationInfo(const trivial::EngineConfig* config) noexcept {
-	TRIVIAL_ASSERT(config != nullptr);
-	TRIVIAL_ASSERT(!config->applicationName.empty());
-	TRIVIAL_ASSERT(!config->engineName.empty());
+VkApplicationInfo makeApplicationInfo(const trivial::ApplicationInfo& info) noexcept {
+	TRIVIAL_ASSERT(!info.name.empty());
 
-	VkApplicationInfo applicationInfo = {.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-	                                     .pNext = nullptr,
-	                                     .pApplicationName = config->applicationName.c_str(),
-	                                     .applicationVersion = makeVulkanVersion(config->applicationVersion),
-	                                     .pEngineName = config->engineName.c_str(),
-	                                     .engineVersion = makeVulkanVersion(config->engineVersion),
-	                                     .apiVersion = VK_API_VERSION_1_3};
+	VkApplicationInfo applicationInfo = {
+	    .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+	    .pNext = nullptr,
+	    .pApplicationName = info.name.c_str(),
+	    .applicationVersion = makeVulkanVersion(info.version),
+	    .pEngineName = TRIVIAL_ENGINE_NAME,
+	    .engineVersion
+	    = VK_MAKE_VERSION(TRIVIAL_ENGINE_VERSION_MAJOR, TRIVIAL_ENGINE_VERSION_MINOR, TRIVIAL_ENGINE_VERSION_PATCH),
+	    .apiVersion = VK_API_VERSION_1_3,
+	};
 
 	return applicationInfo;
 }
@@ -216,15 +217,16 @@ VkInstanceCreateInfo makeInstanceCreateInfo(const VkApplicationInfo* application
 	TRIVIAL_ASSERT(selection != nullptr);
 	TRIVIAL_ASSERT(!selection->extensions.empty());
 
-	VkInstanceCreateInfo createInfo
-	    = {.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-	       .pNext = nullptr,
-	       .flags = selection->flags,
-	       .pApplicationInfo = applicationInfo,
-	       .enabledLayerCount = static_cast<std::uint32_t>(selection->layers.size()),
-	       .ppEnabledLayerNames = selection->layers.data(),
-	       .enabledExtensionCount = static_cast<std::uint32_t>(selection->extensions.size()),
-	       .ppEnabledExtensionNames = selection->extensions.data()};
+	VkInstanceCreateInfo createInfo = {
+	    .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+	    .pNext = nullptr,
+	    .flags = selection->flags,
+	    .pApplicationInfo = applicationInfo,
+	    .enabledLayerCount = static_cast<std::uint32_t>(selection->layers.size()),
+	    .ppEnabledLayerNames = selection->layers.data(),
+	    .enabledExtensionCount = static_cast<std::uint32_t>(selection->extensions.size()),
+	    .ppEnabledExtensionNames = selection->extensions.data(),
+	};
 
 	return createInfo;
 }
@@ -233,8 +235,7 @@ VkInstanceCreateInfo makeInstanceCreateInfo(const VkApplicationInfo* application
 
 namespace trivial::rhi::vulkan {
 
-VkInstance createInstance(const EngineConfig* config) noexcept {
-	TRIVIAL_ASSERT(config != nullptr);
+VkInstance createInstance(const ApplicationInfo& applicationInfo) noexcept {
 
 	const std::span<const char* const> kRequiredExtensions
 	    = trivial::platform::Window::requiredVulkanInstanceExtensions();
@@ -252,7 +253,7 @@ VkInstance createInstance(const EngineConfig* config) noexcept {
 	const InstanceSelection kSelection
 	    = makeInstanceSelection(kRequiredExtensions, kAvailableExtensions, kAvailableLayers);
 
-	const VkApplicationInfo kApplicationInfo = makeApplicationInfo(config);
+	const VkApplicationInfo kApplicationInfo = makeApplicationInfo(applicationInfo);
 
 	const VkInstanceCreateInfo kCreateInfo = makeInstanceCreateInfo(&kApplicationInfo, &kSelection);
 

@@ -39,8 +39,7 @@ thread_local trivial::task::TaskSystem* g_currentWorkerSystem = nullptr;
 namespace trivial::task {
 
 TaskSystem::TaskSystem(const TaskSystemConfig& config)
-    : m_affinityQueues{TaskPriorityQueue(config.scheduler), TaskPriorityQueue()}
-    , m_targetActiveWorkerCount(static_cast<std::size_t>(config.workers.count))
+    : m_targetActiveWorkerCount(static_cast<std::size_t>(config.workers.count))
     , m_activeSlots(m_targetActiveWorkerCount)
     , m_waitHelpMaxDepth(config.waitHelpMaxDepth) {
 	TRIVIAL_ASSERT(config.workers.count > 0);
