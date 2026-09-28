@@ -87,7 +87,6 @@ TEST(ConditionVariableMultiThreadTest, NotifyAllWakesEveryWaiter) {
 		trivial::tests::attachStackAllocator(config);
 #endif // TRIVIAL_PLATFORM_POSIX
 
-		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 		trivial::thread::ThreadCreateResult result = waiters[i].create(config, &waitWorker, &context);
 		ASSERT_EQ(result.error, trivial::thread::ThreadCreateError::None);
 	}
@@ -98,7 +97,7 @@ TEST(ConditionVariableMultiThreadTest, NotifyAllWakesEveryWaiter) {
 	conditionVariable.notifyAll(mutex);
 
 	for (std::size_t i = 0; i < g_kWaiterThreads; ++i) {
-		waiters[i].join(); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+		waiters[i].join();
 	}
 
 	EXPECT_EQ(wokeCount.load(std::memory_order_acquire), g_kWaiterThreads);

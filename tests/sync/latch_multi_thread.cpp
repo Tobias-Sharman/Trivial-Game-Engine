@@ -54,7 +54,6 @@ TEST(LatchMultiThreadTest, WaitUnblocksAfterCountDown) {
 		trivial::tests::attachStackAllocator(config);
 #endif // TRIVIAL_PLATFORM_POSIX
 
-		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 		trivial::thread::ThreadCreateResult result = threads[i].create(config, &countDownWorker, &context);
 		ASSERT_EQ(result.error, trivial::thread::ThreadCreateError::None);
 	}
@@ -65,7 +64,7 @@ TEST(LatchMultiThreadTest, WaitUnblocksAfterCountDown) {
 	EXPECT_EQ(latch.remaining(), 0U);
 
 	for (std::size_t i = 0; i < g_kWorkerThreads; ++i) {
-		threads[i].join(); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+		threads[i].join();
 	}
 }
 

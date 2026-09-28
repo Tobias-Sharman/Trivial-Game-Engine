@@ -33,7 +33,7 @@ const char* debugMessageTypePrefix(VkDebugUtilsMessageTypeFlagsEXT messageType) 
 	const std::uint32_t kIndex = static_cast<std::uint32_t>(messageType) & 0xFU;
 
 	TRIVIAL_ASSERT(kIndex < s_kPrefixes.size());
-	return s_kPrefixes[kIndex]; // NOLINT(cppcoreguidelines-pro-bounds-constant-array-index)
+	return s_kPrefixes[kIndex];
 }
 
 void logDebugMessage(VkDebugUtilsMessageSeverityFlagBitsEXT severity, const char* prefix, const char* message) {

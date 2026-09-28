@@ -31,7 +31,6 @@ public:
 		TRIVIAL_ASSERT(handle.isValid());
 		TRIVIAL_ASSERT(priority < TaskPriority::Count);
 
-		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 		PriorityBucket& bucket = m_buckets[static_cast<std::size_t>(priority)];
 
 		sync::LockGuard<sync::Mutex> lock(bucket.mutex);
@@ -43,7 +42,6 @@ public:
 		     --priorityIndex) {
 			const std::size_t kIndex = priorityIndex - 1;
 
-			// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 			PriorityBucket& bucket = m_buckets[kIndex];
 
 			sync::LockGuard<sync::Mutex> lock(bucket.mutex);
@@ -65,9 +63,7 @@ public:
 		std::size_t grantedThisCall = 0;
 
 		for (std::size_t i = 0; i < m_buckets.size(); ++i) {
-			// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 			PriorityBucket& sourceBucket = m_buckets[i];
-			// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 			PriorityBucket& destBucket = destination.m_buckets[i];
 
 			std::size_t kTake = 0;
@@ -80,7 +76,6 @@ public:
 					continue;
 				}
 
-				// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 				kTake = std::min(kShares[i], sourceBucket.queue.size());
 
 				for (std::size_t j = 0; j < kTake; ++j) {
@@ -138,7 +133,6 @@ private:
 
 		std::array<std::size_t, kWeights.size()> shares{};
 		for (std::size_t i = 0; i < kWeights.size(); ++i) {
-			// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 			shares[i] = (std::size_t{TRIVIAL_TASK_BATCH_SIZE} * kWeights[i]) / totalWeight;
 		}
 

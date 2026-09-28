@@ -26,12 +26,12 @@ public:
 
 	[[nodiscard]] T& operator[](const std::size_t kIndex) noexcept {
 		TRIVIAL_ASSERT(kIndex < m_size);
-		return m_elements[kIndex]; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+		return m_elements[kIndex];
 	}
 
 	[[nodiscard]] const T& operator[](const std::size_t kIndex) const noexcept {
 		TRIVIAL_ASSERT(kIndex < m_size);
-		return m_elements[kIndex]; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+		return m_elements[kIndex];
 	}
 
 	[[nodiscard]] std::size_t size() const noexcept { return m_size; }

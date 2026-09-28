@@ -1,4 +1,3 @@
----
 Language: Cpp
 BasedOnStyle: LLVM
 Standard: Latest
@@ -105,13 +104,13 @@ IncludeCategories:
     SortPriority: 4
     CaseSensitive: true
 
-   # Tracy headers
+  # Tracy headers
   - Regex: '^<tracy/.*>$'
     Priority: 5
     SortPriority: 5
     CaseSensitive: true
 
-    # Google Test headers
+  # Google Test headers
   - Regex: '^<gtest/.*>$'
     Priority: 6
     SortPriority: 6

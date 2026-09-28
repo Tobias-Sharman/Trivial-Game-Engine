@@ -69,13 +69,12 @@ inline void runOnAllThreads(std::size_t threadCount, trivial::thread::ThreadStar
 		attachStackAllocator(config);
 #endif // TRIVIAL_PLATFORM_POSIX
 
-		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 		trivial::thread::ThreadCreateResult result = threads[i].create(config, routine, arg);
 		ASSERT_EQ(result.error, trivial::thread::ThreadCreateError::None);
 	}
 
 	for (std::size_t i = 0; i < threadCount; ++i) {
-		threads[i].join(); // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+		threads[i].join();
 	}
 }
 

@@ -217,7 +217,6 @@ bool TaskGraph::removePrerequisiteAndMarkReadyIfUnblocked(TaskHandle dependant,
 	std::size_t prerequisiteIndex = prerequisites.size();
 
 	for (std::size_t i = 0; i < prerequisites.size(); ++i) {
-		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 		if (prerequisites[i] == prerequisite) {
 			prerequisiteIndex = i;
 			break;
@@ -226,7 +225,6 @@ bool TaskGraph::removePrerequisiteAndMarkReadyIfUnblocked(TaskHandle dependant,
 
 	TRIVIAL_ASSERT(prerequisiteIndex != prerequisites.size());
 
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 	prerequisites[prerequisiteIndex] = prerequisites.back();
 	prerequisites.pop_back();
 
@@ -351,7 +349,6 @@ TaskGraph::TaskPage* TaskGraph::pageAt(std::uint32_t pageIndex) noexcept {
 		return nullptr;
 	}
 
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 	return m_pages[pageIndex].load(std::memory_order_acquire);
 }
 
@@ -360,7 +357,6 @@ const TaskGraph::TaskPage* TaskGraph::pageAt(std::uint32_t pageIndex) const noex
 		return nullptr;
 	}
 
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 	return m_pages[pageIndex].load(std::memory_order_acquire);
 }
 
@@ -377,7 +373,6 @@ TaskGraph::TaskPage* TaskGraph::ensurePage(std::uint32_t pageIndex) noexcept {
 
 	sync::LockGuard<sync::Mutex> lock(m_pageCreationMutex);
 
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 	page = m_pages[pageIndex].load(std::memory_order_relaxed);
 
 	if (page != nullptr) {
@@ -391,7 +386,6 @@ TaskGraph::TaskPage* TaskGraph::ensurePage(std::uint32_t pageIndex) noexcept {
 		return nullptr;
 	}
 
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 	m_pages[pageIndex].store(newPage, std::memory_order_release);
 
 	return newPage;
@@ -426,12 +420,10 @@ const TaskSlot* TaskGraph::slotAt(std::uint32_t taskIndex) const noexcept {
 }
 
 TaskSlot* TaskGraph::slotInPage(TaskPage& page, std::uint32_t taskIndex) noexcept {
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 	return &page[slotIndexFor(taskIndex)];
 }
 
 const TaskSlot* TaskGraph::slotInPage(const TaskPage& page, std::uint32_t taskIndex) noexcept {
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 	return &page[slotIndexFor(taskIndex)];
 }
 

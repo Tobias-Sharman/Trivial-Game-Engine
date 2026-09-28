@@ -33,9 +33,6 @@ namespace {
 
 namespace boids {
 
-// NOLINTBEGIN(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
-//             cppcoreguidelines-pro-bounds-constant-array-index)
-
 void computeSeparation(std::span<const Boid> population,
                        std::span<const Boid> batch,
                        const BoidConfig& config,
@@ -162,8 +159,5 @@ void step(std::span<const Boid> batch,
 		outNext[i] = Boid{.position = kPosition, .velocity = kVelocity};
 	}
 }
-
-// NOLINTEND(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
-//           cppcoreguidelines-pro-bounds-constant-array-index)
 
 } // namespace boids

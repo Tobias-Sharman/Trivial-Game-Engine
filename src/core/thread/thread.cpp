@@ -40,33 +40,29 @@ thread_local trivial::thread::Thread* g_currentThread = nullptr; // Better linka
 
 void copyName(const char* name, std::array<char, trivial::thread::Thread::kMaxNameLength>& outName) noexcept {
 	if (name == nullptr) {
-		outName[0] = '\0'; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+		outName[0] = '\0';
 		return;
 	}
 
 	const std::size_t kLength = std::min(std::strlen(name), outName.size() - 1);
 
 	std::memcpy(outName.data(), name, kLength);
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index,cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 	outName[kLength] = '\0';
 }
 
 #if TRIVIAL_PLATFORM_WINDOWS
 void applyThreadDescription(HANDLE handle,
                             const std::array<char, trivial::thread::Thread::kMaxNameLength>& name) noexcept {
-	if (name[0] == '\0') { // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+	if (name[0] == '\0') {
 		return;
 	}
 
 	std::array<wchar_t, trivial::thread::Thread::kMaxNameLength> wideName{};
 
 	std::size_t i = 0;
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 	for (; i < name.size() - 1 && name[i] != '\0'; ++i) {
-		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index,cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 		wideName[i] = static_cast<wchar_t>(static_cast<unsigned char>(name[i]));
 	}
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index,cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 	wideName[i] = L'\0';
 
 	if (FAILED(SetThreadDescription(handle, wideName.data()))) {
@@ -273,7 +269,7 @@ void Thread::adoptCurrentThread(const ThreadConfig& config) noexcept {
 	}
 
 #elif TRIVIAL_PLATFORM_MACOS
-	if (m_name[0] != '\0') { // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+	if (m_name[0] != '\0') {
 		pthread_setname_np(m_name.data());
 	}
 
@@ -319,11 +315,11 @@ void Thread::rename(const char* name) noexcept {
 	copyName(name, m_name);
 
 #if TRIVIAL_PLATFORM_LINUX
-	if (m_name[0] != '\0') { // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+	if (m_name[0] != '\0') {
 		pthread_setname_np(pthread_self(), m_name.data());
 	}
 #elif TRIVIAL_PLATFORM_MACOS
-	if (m_name[0] != '\0') { // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+	if (m_name[0] != '\0') {
 		pthread_setname_np(m_name.data());
 	}
 #elif TRIVIAL_PLATFORM_WINDOWS
@@ -411,7 +407,7 @@ void Thread::runEntry(Thread* self) noexcept {
 		TRIVIAL_LOG_WARNING_PREFIX("Thread", "Failed to set requested QoS class");
 	}
 
-	if (self->m_name[0] != '\0') { // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+	if (self->m_name[0] != '\0') {
 		pthread_setname_np(self->m_name.data());
 	}
 #endif // TRIVIAL_PLATFORM_MACOS

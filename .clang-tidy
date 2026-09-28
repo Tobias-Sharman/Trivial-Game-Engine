@@ -1,5 +1,32 @@
-Checks: >
-  -*, clang-analyzer-*, bugprone-*, -bugprone-easily-swappable-parameters, performance-*, modernize-*, -modernize-use-trailing-return-type, -modernize-use-auto, -modernize-use-std-format, -modernize-use-std-print, readability-*, -readability-identifier-length, -readability-uppercase-literal-suffix, -readability-operators-representation, cppcoreguidelines-*, -cppcoreguidelines-avoid-do-while, -cppcoreguidelines-avoid-magic-numbers, -cppcoreguidelines-owning-memory, -cppcoreguidelines-non-private-member-variables-in-classes, -cppcoreguidelines-macro-usage, misc-*, -misc-non-private-member-variables-in-classes, portability-*, cert-*
+Checks:
+  - -*
+  - clang-analyzer-*
+  - bugprone-*
+  - -bugprone-easily-swappable-parameters
+  - -bugprone-exception-escape
+  - -bugprone-unhandled-exception-at-new
+  - concurrency-*
+  - performance-*
+  - modernize-*
+  - -modernize-use-trailing-return-type
+  - -modernize-use-auto
+  - -modernize-use-std-format
+  - -modernize-use-std-print
+  - readability-*
+  - -readability-identifier-length
+  - -readability-redundant-lambda-parameter-list
+  - cppcoreguidelines-*
+  - -cppcoreguidelines-avoid-do-while
+  - -cppcoreguidelines-avoid-magic-numbers # Just an alias still get warnings from readability-magic-numbers
+  - -cppcoreguidelines-owning-memory
+  - -cppcoreguidelines-non-private-member-variables-in-classes
+  - -cppcoreguidelines-macro-usage
+  - -cppcoreguidelines-pro-bounds-avoid-unchecked-container-access
+  - -cppcoreguidelines-pro-bounds-constant-array-index
+  - misc-*
+  - -misc-non-private-member-variables-in-classes
+  - portability-*
+  - cert-*
 
 WarningsAsErrors: ''
 CheckOptions:
@@ -14,9 +41,21 @@ CheckOptions:
   - {key: readability-identifier-naming.TemplateParameterCase, value: CamelCase}
   - {key: readability-identifier-naming.FunctionCase, value: camelBack}
   - {key: readability-identifier-naming.MethodCase, value: camelBack}
+  - {key: readability-identifier-naming.EnumConstantCase, value: CamelCase}
+  - {key: readability-identifier-naming.MacroDefinitionCase, value: UPPER_CASE}
+  # Variable naming
   - {key: readability-identifier-naming.VariableCase, value: camelBack}
+  - {key: readability-identifier-naming.ConstantCase, value: CamelCase}
+  - {key: readability-identifier-naming.ConstantPrefix, value: k}
   - {key: readability-identifier-naming.LocalVariableCase, value: camelBack}
+  - {key: readability-identifier-naming.LocalConstantCase, value: CamelCase}
+  - {key: readability-identifier-naming.LocalConstantPrefix, value: k}
+  - {key: readability-identifier-naming.LocalConstexprVariableCase, value: CamelCase}
+  - {key: readability-identifier-naming.LocalConstexprVariablePrefix, value: k}
   - {key: readability-identifier-naming.ParameterCase, value: camelBack}
+  - {key: readability-identifier-naming.ConstantParameterCase, value: CamelCase}
+  - {key: readability-identifier-naming.ConstantParameterPrefix, value: k}
+  - {key: readability-identifier-naming.PublicMemberCase, value: camelBack}
   - {key: readability-identifier-naming.PrivateMemberCase, value: camelBack}
   - {key: readability-identifier-naming.PrivateMemberPrefix, value: m_}
   - {key: readability-identifier-naming.ProtectedMemberCase, value: camelBack}
@@ -26,9 +65,9 @@ CheckOptions:
   - {key: readability-identifier-naming.ClassMemberCase, value: camelBack}
   - {key: readability-identifier-naming.ClassMemberPrefix, value: s_}
   - {key: readability-identifier-naming.ClassConstantCase, value: CamelCase}
-  - {key: readability-identifier-naming.ClassConstantPrefix, value: k}
+  - {key: readability-identifier-naming.ClassConstantPrefix, value: s_k}
   - {key: readability-identifier-naming.ClassConstexprCase, value: CamelCase}
-  - {key: readability-identifier-naming.ClassConstexprPrefix, value: k}
+  - {key: readability-identifier-naming.ClassConstexprPrefix, value: s_k}
   - {key: readability-identifier-naming.GlobalVariableCase, value: camelBack}
   - {key: readability-identifier-naming.GlobalVariablePrefix, value: g_}
   - {key: readability-identifier-naming.GlobalConstantCase, value: CamelCase}
@@ -41,12 +80,8 @@ CheckOptions:
   - {key: readability-identifier-naming.StaticConstantPrefix, value: s_k}
   - {key: readability-identifier-naming.StaticConstexprVariableCase, value: CamelCase}
   - {key: readability-identifier-naming.StaticConstexprVariablePrefix, value: s_k}
-  - {key: readability-identifier-naming.ConstantCase, value: CamelCase}
-  - {key: readability-identifier-naming.ConstantPrefix, value: k}
-  - {key: readability-identifier-naming.LocalConstexprVariableCase, value: CamelCase}
-  - {key: readability-identifier-naming.LocalConstexprVariablePrefix, value: k}
-  - {key: readability-identifier-naming.EnumConstantCase, value: CamelCase}
-  - {key: readability-identifier-naming.MacroDefinitionCase, value: UPPER_CASE}
   # Misc behaviour options
   - {key: misc-use-internal-linkage.FixMode, value: None}
   - {key: readability-function-cognitive-complexity.IgnoreMacros, value: true}
+  - {key: readability-operators-representation.BinaryOperators, value: '&&;&=;&;|;~;!;!=;||;|=;^;^='}
+  - {key: readability-operators-representation.OverloadedOperators, value: '&&;&=;&;|;~;!;!=;||;|=;^;^='}

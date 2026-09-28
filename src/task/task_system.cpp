@@ -88,7 +88,6 @@ TaskSystem::~TaskSystem() noexcept {
 		}
 
 		const bool kInjectionQueuesEmpty
-		    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 		    = m_affinityQueues[kAnyWorkerIndex].empty() && m_affinityQueues[kMainThreadIndex].empty();
 
 		if (allParked && kInjectionQueuesEmpty) {
@@ -189,7 +188,7 @@ void TaskSystem::wait(TaskHandle task) noexcept {
 		return;
 	}
 
-	Worker& worker = m_workers[kWorkerIndex]; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+	Worker& worker = m_workers[kWorkerIndex];
 
 	worker.state.store(WorkerState::Waiting, std::memory_order_relaxed);
 
@@ -243,7 +242,7 @@ void TaskSystem::wait(std::span<const TaskHandle> tasks) noexcept {
 		return;
 	}
 
-	Worker& worker = m_workers[kWorkerIndex]; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+	Worker& worker = m_workers[kWorkerIndex];
 
 	worker.state.store(WorkerState::Waiting, std::memory_order_relaxed);
 
@@ -283,7 +282,6 @@ void TaskSystem::runMainThreadReadyTasks() noexcept {
 
 	TaskHandle handle{};
 
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 	while (m_affinityQueues[kMainThreadIndex].tryPop(handle)) {
 		runAndCompleteClaimedTask(handle);
 	}
@@ -303,7 +301,7 @@ void TaskSystem::workerThreadEntry(void* arg) noexcept {
 	TaskSystem* system = static_cast<TaskSystem*>(arg);
 	const std::size_t kIndex = system->m_nextWorkerStartIndex.fetch_add(1, std::memory_order_relaxed);
 
-	Worker& worker = system->m_workers[kIndex]; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+	Worker& worker = system->m_workers[kIndex];
 	worker.index = kIndex;
 
 	const std::string kThreadName = "Worker " + std::to_string(kIndex);
@@ -318,7 +316,7 @@ void TaskSystem::workerThreadEntry(void* arg) noexcept {
 }
 
 void TaskSystem::runWorkerLoop(std::size_t workerIndex) {
-	Worker& worker = m_workers[workerIndex]; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+	Worker& worker = m_workers[workerIndex];
 
 #if TRIVIAL_ENABLE_TRACY
 	TRIVIAL_PROFILE_THREAD(thread::Thread::current()->name());
@@ -337,7 +335,6 @@ void TaskSystem::runWorkerLoop(std::size_t workerIndex) {
 		if (holdingSlot) {
 			constexpr auto kAnyWorkerIndex = static_cast<std::size_t>(TaskAffinity::AnyWorker);
 
-			// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 			const std::size_t kGranted = m_affinityQueues[kAnyWorkerIndex].tryPopWeightedBatchInto(worker.localQueue);
 			if (kGranted > 0 && worker.localQueue.tryPop(handle)) {
 				runAndCompleteClaimedTask(handle);
@@ -366,7 +363,7 @@ void TaskSystem::runWorkerLoop(std::size_t workerIndex) {
 }
 
 bool TaskSystem::parkWorker(std::size_t workerIndex) noexcept {
-	Worker& worker = m_workers[workerIndex]; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+	Worker& worker = m_workers[workerIndex];
 
 	worker.state.store(WorkerState::Parked, std::memory_order_relaxed);
 
@@ -377,7 +374,6 @@ bool TaskSystem::parkWorker(std::size_t workerIndex) noexcept {
 
 	constexpr auto kAnyWorkerIndex = static_cast<std::size_t>(TaskAffinity::AnyWorker);
 
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 	if (!m_affinityQueues[kAnyWorkerIndex].empty() && m_activeSlots.tryAcquire()) {
 		removeParkedIndex(workerIndex);
 		worker.state.store(WorkerState::Active, std::memory_order_relaxed);
@@ -393,7 +389,7 @@ bool TaskSystem::parkWorker(std::size_t workerIndex) noexcept {
 }
 
 void TaskSystem::wakeWorker(std::size_t workerIndex) noexcept {
-	Worker& worker = m_workers[workerIndex]; // NOLINT(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+	Worker& worker = m_workers[workerIndex];
 
 	worker.state.store(WorkerState::Active, std::memory_order_release);
 	(void)sync::activeParkingLot().unparkOne(keyFor(worker));
@@ -429,9 +425,7 @@ void TaskSystem::removeParkedIndex(std::size_t workerIndex) noexcept {
 	sync::LockGuard<sync::Mutex> parkedLock(m_parkedIndicesMutex);
 
 	for (std::size_t i = 0; i < m_parkedWorkerIndices.size(); ++i) {
-		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 		if (m_parkedWorkerIndices[i] == workerIndex) {
-			// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 			m_parkedWorkerIndices[i] = m_parkedWorkerIndices.back();
 			m_parkedWorkerIndices.pop_back();
 			return;
@@ -450,7 +444,6 @@ bool TaskSystem::tryStealTask(std::size_t workerIndex, TaskHandle& handle) noexc
 	for (std::size_t offset = 1; offset < kWorkerCount; ++offset) {
 		const std::size_t kCandidateIndex = (workerIndex + offset) % kWorkerCount;
 
-		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 		if (m_workers[kCandidateIndex].localQueue.tryPop(handle)) {
 			return true;
 		}
@@ -463,7 +456,6 @@ void TaskSystem::enqueueReadyTask(TaskHandle handle, TaskAffinity affinity, Task
 	TRIVIAL_ASSERT(handle.isValid());
 	TRIVIAL_ASSERT(priority < TaskPriority::Count);
 
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-constant-array-index, cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 	m_affinityQueues[static_cast<std::size_t>(affinity)].enqueue(handle, priority);
 
 	if (affinity == TaskAffinity::AnyWorker) {
@@ -490,7 +482,6 @@ bool TaskSystem::tryPopAndRunOneAnyWorkerTask() noexcept {
 
 	TaskHandle handle{};
 
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 	if (!m_affinityQueues[kAnyWorkerIndex].tryPop(handle)) {
 		return false;
 	}

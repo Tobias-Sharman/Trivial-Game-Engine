@@ -61,7 +61,6 @@ public:
 	template <typename Validate>
 	[[nodiscard]] TRIVIAL_FORCE_INLINE ParkResult park(const std::uintptr_t kAddress, Validate&& validate) noexcept {
 		const std::size_t kSlotIndex = currentSlotIndex();
-		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 		ParkingLotSlot& slot = m_slots[kSlotIndex];
 		TRIVIAL_ASSERT(slot.key.load(std::memory_order_relaxed) == 0);
 
@@ -88,7 +87,6 @@ public:
 	                                                   Validate&& validate,
 	                                                   BeforeSleep&& beforeSleep) noexcept {
 		const std::size_t kSlotIndex = currentSlotIndex();
-		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 		ParkingLotSlot& slot = m_slots[kSlotIndex];
 		TRIVIAL_ASSERT(slot.key.load(std::memory_order_relaxed) == 0);
 
@@ -116,7 +114,6 @@ public:
 	                                                      const std::chrono::nanoseconds kTimeout,
 	                                                      Validate&& validate) noexcept {
 		const std::size_t kSlotIndex = currentSlotIndex();
-		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 		ParkingLotSlot& slot = m_slots[kSlotIndex];
 		TRIVIAL_ASSERT(slot.key.load(std::memory_order_relaxed) == 0);
 
@@ -171,7 +168,6 @@ public:
 	                                                      Validate&& validate,
 	                                                      BeforeSleep&& beforeSleep) noexcept {
 		const std::size_t kSlotIndex = currentSlotIndex();
-		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 		ParkingLotSlot& slot = m_slots[kSlotIndex];
 		TRIVIAL_ASSERT(slot.key.load(std::memory_order_relaxed) == 0);
 
@@ -231,7 +227,6 @@ public:
 		std::size_t currentIndex = bucket.queueHead;
 
 		while (currentIndex != g_kInvalidParkingLotSlotIndex) {
-			// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 			ParkingLotSlot& current = m_slots[currentIndex];
 
 			if (current.key.load(std::memory_order_relaxed) != kAddress) {
@@ -268,7 +263,6 @@ public:
 		std::size_t currentIndex = bucket.queueHead;
 
 		while (currentIndex != g_kInvalidParkingLotSlotIndex) {
-			// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 			ParkingLotSlot& current = m_slots[currentIndex];
 
 			if (current.key.load(std::memory_order_relaxed) != kAddress) {
@@ -287,7 +281,6 @@ public:
 			} else {
 				std::size_t scanIndex = kNextIndex;
 				while (scanIndex != g_kInvalidParkingLotSlotIndex) {
-					// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 					ParkingLotSlot& scan = m_slots[scanIndex];
 					if (scan.key.load(std::memory_order_relaxed) == kAddress) {
 						hasMoreWaiters = true;
@@ -320,7 +313,6 @@ public:
 		std::size_t currentIndex = bucket.queueHead;
 
 		while (currentIndex != g_kInvalidParkingLotSlotIndex) {
-			// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 			ParkingLotSlot& current = m_slots[currentIndex];
 
 			if (current.key.load(std::memory_order_relaxed) != kAddress) {
@@ -367,7 +359,6 @@ public:
 		std::size_t currentIndex = fromBucket.queueHead;
 
 		while (currentIndex != g_kInvalidParkingLotSlotIndex) {
-			// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 			ParkingLotSlot& current = m_slots[currentIndex];
 
 			if (current.key.load(std::memory_order_relaxed) != kFromAddress) {
@@ -429,7 +420,6 @@ public:
 		std::size_t currentIndex = fromBucket.queueHead;
 
 		while (currentIndex != g_kInvalidParkingLotSlotIndex) {
-			// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 			ParkingLotSlot& current = m_slots[currentIndex];
 
 			if (current.key.load(std::memory_order_relaxed) != kFromAddress) {
@@ -483,7 +473,6 @@ private:
 	}
 
 	[[nodiscard]] TRIVIAL_FORCE_INLINE Bucket& bucketFor(const std::uintptr_t kAddress) noexcept {
-		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 		return m_buckets[hash::fibonacciHash(kAddress, m_bucketBits)];
 	}
 
@@ -492,13 +481,11 @@ private:
 	}
 
 	void pushToQueue(Bucket& bucket, const std::size_t kSlotIndex) noexcept {
-		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 		m_slots[kSlotIndex].nextInQueue = g_kInvalidParkingLotSlotIndex;
 
 		if (bucket.queueTail == g_kInvalidParkingLotSlotIndex) {
 			bucket.queueHead = kSlotIndex;
 		} else {
-			// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 			m_slots[bucket.queueTail].nextInQueue = kSlotIndex;
 		}
 
@@ -512,14 +499,12 @@ private:
 
 		while (currentIndex != g_kInvalidParkingLotSlotIndex) {
 			if (currentIndex != kSlotIndex) {
-				// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 				link = &m_slots[currentIndex].nextInQueue;
 				previousIndex = currentIndex;
 				currentIndex = *link;
 				continue;
 			}
 
-			// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 			const std::size_t kNextIndex = m_slots[currentIndex].nextInQueue;
 			*link = kNextIndex;
 
@@ -527,7 +512,6 @@ private:
 				bucket.queueTail = previousIndex;
 			}
 
-			// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 			m_slots[currentIndex].nextInQueue = g_kInvalidParkingLotSlotIndex;
 			return true;
 		}
