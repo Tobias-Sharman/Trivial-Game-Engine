@@ -1,7 +1,7 @@
 #ifndef TRIVIAL_CORE_THREAD_THREAD_CONFIG_H
 #define TRIVIAL_CORE_THREAD_THREAD_CONFIG_H
 
-#include <cstddef>
+#include <cstddef> // IWYU pragma: keep
 
 #include <trivial/core/config.h> // IWYU pragma: keep
 

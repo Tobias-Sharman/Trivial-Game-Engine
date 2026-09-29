@@ -37,6 +37,9 @@ void waitWorker(void* arg) {
 TEST(ConditionVariableMultiThreadTest, WaitUnblocksOnNotifyOne) {
 	const trivial::tests::ScopedParkingLot kParkingLotScope(1);
 
+	trivial::thread::Thread mainThread;
+	mainThread.adoptCurrentThread({.name = "main-test-thread", .type = trivial::thread::ThreadType::Main});
+
 	trivial::sync::Mutex mutex;
 	trivial::sync::ConditionVariable conditionVariable;
 	bool ready = false;
@@ -69,6 +72,9 @@ TEST(ConditionVariableMultiThreadTest, WaitUnblocksOnNotifyOne) {
 
 TEST(ConditionVariableMultiThreadTest, NotifyAllWakesEveryWaiter) {
 	const trivial::tests::ScopedParkingLot kParkingLotScope(g_kWaiterThreads);
+
+	trivial::thread::Thread mainThread;
+	mainThread.adoptCurrentThread({.name = "main-test-thread", .type = trivial::thread::ThreadType::Main});
 
 	trivial::sync::Mutex mutex;
 	trivial::sync::ConditionVariable conditionVariable;

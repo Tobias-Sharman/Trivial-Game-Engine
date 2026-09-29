@@ -12,7 +12,6 @@
 #include <trivial/core/assert.h>
 #include <trivial/core/log.h>
 #include <trivial/core/platform.h>
-#include <trivial/core/thread/thread_config.h>
 
 #if TRIVIAL_PLATFORM_WINDOWS
 #define WIN32_LEAN_AND_MEAN
@@ -28,6 +27,10 @@
 #include <sched.h>
 
 #endif // TRIVIAL_PLATFORM_CHECK
+
+#if TRIVIAL_PLATFORM_MACOS || TRIVIAL_PLATFORM_WINDOWS
+#include <trivial/core/thread/thread_config.h>
+#endif // TRIVIAL_PLATFORM_MACOS || TRIVIAL_PLATFORM_WINDOWS
 
 #if TRIVIAL_PLATFORM_POSIX
 #include <cerrno>
@@ -187,12 +190,6 @@ Thread::~Thread() noexcept {
 
 	m_nativeHandleStorage = std::bit_cast<NativeHandleStorage>(handle);
 
-#if TRIVIAL_PLATFORM_LINUX
-	if (m_name[0] != '\0') {
-		pthread_setname_np(handle, m_name.data());
-	}
-#endif // TRIVIAL_PLATFORM_LINUX
-
 #elif TRIVIAL_PLATFORM_WINDOWS
 	HANDLE handle = CreateThread(nullptr, config.stackSize, &Thread::win32ThreadEntry, this, CREATE_SUSPENDED, nullptr);
 
@@ -348,7 +345,7 @@ void Thread::join() noexcept {
 	TRIVIAL_ASSERT(joinable());
 
 #if TRIVIAL_PLATFORM_POSIX
-	auto* const kHandle = std::bit_cast<pthread_t>(m_nativeHandleStorage);
+	const pthread_t kHandle = std::bit_cast<pthread_t>(m_nativeHandleStorage);
 
 	pthread_join(kHandle, nullptr);
 
@@ -420,7 +417,12 @@ void Thread::runEntry(Thread* self) noexcept {
 	if (self->m_name[0] != '\0') {
 		pthread_setname_np(self->m_name.data());
 	}
-#endif // TRIVIAL_PLATFORM_MACOS
+
+#elif TRIVIAL_PLATFORM_LINUX
+	if (self->m_name[0] != '\0') {
+		pthread_setname_np(pthread_self(), self->m_name.data());
+	}
+#endif // Platform-specific self naming
 
 	self->m_startRoutine(self->m_arg); // NOTE: Should surface errors
 }

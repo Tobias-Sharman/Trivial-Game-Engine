@@ -459,7 +459,10 @@ public:
 
 private:
 	[[nodiscard]] TRIVIAL_FORCE_INLINE static std::size_t currentSlotIndex() noexcept {
-		return trivial::thread::Thread::current()->index();
+		const trivial::thread::Thread* const kCurrent = trivial::thread::Thread::current();
+		TRIVIAL_ASSERT(kCurrent != nullptr);
+
+		return kCurrent->index();
 	}
 
 	[[nodiscard]] TRIVIAL_FORCE_INLINE Bucket& bucketFor(const std::uintptr_t kAddress) noexcept {

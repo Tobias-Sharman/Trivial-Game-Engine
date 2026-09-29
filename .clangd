@@ -8,3 +8,4 @@ Diagnostics:
       - trivial_user_config\.h
       - sys/_pthread/.*
       - sys/_types/.*
+      - bits/.*

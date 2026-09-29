@@ -18,7 +18,7 @@
 #define TRIVIAL_CPU_PAUSE() __yield()
 
 #elif TRIVIAL_COMPILER_GCC
-#define TRIVIAL_CPU_PAUSE() __asm__ volatile("yield" ::: "memory")
+#define TRIVIAL_CPU_PAUSE() __asm__ volatile("yield" ::: "memory") // NOLINT(portability-no-assembler)
 
 #else
 #error "Unsupported compiler"

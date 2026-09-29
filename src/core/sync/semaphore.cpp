@@ -1,7 +1,6 @@
 #include <trivial/core/sync/semaphore.h>
 
 #include <atomic>
-#include <cstddef>
 #include <cstdint>
 
 #include "core/sync/parking_lot.h"

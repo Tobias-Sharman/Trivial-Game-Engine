@@ -336,9 +336,9 @@ inline void decommitPages(void* addr,
 	// MADV_FREE defers reclaim to memory pressure
 	const int kAdvice = mode == trivial::memory::DecommitMode::Lazy ? MADV_FREE : MADV_FREE_REUSABLE;
 #elif TRIVIAL_PLATFORM_SDK_HAS_MADV_FREE
-	int advice = mode == trivial::memory::DecommitMode::Lazy ? MADV_FREE : MADV_DONTNEED;
+	const int kAdvice = mode == trivial::memory::DecommitMode::Lazy ? MADV_FREE : MADV_DONTNEED;
 #else
-	int advice = MADV_DONTNEED;
+	const int kAdvice = MADV_DONTNEED;
 #endif // Decommit advice
 
 	const bool kOk = madvise(addr, bytes, kAdvice) == 0;

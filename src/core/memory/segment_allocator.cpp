@@ -340,7 +340,8 @@ void SegmentAllocator::shutdown() noexcept {
 	releaseReservation(m_base, m_segmentCapacity << g_kSegmentShift);
 #endif // TRIVIAL_PLATFORM_WINDOWS
 
-	unmapMetadata(m_metadata, m_metadataMappingBytes, trivial::memory::MemoryCapabilities::pageSize);
+	// NOLINTNEXTLINE(readability-static-accessed-through-instance) - TODO: Fix static and non static usage in allocator
+	unmapMetadata(m_metadata, m_metadataMappingBytes, m_capabilities.pageSize);
 
 	m_metadata = nullptr;
 	m_metadataMappingBytes = 0;
@@ -598,7 +599,7 @@ void SegmentAllocator::disableLargePages() noexcept {
 	void* target = nullptr;
 
 	{
-		sync::LockGuard lock(m_stateMutex);
+		const sync::LockGuard kLock(m_stateMutex);
 
 		SegmentRecord& record = m_records[segmentIndex(segment)];
 		if (record.committedPages >= pages) {
@@ -628,7 +629,7 @@ void SegmentAllocator::disableLargePages() noexcept {
 	}
 
 	{
-		sync::LockGuard lock(m_stateMutex);
+		const sync::LockGuard kLock(m_stateMutex);
 
 		const std::size_t kIndex = segmentIndex(segment);
 		SegmentRecord& record = m_records[kIndex];

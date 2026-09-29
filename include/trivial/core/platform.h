@@ -75,7 +75,7 @@
 #define TRIVIAL_PLATFORM_PAGE_SIZE 4096U
 
 #else
-#define TRIVIAL_PLATFORM_PAGE_SIZE_KNOWN 0 // Rutime query
+#define TRIVIAL_PLATFORM_PAGE_SIZE_KNOWN 0 // Runtime query
 #define TRIVIAL_PLATFORM_PAGE_SIZE 4096U
 
 #endif // Page size

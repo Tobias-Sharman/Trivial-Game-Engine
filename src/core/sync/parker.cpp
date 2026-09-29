@@ -36,14 +36,14 @@
 
 namespace {
 
-long futexSyscall(std::atomic<std::uint32_t>* state,
+long futexSyscall(const std::atomic<std::uint32_t>* state,
                   int futexOp,
                   std::uint32_t value,
                   const timespec* timeout) noexcept {
-	return syscall(SYS_futex, state, futexOp, value, timeout);
+	return syscall(SYS_futex, state, futexOp, value, timeout); // NOLINT(cppcoreguidelines-pro-type-vararg)
 }
 
-void futexWait(std::atomic<std::uint32_t>& state, const timespec* timeout) noexcept {
+void futexWait(const std::atomic<std::uint32_t>& state, const timespec* timeout) noexcept {
 #if TRIVIAL_ENABLE_ASSERTS
 	const long kResult = futexSyscall(&state, FUTEX_WAIT | FUTEX_PRIVATE_FLAG, 1, timeout);
 	TRIVIAL_ASSERT(kResult == 0 || kResult == -1); // NOLINT(readability-simplify-boolean-expr)
@@ -56,7 +56,7 @@ void futexWait(std::atomic<std::uint32_t>& state, const timespec* timeout) noexc
 #endif
 }
 
-void futexWake(std::atomic<std::uint32_t>& state) noexcept {
+void futexWake(const std::atomic<std::uint32_t>& state) noexcept {
 #if TRIVIAL_ENABLE_ASSERTS
 	const long kResult = futexSyscall(&state, FUTEX_WAKE | FUTEX_PRIVATE_FLAG, 1, nullptr);
 	TRIVIAL_ASSERT(kResult == 0 || kResult == 1 || kResult == -1); // NOLINT(readability-simplify-boolean-expr)
@@ -97,31 +97,19 @@ void UnparkHandle::wake() noexcept {
 
 #endif // Platform-specific UnparkHandle::wake
 
-#if TRIVIAL_PLATFORM_WINDOWS || TRIVIAL_PLATFORM_LINUX
-
-Parker::Parker() noexcept = default;
-
-#elif TRIVIAL_PLATFORM_MACOS
+#if TRIVIAL_PLATFORM_MACOS
 
 Parker::Parker() noexcept {
 	TRIVIAL_VERIFY(pthread_mutex_init(&m_state.mutex, nullptr) == 0);
 	TRIVIAL_VERIFY(pthread_cond_init(&m_state.condvar, nullptr) == 0);
 }
 
-#endif // Platform-specific Parker::Parker
-
-#if TRIVIAL_PLATFORM_WINDOWS || TRIVIAL_PLATFORM_LINUX
-
-Parker::~Parker() noexcept = default;
-
-#elif TRIVIAL_PLATFORM_MACOS
-
 Parker::~Parker() noexcept {
 	TRIVIAL_VERIFY(pthread_cond_destroy(&m_state.condvar) == 0);
 	TRIVIAL_VERIFY(pthread_mutex_destroy(&m_state.mutex) == 0);
 }
 
-#endif // Platform-specific Parker::~Parker
+#endif // TRIVIAL_PLATFORM_MACOS
 
 #if TRIVIAL_PLATFORM_WINDOWS || TRIVIAL_PLATFORM_LINUX
 

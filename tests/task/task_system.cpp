@@ -8,7 +8,6 @@
 #include <span>
 #include <thread>
 #include <type_traits>
-#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -442,23 +441,30 @@ TEST(TaskSystemMultiThreadTest, TasksDistributeAcrossWorkers) {
 
 	const ScopedTaskSystem kTaskSystemScope;
 
-	constexpr std::size_t kTaskCount = 400;
+	constexpr std::size_t kTaskCount = 2;
 
-	sync::Mutex workerIndexMutex;
-	std::unordered_set<std::uint32_t> observedWorkerIndices;
-	std::vector<TaskHandle> handles;
-	handles.reserve(kTaskCount);
+	std::atomic<std::size_t> started{0};
+	sync::Event allStarted;
+	std::array<std::uint32_t, kTaskCount> workerIndices{};
+	std::array<TaskHandle, kTaskCount> handles{};
 
 	for (std::size_t i = 0; i < kTaskCount; ++i) {
-		handles.push_back(launch(TaskPayload{[&workerIndexMutex, &observedWorkerIndices]() noexcept {
-			const sync::LockGuard<sync::Mutex> kLock(workerIndexMutex);
-			observedWorkerIndices.insert(thread::Thread::current()->index());
-		}}));
+		handles[i] = launch(TaskPayload{[&started, &allStarted, &workerIndices, i]() noexcept {
+			workerIndices[i] = thread::Thread::current()->index();
+
+			if (started.fetch_add(1, std::memory_order_acq_rel) + 1 == kTaskCount) {
+				allStarted.trigger();
+			}
+
+			(void)allStarted.waitFor(std::chrono::seconds(5));
+		}});
 	}
+
+	EXPECT_TRUE(allStarted.waitFor(std::chrono::seconds(5)));
 
 	wait(std::span<const TaskHandle>{handles});
 
-	EXPECT_GT(observedWorkerIndices.size(), 1UZ);
+	EXPECT_NE(workerIndices[0], workerIndices[1]);
 }
 
 TEST(TaskSystemMultiThreadTest, DependencyChainPreservesOrder) {

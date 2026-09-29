@@ -45,9 +45,17 @@ private:
 
 class Parker {
 public:
+#if TRIVIAL_PLATFORM_WINDOWS || TRIVIAL_PLATFORM_LINUX
+	Parker() noexcept = default;
+
+	~Parker() noexcept = default;
+
+#elif TRIVIAL_PLATFORM_MACOS
 	Parker() noexcept;
 
 	~Parker() noexcept;
+
+#endif // Platform-specific construction
 
 	Parker(const Parker&) = delete;
 	Parker& operator=(const Parker&) = delete;
