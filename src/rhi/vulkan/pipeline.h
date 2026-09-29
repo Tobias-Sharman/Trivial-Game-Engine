@@ -4,7 +4,6 @@
 #include <string>
 #include <type_traits>
 
-#include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
 #include <trivial/core/math/affine2.h>

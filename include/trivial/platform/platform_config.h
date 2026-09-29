@@ -1,7 +1,7 @@
 #ifndef TRIVIAL_PLATFORM_PLATFORM_CONFIG_H
 #define TRIVIAL_PLATFORM_PLATFORM_CONFIG_H
 
-#include <trivial/core/config.h>
+#include <trivial/core/config.h> // IWYU pragma: keep
 
 #ifndef TRIVIAL_PLATFORM_DEFAULT_WINDOW_WIDTH
 #define TRIVIAL_PLATFORM_DEFAULT_WINDOW_WIDTH 1280

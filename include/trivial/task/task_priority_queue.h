@@ -133,6 +133,7 @@ private:
 
 		std::array<std::size_t, kWeights.size()> shares{};
 		for (std::size_t i = 0; i < kWeights.size(); ++i) {
+			// NOLINTNEXTLINE(clang-analyzer-core.DivideZero) -> covered by assert in task system config
 			shares[i] = (std::size_t{TRIVIAL_TASK_BATCH_SIZE} * kWeights[i]) / totalWeight;
 		}
 

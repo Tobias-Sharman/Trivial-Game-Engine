@@ -1,9 +1,7 @@
 #ifndef TRIVIAL_CORE_MATH_MATH_CONFIG_H
 #define TRIVIAL_CORE_MATH_MATH_CONFIG_H
 
-#include <trivial/core/compiler.h>
 #include <trivial/core/config.h>
-#include <trivial/core/platform.h>
 
 #ifndef TRIVIAL_MATH_DISABLE_SIMD_BACKEND
 #define TRIVIAL_MATH_DISABLE_SIMD_BACKEND 0

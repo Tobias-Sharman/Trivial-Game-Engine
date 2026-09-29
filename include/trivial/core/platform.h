@@ -18,7 +18,7 @@
 //     SetThreadDescription - 0x0A00 (Windows 10, 1607+)
 
 #elifdef __APPLE__
-#include <TargetConditionals.h>
+#include <TargetConditionals.h> // IWYU pragma: keep
 
 #if TARGET_OS_OSX
 #define TRIVIAL_PLATFORM_WINDOWS 0

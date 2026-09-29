@@ -1,7 +1,7 @@
 #ifndef TRIVIAL_CORE_SYNC_SYNC_CONFIG_H
 #define TRIVIAL_CORE_SYNC_SYNC_CONFIG_H
 
-#include <trivial/core/config.h>
+#include <trivial/core/config.h> // IWYU pragma: keep
 
 // Defaults from spinwait.rs in the parking_lot_core crate - checked 20-08-2026
 #ifndef TRIVIAL_SYNC_SPIN_COUNT_BEFORE_YIELD

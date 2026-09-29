@@ -3,6 +3,8 @@
 
 #include <span>
 
+#include <trivial/core/math/vec2.h>
+
 #include "boid.h"
 
 namespace boids {

@@ -30,7 +30,7 @@ neglected prior to a proper version 1.0.0.
 
 ## Current plan of action
 
-- Header include hygiene, then windows and linux basic testing
+- Windows and linux basic testing
 - Function decoration with const args and compiler attributes where appropriate
 - Custom Chrono with suitable types
 - Documentation update and create new documentation

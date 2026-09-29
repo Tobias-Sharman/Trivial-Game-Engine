@@ -9,6 +9,7 @@
 
 #include <trivial/core/application_info.h>
 #include <trivial/core/assert.h>
+#include <trivial/core/config.h>
 #include <trivial/core/log.h>
 #include <trivial/platform/window.h>
 

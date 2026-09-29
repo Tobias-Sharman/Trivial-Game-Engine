@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <trivial/application.h>
+#include <trivial/core/config.h>
 #include <trivial/core/log.h>
 #include <trivial/core/profile.h>
 #include <trivial/core/thread/thread.h>

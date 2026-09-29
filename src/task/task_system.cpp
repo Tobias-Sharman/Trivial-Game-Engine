@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <trivial/core/assert.h>
+#include <trivial/core/config.h>
 #include <trivial/core/log.h>
 #include <trivial/core/platform.h>
 #include <trivial/core/profile.h>

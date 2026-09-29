@@ -11,7 +11,13 @@ FetchContent_Declare(
 
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 
+if(NOT TRIVIAL_EXPORT_DEPENDENCY_COMPILE_COMMANDS)
+	set(CMAKE_EXPORT_COMPILE_COMMANDS OFF)
+endif()
+
 FetchContent_MakeAvailable(googletest)
+
+unset(CMAKE_EXPORT_COMPILE_COMMANDS)
 
 target_compile_features(gtest PUBLIC cxx_std_23)
 target_compile_features(gtest_main PUBLIC cxx_std_23)

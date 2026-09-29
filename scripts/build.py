@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# TODO: This script needs reviewing
+
 import argparse
 import json
 import os
@@ -7,6 +9,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -14,9 +17,12 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent
 SOURCE_DIRS: tuple[str, ...] = ("include", "src", "tests", "sandbox")
 SOURCE_SUFFIXES: tuple[str, ...] = (".h", ".hpp", ".cpp")
+HEADER_SUFFIXES: tuple[str, ...] = (".h", ".hpp")
 TIDY_DIAGNOSTIC = re.compile(
     r"^(?P<path>.+?):(?P<line>\d+):(?P<column>\d+): (?P<level>warning|error): .* \[(?P<check>[^\]]+)\]$"
 )
+
+SANDBOX_SMOKE_SECONDS = 5.0
 
 # Tests creating threads or a parking lot should be ran isolated to not mess
 # with the global counter on thread index and introduce a subtle error
@@ -100,6 +106,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--tidy", action="store_true", help="Run clang-tidy over all sources after building (list in build/<preset>)"
     )
+    parser.add_argument(
+        "-a",
+        "--all",
+        action="store_true",
+        help="Pre-commit check: format check, then fresh build, tests, sandbox run and clang-tidy for every preset",
+    )
     # help done command automatically
 
     return parser.parse_args()
@@ -120,6 +132,12 @@ def refresh_compile_commands_symlink(preset: str) -> None:
     print(f"==> Refreshing compile_commands.json symlink -> {target}", flush=True)
     if link.is_symlink() or link.exists():
         link.unlink()
+
+    for directory in SOURCE_DIRS:
+        for stale in (ROOT_DIR / directory).rglob("compile_commands.json"):
+            if stale.is_symlink() and "build" not in stale.relative_to(ROOT_DIR).parts:
+                print(f"==> Removing stale {stale.relative_to(ROOT_DIR)} symlink", flush=True)
+                stale.unlink()
 
     try:
         link.symlink_to(target)
@@ -187,11 +205,25 @@ def is_project_path(path: Path) -> bool:
     return any(path.is_relative_to(ROOT_DIR / directory) for directory in SOURCE_DIRS)
 
 
-def run_tidy(build_dir: Path, jobs: int) -> bool:
+def dependency_command_count(build_dir: Path) -> int:
+    commands = json.loads((build_dir / "compile_commands.json").read_text())
+    return sum(1 for entry in commands if not is_project_path(Path(entry["file"]).resolve()))
+
+
+def run_tidy(build_dir: Path, jobs: int, verbose: bool = True) -> bool:
     clang_tidy = require_tool("clang-tidy")
     commands = json.loads((build_dir / "compile_commands.json").read_text())
     sources = sorted({path for entry in commands if is_project_path(path := Path(entry["file"]).resolve())})
+    headers = [path for path in project_sources() if path.suffix in HEADER_SUFFIXES]
     extra_args = tidy_extra_args()
+
+    dependency_commands = dependency_command_count(build_dir)
+    if dependency_commands > 0:
+        print(
+            f"    WARNING: compile_commands.json has {dependency_commands} third-party entries"
+            " (TRIVIAL_EXPORT_DEPENDENCY_COMPILE_COMMANDS is on); header results may be unreliable",
+            flush=True,
+        )
 
     def tidy_file(source: Path) -> subprocess.CompletedProcess[str]:
         return subprocess.run(  # noqa: S603 - fixed argv, no shell, no untrusted input
@@ -202,9 +234,13 @@ def run_tidy(build_dir: Path, jobs: int) -> bool:
             text=True,
         )
 
-    print(f"==> Running clang-tidy over {len(sources)} translation unit(s) with {jobs} job(s)", flush=True)
+    print(
+        f"==> Running clang-tidy over {len(sources)} translation unit(s) and {len(headers)} header(s)"
+        f" with {jobs} job(s)",
+        flush=True,
+    )
     with ThreadPoolExecutor(jobs) as pool:
-        results = list(pool.map(tidy_file, sources))
+        results = list(pool.map(tidy_file, [*sources, *headers]))
 
     config_errors = sorted(
         {line for result in results for line in result.stderr.splitlines() if "clang-tidy-config" in line}
@@ -224,9 +260,20 @@ def run_tidy(build_dir: Path, jobs: int) -> bool:
     report = build_dir / "clang-tidy.txt"
     report.write_text("".join(f"{diagnostics[key]}\n" for key in sorted(diagnostics)))
 
-    counts = Counter(check for _, _, _, check in diagnostics)
-    for check, count in counts.most_common():
-        print(f"    {count:5}  {check}")
+    if verbose:
+        print("    By check:")
+        for check, count in Counter(check for _, _, _, check in diagnostics).most_common():
+            print(f"    {count:5}  {check}")
+
+        file_checks: dict[str, Counter[str]] = {}
+        for path, _, _, check in diagnostics:
+            file_checks.setdefault(path, Counter())[check] += 1
+
+        print("    By file:")
+        for path, checks in sorted(file_checks.items(), key=lambda item: (-item[1].total(), item[0])):
+            relative = Path(path).resolve().relative_to(ROOT_DIR)
+            breakdown = ", ".join(f"{check} x{count}" for check, count in checks.most_common())
+            print(f"    {checks.total():5}  {relative}  ({breakdown})")
 
     errors = sum(1 for line in diagnostics.values() if ": error: " in line)
     passed = errors == 0 and not config_errors
@@ -308,9 +355,105 @@ def run_tests(build_dir: Path, include_long: bool, indent: str = "") -> bool:
     return shared_code == 0 and isolated_failed == 0
 
 
+def configure_presets() -> list[str]:
+    presets = json.loads((ROOT_DIR / "CMakePresets.json").read_text())
+    return [preset["name"] for preset in presets["configurePresets"] if not preset.get("hidden", False)]
+
+
+def run_logged(cmd: list[str], log: Path) -> bool:
+    with log.open("a") as handle:
+        handle.write(f"$ {' '.join(cmd)}\n")
+        handle.flush()
+        result = subprocess.run(  # noqa: S603 - fixed argv, no shell, no untrusted input
+            cmd,
+            cwd=ROOT_DIR,
+            check=False,
+            stdout=handle,
+            stderr=subprocess.STDOUT,
+        )
+    return result.returncode == 0
+
+
+def run_sandbox_smoke(build_dir: Path, log: Path) -> bool:
+    with log.open("a") as handle:
+        handle.write(f"$ {sandbox_binary_path(build_dir)} (smoke run for {SANDBOX_SMOKE_SECONDS:g}s)\n")
+        handle.flush()
+        process = subprocess.Popen(  # noqa: S603 - fixed argv, no shell, no untrusted input
+            [str(sandbox_binary_path(build_dir))],
+            cwd=ROOT_DIR,
+            stdout=subprocess.DEVNULL,
+            stderr=handle,
+        )
+        try:
+            code = process.wait(timeout=SANDBOX_SMOKE_SECONDS)
+        except subprocess.TimeoutExpired:
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+            return True
+    return code == 0
+
+
+def run_all(jobs: int, include_long: bool) -> bool:
+    started = time.monotonic()
+    log_dir = ROOT_DIR / "build" / "all-presets"
+    shutil.rmtree(log_dir, ignore_errors=True)
+    log_dir.mkdir(parents=True)
+
+    format_passed = run_format(check_only=True)
+    steps: tuple[str, ...] = ("build", "tests", "sandbox", "tidy")
+    results: dict[str, dict[str, str]] = {}
+
+    for preset in configure_presets():
+        build_dir = ROOT_DIR / "build" / preset
+        log = log_dir / f"{preset}.log"
+        row: dict[str, str] = dict.fromkeys(steps, "-")
+        results[preset] = row
+
+        print(f"\n==> [{preset}] Fresh configure and build (log: {log.relative_to(ROOT_DIR)})", flush=True)
+        shutil.rmtree(build_dir, ignore_errors=True)
+        built = run_logged(["cmake", "--preset", preset], log) and run_logged(
+            ["cmake", "--build", "--preset", preset, "-j", str(jobs)], log
+        )
+        row["build"] = "PASS" if built else "FAIL"
+        if not built:
+            print(f"    [FAIL] build, see {log.relative_to(ROOT_DIR)}")
+            continue
+
+        row["tests"] = "PASS" if run_tests(build_dir, include_long, indent="    ") else "FAIL"
+
+        print(f"    ==> Running sandbox for {SANDBOX_SMOKE_SECONDS:g}s", flush=True)
+        sandbox_passed = run_sandbox_smoke(build_dir, log)
+        row["sandbox"] = "PASS" if sandbox_passed else "FAIL"
+        print(f"        [{row['sandbox']}] sandbox" + ("" if sandbox_passed else f", see {log.relative_to(ROOT_DIR)}"))
+
+        if dependency_command_count(build_dir) > 0:
+            row["tidy"] = "skipped"
+            print("    ==> Skipping clang-tidy: third-party compile commands are exported for this preset")
+        else:
+            row["tidy"] = "PASS" if run_tidy(build_dir, jobs, verbose=False) else "FAIL"
+
+    refresh_compile_commands_symlink("debug")
+
+    width = max(len(preset) for preset in results)
+    print(f"\n==> All presets ({time.monotonic() - started:.0f}s)")
+    print(f"    {'format':<{width}}  {'PASS' if format_passed else 'FAIL'}")
+    print(f"    {'preset':<{width}}  " + "  ".join(f"{step:<7}" for step in steps))
+    for preset, row in results.items():
+        print(f"    {preset:<{width}}  " + "  ".join(f"{row[step]:<7}" for step in steps))
+
+    return format_passed and all(status in {"PASS", "skipped"} for row in results.values() for status in row.values())
+
+
 def main() -> None:
     args = parse_args()
     checks_failed = False
+
+    if args.all:
+        sys.exit(0 if run_all(args.jobs, args.long_tests) else 1)
 
     if (args.format or args.format_check) and not run_format(check_only=not args.format):
         checks_failed = True

@@ -1,5 +1,7 @@
 #include "rhi/vulkan/debug_messenger.h"
 
+#include <trivial/core/config.h>
+
 #if TRIVIAL_ENABLE_VULKAN_VALIDATION
 
 #include <array>

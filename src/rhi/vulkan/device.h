@@ -1,7 +1,9 @@
 #ifndef TRIVIAL_SRC_RHI_VULKAN_DEVICE_H
 #define TRIVIAL_SRC_RHI_VULKAN_DEVICE_H
 
-#include <vulkan/vulkan.h>
+#include <cstdint>
+
+#include <vulkan/vulkan_core.h>
 
 #include "rhi/vulkan/physical_device.h"
 

@@ -1,7 +1,7 @@
 #ifndef TRIVIAL_SRC_RHI_VULKAN_INSTANCE_H
 #define TRIVIAL_SRC_RHI_VULKAN_INSTANCE_H
 
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan_core.h>
 
 #include <trivial/core/application_info.h>
 

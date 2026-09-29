@@ -10,7 +10,7 @@
 #include <cstdint>
 
 #elif TRIVIAL_PLATFORM_MACOS
-#include <pthread.h>
+#include <pthread.h> // IWYU pragma: keep
 
 #endif // Platform-specific headers
 

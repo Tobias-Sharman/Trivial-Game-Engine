@@ -1,9 +1,11 @@
 #ifndef TRIVIAL_SRC_RHI_VULKAN_DEBUG_MESSENGER_H
 #define TRIVIAL_SRC_RHI_VULKAN_DEBUG_MESSENGER_H
 
+#include <trivial/core/config.h>
+
 #if TRIVIAL_ENABLE_VULKAN_VALIDATION
 
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan_core.h>
 
 inline constexpr const char* g_kValidationLayerName = "VK_LAYER_KHRONOS_validation";
 

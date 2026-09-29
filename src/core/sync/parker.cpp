@@ -4,6 +4,7 @@
 #include <limits>
 
 #include <trivial/core/assert.h>
+#include <trivial/core/config.h>
 #include <trivial/core/platform.h>
 #include <trivial/core/time/time_constants.h>
 

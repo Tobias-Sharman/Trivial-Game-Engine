@@ -9,6 +9,7 @@
 
 #include <gtest/gtest.h>
 
+#include <trivial/core/config.h>
 #include <trivial/core/platform.h>
 #include <trivial/core/thread/thread.h>
 

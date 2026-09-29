@@ -6,6 +6,7 @@
 
 #include <trivial/layers.h>
 #include <trivial/core/assert.h>
+#include <trivial/core/config.h>
 #include <trivial/frame/frame_context.h>
 #include <trivial/gpu/context.h>
 #include <trivial/render/renderer.h>

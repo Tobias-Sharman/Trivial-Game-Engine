@@ -23,7 +23,8 @@
 				"TRIVIAL_MATH_DISABLE_FMA": "OFF",
 				"TRIVIAL_MEMORY_DEBUG": "AUTO",
 				"TRIVIAL_MEMORY_DEBUG_STATS": "AUTO",
-				"TRIVIAL_ENABLE_SIMD": "ON"
+				"TRIVIAL_ENABLE_SIMD": "ON",
+				"TRIVIAL_EXPORT_DEPENDENCY_COMPILE_COMMANDS": "OFF"
 			}
 		},
 		{
@@ -54,6 +55,15 @@
 			}
 		},
 		{
+			"name": "debug-deps",
+			"displayName": "Debug + Dependency Compile Commands",
+			"inherits": "debug",
+			"binaryDir": "${sourceDir}/build/debug-deps",
+			"cacheVariables": {
+				"TRIVIAL_EXPORT_DEPENDENCY_COMPILE_COMMANDS": "ON"
+			}
+		},
+		{
 			"name": "release",
 			"displayName": "Release",
 			"generator": "Ninja",
@@ -70,7 +80,17 @@
 				"TRIVIAL_MATH_DISABLE_FMA": "OFF",
 				"TRIVIAL_MEMORY_DEBUG": "AUTO",
 				"TRIVIAL_MEMORY_DEBUG_STATS": "AUTO",
-				"TRIVIAL_ENABLE_SIMD": "ON"
+				"TRIVIAL_ENABLE_SIMD": "ON",
+				"TRIVIAL_EXPORT_DEPENDENCY_COMPILE_COMMANDS": "OFF"
+			}
+		},
+		{
+			"name": "release-tracy",
+			"displayName": "Release + Tracy",
+			"inherits": "release",
+			"binaryDir": "${sourceDir}/build/release-tracy",
+			"cacheVariables": {
+				"TRIVIAL_ENABLE_TRACY": "ON"
 			}
 		},
 		{
@@ -90,7 +110,8 @@
 				"TRIVIAL_MATH_DISABLE_FMA": "OFF",
 				"TRIVIAL_MEMORY_DEBUG": "AUTO",
 				"TRIVIAL_MEMORY_DEBUG_STATS": "AUTO",
-				"TRIVIAL_ENABLE_SIMD": "ON"
+				"TRIVIAL_ENABLE_SIMD": "ON",
+				"TRIVIAL_EXPORT_DEPENDENCY_COMPILE_COMMANDS": "OFF"
 			}
 		},
 		{
@@ -132,8 +153,16 @@
 			"configurePreset": "debug-tsan"
 		},
 		{
+			"name": "debug-deps",
+			"configurePreset": "debug-deps"
+		},
+		{
 			"name": "release",
 			"configurePreset": "release"
+		},
+		{
+			"name": "release-tracy",
+			"configurePreset": "release-tracy"
 		},
 		{
 			"name": "relwithdebinfo",

@@ -1,5 +1,7 @@
 #include <trivial/core/assert.h>
 
+#include <trivial/core/config.h>
+
 #if TRIVIAL_ENABLE_ASSERTS || TRIVIAL_ENABLE_SLOW_ASSERTS
 
 #include <cstdio>

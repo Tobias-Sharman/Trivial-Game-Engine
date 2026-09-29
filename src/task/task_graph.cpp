@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <trivial/core/assert.h>
+#include <trivial/core/config.h>
 #include <trivial/core/log.h>
 #include <trivial/core/sync/latch.h>
 #include <trivial/core/sync/lock_guard.h>

@@ -1,8 +1,10 @@
 #ifndef TRIVIAL_PLATFORM_WINDOW_BACKEND_H
 #define TRIVIAL_PLATFORM_WINDOW_BACKEND_H
 
+#include <trivial/core/config.h>
+
 #ifdef TRIVIAL_PLATFORM_GLFW
-#include <trivial/platform/glfw/window.h>
+#include <trivial/platform/glfw/window.h> // IWYU pragma: export
 #else
 #error "No Trivial platform window backend selected."
 #endif

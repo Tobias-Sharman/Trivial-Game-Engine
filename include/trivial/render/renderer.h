@@ -1,7 +1,13 @@
 #ifndef TRIVIAL_RENDER_RENDERER_H
 #define TRIVIAL_RENDER_RENDERER_H
 
+#include <cstdint>
+#include <span>
+
+#include <trivial/core/math/affine2.h>
+#include <trivial/core/math/vec4.h>
 #include <trivial/gpu/context.h>
+#include <trivial/rhi/mesh_types.h>
 
 namespace trivial::render {
 

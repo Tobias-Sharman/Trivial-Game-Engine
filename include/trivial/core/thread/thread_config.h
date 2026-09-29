@@ -3,8 +3,7 @@
 
 #include <cstddef>
 
-#include <trivial/core/config.h>
-#include <trivial/core/platform.h>
+#include <trivial/core/config.h> // IWYU pragma: keep
 
 #ifndef TRIVIAL_THREAD_DEFAULT_STACK_SIZE_BYTES
 #define TRIVIAL_THREAD_DEFAULT_STACK_SIZE_BYTES (std::size_t{2} << 20U) // 2 MiB

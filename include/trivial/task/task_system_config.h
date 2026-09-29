@@ -1,7 +1,7 @@
 #ifndef TRIVIAL_TASK_TASK_SYSTEM_CONFIG_H
 #define TRIVIAL_TASK_TASK_SYSTEM_CONFIG_H
 
-#include <trivial/core/config.h>
+#include <trivial/core/config.h> // IWYU pragma: keep
 
 // Match task priority ordering if changing - see task_launch_options.h
 #ifndef TRIVIAL_TASK_PRIORITY_WEIGHT_BACKGROUND

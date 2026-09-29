@@ -1,5 +1,7 @@
 #include <trivial/core/log.h>
 
+#include <trivial/core/config.h>
+
 #if TRIVIAL_ENABLE_LOGGING
 
 #include <cstdio>

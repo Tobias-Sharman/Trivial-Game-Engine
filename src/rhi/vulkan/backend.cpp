@@ -10,6 +10,7 @@
 
 #include <trivial/core/application_info.h>
 #include <trivial/core/assert.h>
+#include <trivial/core/config.h>
 #include <trivial/core/graphics_api.h>
 #include <trivial/core/math/affine2.h>
 #include <trivial/core/math/vec4.h>

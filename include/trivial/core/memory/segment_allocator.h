@@ -4,7 +4,6 @@
 #include <cstddef>
 #include <cstdint>
 
-#include <trivial/core/config.h>
 #include <trivial/core/memory/memory_config.h>
 #include <trivial/core/memory/oom_handler.h>
 #include <trivial/core/platform.h>

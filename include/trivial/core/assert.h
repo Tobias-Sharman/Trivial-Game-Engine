@@ -1,7 +1,6 @@
 #ifndef TRIVIAL_CORE_ASSERT_H
 #define TRIVIAL_CORE_ASSERT_H
 
-#include <trivial/core/compiler.h>
 #include <trivial/core/config.h>
 
 #if TRIVIAL_ENABLE_ASSERTS || TRIVIAL_ENABLE_SLOW_ASSERTS

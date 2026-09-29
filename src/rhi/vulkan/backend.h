@@ -2,12 +2,20 @@
 #define TRIVIAL_SRC_RHI_VULKAN_BACKEND_H
 
 #include <cstdint>
+#include <span>
+#include <vector>
 
-#include <vulkan/vulkan.h>
+#include <vulkan/vulkan_core.h>
 
 #include <trivial/core/application_info.h>
+#include <trivial/core/config.h>
+#include <trivial/core/graphics_api.h>
+#include <trivial/core/math/affine2.h>
+#include <trivial/core/math/vec4.h>
 #include <trivial/platform/window.h>
+#include <trivial/platform/window_types.h>
 #include <trivial/rhi/backend.h>
+#include <trivial/rhi/mesh_types.h>
 
 #include "rhi/vulkan/allocator.h"
 #include "rhi/vulkan/command.h"

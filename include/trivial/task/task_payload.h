@@ -9,13 +9,13 @@
 #include <type_traits>
 #include <utility>
 
-#if TRIVIAL_CONFIG_DEBUG
-#include <cstdint>
-#endif // TRIVIAL_CONFIG_DEBUG
-
 #include <trivial/core/assert.h>
 #include <trivial/core/config.h>
 #include <trivial/core/log.h>
+
+#if TRIVIAL_CONFIG_DEBUG
+#include <cstdint>
+#endif // TRIVIAL_CONFIG_DEBUG
 
 namespace trivial::task {
 

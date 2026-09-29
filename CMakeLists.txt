@@ -19,6 +19,7 @@ option(TRIVIAL_ENABLE_SIMD "Enable SIMD code paths engine wide" ON)
 option(TRIVIAL_MATH_DISABLE_SIMD_BACKEND "Disable explicit SIMD math backends" OFF)
 option(TRIVIAL_MATH_DISABLE_FMA "Disable explicit FMA in math backends" OFF)
 option(TRIVIAL_ENABLE_TSAN "Enable ThreadSanitizer" OFF)
+option(TRIVIAL_EXPORT_DEPENDENCY_COMPILE_COMMANDS "Include third-party targets in compile_commands.json" OFF)
 
 set(TRIVIAL_MEMORY_DEBUG "AUTO" CACHE STRING "Allocation level memory debugging (AUTO/ON/OFF)")
 set_property(CACHE TRIVIAL_MEMORY_DEBUG PROPERTY STRINGS AUTO ON OFF)
@@ -97,21 +98,6 @@ target_compile_features(trivial
 		c_std_99
 )
 
-target_compile_definitions(trivial
-	PUBLIC
-		TRIVIAL_ENABLE_ASSERTS=$<BOOL:${TRIVIAL_ENABLE_ASSERTS}>
-		TRIVIAL_ENABLE_SLOW_ASSERTS=$<BOOL:${TRIVIAL_ENABLE_SLOW_ASSERTS}>
-		TRIVIAL_ENABLE_LOGGING=$<BOOL:${TRIVIAL_ENABLE_LOGGING}>
-		TRIVIAL_ENABLE_VULKAN_VALIDATION=$<BOOL:${TRIVIAL_ENABLE_VULKAN_VALIDATION}>
-		TRIVIAL_ENABLE_SIMD=$<BOOL:${TRIVIAL_ENABLE_SIMD}>
-		TRIVIAL_MATH_DISABLE_SIMD_BACKEND=$<BOOL:${TRIVIAL_MATH_DISABLE_SIMD_BACKEND}>
-		TRIVIAL_MATH_DISABLE_FMA=$<BOOL:${TRIVIAL_MATH_DISABLE_FMA}>
-		TRIVIAL_ENABLE_TRACY=$<BOOL:${TRIVIAL_ENABLE_TRACY}>
-		$<$<BOOL:${TRIVIAL_ENABLE_TRACY}>:TRACY_ENABLE>
-
-		TRIVIAL_PLATFORM_GLFW
-)
-
 if(TRIVIAL_ENABLE_TSAN AND NOT MSVC)
 	target_compile_options(trivial PUBLIC -fsanitize=thread)
 	target_link_options(trivial PUBLIC -fsanitize=thread)
@@ -126,14 +112,6 @@ target_compile_definitions(trivial
 		TRIVIAL_ENGINE_VERSION_MINOR=${PROJECT_VERSION_MINOR}
 		TRIVIAL_ENGINE_VERSION_PATCH=${PROJECT_VERSION_PATCH}
 )
-
-if(NOT TRIVIAL_MEMORY_DEBUG STREQUAL "AUTO")
-	target_compile_definitions(trivial PUBLIC TRIVIAL_ENABLE_MEMORY_DEBUG=$<BOOL:${TRIVIAL_MEMORY_DEBUG}>)
-endif()
-
-if(NOT TRIVIAL_MEMORY_DEBUG_STATS STREQUAL "AUTO")
-	target_compile_definitions(trivial PUBLIC TRIVIAL_ENABLE_MEMORY_DEBUG_STATS=$<BOOL:${TRIVIAL_MEMORY_DEBUG_STATS}>)
-endif()
 
 # -----------------------------------------------------------------------------
 # Platform definitions
@@ -157,6 +135,10 @@ set(FETCHCONTENT_TRY_FIND_PACKAGE_MODE NEVER)
 include(FetchContent)
 
 find_package(Vulkan REQUIRED)
+
+if(NOT TRIVIAL_EXPORT_DEPENDENCY_COMPILE_COMMANDS)
+	set(CMAKE_EXPORT_COMPILE_COMMANDS OFF)
+endif()
 
 FetchContent_Declare(
 	glfw
@@ -190,7 +172,10 @@ FetchContent_Declare(
 	SYSTEM
 	EXCLUDE_FROM_ALL
 )
+set(TRACY_ENABLE ${TRIVIAL_ENABLE_TRACY} CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(tracy)
+
+unset(CMAKE_EXPORT_COMPILE_COMMANDS)
 
 if(NOT MSVC)
 	target_compile_options(TracyClient PRIVATE -Wno-deprecated-declarations)
@@ -209,11 +194,26 @@ target_link_libraries(trivial
 # Build configuration
 # -----------------------------------------------------------------------------
 
-target_compile_definitions(trivial
+set(TRIVIAL_MEMORY_DEBUG_DEFINE "")
+if(NOT TRIVIAL_MEMORY_DEBUG STREQUAL "AUTO")
+	set(TRIVIAL_MEMORY_DEBUG_DEFINE "#define TRIVIAL_ENABLE_MEMORY_DEBUG $<BOOL:${TRIVIAL_MEMORY_DEBUG}>")
+endif()
+
+set(TRIVIAL_MEMORY_DEBUG_STATS_DEFINE "")
+if(NOT TRIVIAL_MEMORY_DEBUG_STATS STREQUAL "AUTO")
+	set(TRIVIAL_MEMORY_DEBUG_STATS_DEFINE "#define TRIVIAL_ENABLE_MEMORY_DEBUG_STATS $<BOOL:${TRIVIAL_MEMORY_DEBUG_STATS}>")
+endif()
+
+configure_file(include/trivial/core/build_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/build_config.h.in @ONLY)
+
+file(GENERATE
+	OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/generated/$<CONFIG>/trivial/core/build_config.h
+	INPUT ${CMAKE_CURRENT_BINARY_DIR}/build_config.h.in
+)
+
+target_include_directories(trivial
 	PUBLIC
-		TRIVIAL_CONFIG_DEBUG=$<CONFIG:Debug>
-		TRIVIAL_CONFIG_RELEASE=$<CONFIG:Release>
-		TRIVIAL_CONFIG_RELWITHDEBINFO=$<CONFIG:RelWithDebInfo>
+		${CMAKE_CURRENT_BINARY_DIR}/generated/$<CONFIG>
 )
 
 # -----------------------------------------------------------------------------
@@ -282,6 +282,7 @@ else()
 		-Wextra
 		-Wpedantic
 		-Wshadow
+		-Werror=undef
 		$<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
 	)
 endif()

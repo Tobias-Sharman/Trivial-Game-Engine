@@ -6,6 +6,7 @@
 #include <numbers>
 
 #include <trivial/core/assert.h>
+#include <trivial/core/config.h>
 
 #if TRIVIAL_ENABLE_ASSERTS
 #include <limits>

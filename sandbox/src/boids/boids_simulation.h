@@ -5,6 +5,7 @@
 #include <random>
 #include <vector>
 
+#include <trivial/core/math/vec2.h>
 #include <trivial/gpu/context.h>
 #include <trivial/render/renderer.h>
 #include <trivial/rhi/mesh_types.h>
