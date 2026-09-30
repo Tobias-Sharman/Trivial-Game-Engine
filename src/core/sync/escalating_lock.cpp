@@ -23,7 +23,7 @@ static_assert(alignof(EscalatingLockNode) > 3, "Low 2 bits of an EscalatingLockN
 
 TRIVIAL_FORCE_INLINE void fenceAcquire(const std::atomic<std::uintptr_t>& state) noexcept {
 	// ThreadSanitizer has only partial fence support, so it needs an acquire load here instead
-	if constexpr (TRIVIAL_THREAD_SANITIZER_ENABLED) {
+	if constexpr (TRIVIAL_THREAD_SANITISER_ENABLED) {
 		(void)state.load(std::memory_order_acquire);
 	} else {
 		std::atomic_thread_fence(std::memory_order_acquire);

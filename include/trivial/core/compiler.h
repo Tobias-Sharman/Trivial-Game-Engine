@@ -33,13 +33,47 @@
 #define TRIVIAL_FORCE_INLINE inline __forceinline
 #define TRIVIAL_NO_INLINE __declspec(noinline)
 #define TRIVIAL_COLD
+#define TRIVIAL_HOT
 
 #elif TRIVIAL_COMPILER_CLANG || TRIVIAL_COMPILER_GCC
 #define TRIVIAL_FORCE_INLINE inline __attribute__((always_inline))
 #define TRIVIAL_NO_INLINE __attribute__((noinline))
 #define TRIVIAL_COLD __attribute__((cold))
+#define TRIVIAL_HOT __attribute__((hot))
 
 #endif // Force inline macro
+
+#if __has_cpp_attribute(msvc::flatten)
+#define TRIVIAL_FLATTEN [[msvc::flatten]]
+
+#elif TRIVIAL_COMPILER_CLANG || TRIVIAL_COMPILER_GCC
+#define TRIVIAL_FLATTEN __attribute__((flatten))
+
+#else
+#define TRIVIAL_FLATTEN
+
+#endif // Flatten
+
+#define TRIVIAL_RESTRICT __restrict
+
+#if __has_cpp_attribute(clang::lifetimebound)
+#define TRIVIAL_LIFETIMEBOUND [[clang::lifetimebound]]
+
+#elif __has_cpp_attribute(msvc::lifetimebound)
+#define TRIVIAL_LIFETIMEBOUND [[msvc::lifetimebound]]
+
+#else
+#define TRIVIAL_LIFETIMEBOUND
+
+#endif // Lifetime bound
+
+#if __has_cpp_attribute(clang::reinitializes)
+#define TRIVIAL_REINITIALISES [[clang::reinitializes]]
+
+#else
+#define TRIVIAL_REINITIALISES
+
+#endif // Reinitialises
 
 #ifdef _MSC_VER
 #define TRIVIAL_NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
@@ -48,6 +82,16 @@
 #define TRIVIAL_NO_UNIQUE_ADDRESS [[no_unique_address]]
 
 #endif // No unique address
+
+#ifdef _MSC_VER
+#define TRIVIAL_NOVTABLE __declspec(novtable)
+#define TRIVIAL_EMPTY_BASES __declspec(empty_bases)
+
+#else
+#define TRIVIAL_NOVTABLE
+#define TRIVIAL_EMPTY_BASES
+
+#endif // MSVC class layout
 
 #if TRIVIAL_COMPILER_MSVC || TRIVIAL_COMPILER_CLANG_CL
 #define TRIVIAL_DEBUG_BREAK() __debugbreak()
@@ -64,18 +108,18 @@
 #endif // Debug break
 
 #ifdef __SANITIZE_THREAD__
-#define TRIVIAL_THREAD_SANITIZER_ENABLED 1
+#define TRIVIAL_THREAD_SANITISER_ENABLED 1
 
 #elifdef __has_feature
 #if __has_feature(thread_sanitizer)
-#define TRIVIAL_THREAD_SANITIZER_ENABLED 1
+#define TRIVIAL_THREAD_SANITISER_ENABLED 1
 #endif // __has_feature(thread_sanitizer)
 
 #endif // defined(__has_feature)
 
-#ifndef TRIVIAL_THREAD_SANITIZER_ENABLED
-#define TRIVIAL_THREAD_SANITIZER_ENABLED 0
+#ifndef TRIVIAL_THREAD_SANITISER_ENABLED
+#define TRIVIAL_THREAD_SANITISER_ENABLED 0
 
-#endif // TRIVIAL_THREAD_SANITIZER_ENABLED
+#endif // TRIVIAL_THREAD_SANITISER_ENABLED
 
 #endif // TRIVIAL_CORE_COMPILER_H

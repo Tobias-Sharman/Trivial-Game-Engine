@@ -103,19 +103,19 @@ VkPipelineDynamicStateCreateInfo makeDynamicState(std::span<const VkDynamicState
 	};
 }
 
-VkPipelineRenderingCreateInfo makeRenderingCreateInfo(const VkFormat& colorFormat) noexcept {
+VkPipelineRenderingCreateInfo makeRenderingCreateInfo(const VkFormat& colourFormat) noexcept {
 	return {
 	    .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
 	    .pNext = nullptr,
 	    .viewMask = 0,
 	    .colorAttachmentCount = 1,
-	    .pColorAttachmentFormats = &colorFormat,
+	    .pColorAttachmentFormats = &colourFormat,
 	    .depthAttachmentFormat = VK_FORMAT_UNDEFINED,
 	    .stencilAttachmentFormat = VK_FORMAT_UNDEFINED,
 	};
 }
 
-VkPipelineColorBlendAttachmentState makeColorBlendAttachment() noexcept {
+VkPipelineColorBlendAttachmentState makeColourBlendAttachment() noexcept {
 	return {
 	    .blendEnable = VK_FALSE,
 	    .srcColorBlendFactor = VK_BLEND_FACTOR_ONE,
@@ -129,7 +129,7 @@ VkPipelineColorBlendAttachmentState makeColorBlendAttachment() noexcept {
 	};
 }
 
-VkPipelineColorBlendStateCreateInfo makeColorBlendState(
+VkPipelineColorBlendStateCreateInfo makeColourBlendState(
     const VkPipelineColorBlendAttachmentState& attachment) noexcept {
 	return {
 	    .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
@@ -143,7 +143,7 @@ VkPipelineColorBlendStateCreateInfo makeColorBlendState(
 	};
 }
 
-VkPipelineRasterizationStateCreateInfo makeRasterizationState() noexcept {
+VkPipelineRasterizationStateCreateInfo makeRasterisationState() noexcept {
 	return {
 	    .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
 	    .pNext = nullptr,
@@ -262,7 +262,7 @@ void destroyPipelineLayout(VkDevice device, VkPipelineLayout layout) noexcept {
 
 VkPipeline createGraphicsPipeline(VkDevice device,
                                   VkPipelineLayout layout,
-                                  VkFormat colorFormat,
+                                  VkFormat colourFormat,
                                   VkShaderModule vertexModule,
                                   VkShaderModule fragmentModule) noexcept {
 	TRIVIAL_ASSERT(device != VK_NULL_HANDLE);
@@ -292,12 +292,12 @@ VkPipeline createGraphicsPipeline(VkDevice device,
 	const std::array<VkDynamicState, 2> kDynamicStates = makeDynamicStates();
 	const VkPipelineDynamicStateCreateInfo kDynamicState = makeDynamicState(kDynamicStates);
 
-	const VkPipelineRenderingCreateInfo kRenderingCreateInfo = makeRenderingCreateInfo(colorFormat);
+	const VkPipelineRenderingCreateInfo kRenderingCreateInfo = makeRenderingCreateInfo(colourFormat);
 
-	const VkPipelineColorBlendAttachmentState kColorBlendAttachment = makeColorBlendAttachment();
-	const VkPipelineColorBlendStateCreateInfo kColorBlendState = makeColorBlendState(kColorBlendAttachment);
+	const VkPipelineColorBlendAttachmentState kColourBlendAttachment = makeColourBlendAttachment();
+	const VkPipelineColorBlendStateCreateInfo kColourBlendState = makeColourBlendState(kColourBlendAttachment);
 
-	const VkPipelineRasterizationStateCreateInfo kRasterizationState = makeRasterizationState();
+	const VkPipelineRasterizationStateCreateInfo kRasterisationState = makeRasterisationState();
 	const VkPipelineMultisampleStateCreateInfo kMultisampleState = makeMultisampleState();
 
 	const VkGraphicsPipelineCreateInfo kPipelineCreateInfo = {
@@ -310,10 +310,10 @@ VkPipeline createGraphicsPipeline(VkDevice device,
 	    .pInputAssemblyState = &kInputAssemblyState,
 	    .pTessellationState = nullptr,
 	    .pViewportState = &kViewportState,
-	    .pRasterizationState = &kRasterizationState,
+	    .pRasterizationState = &kRasterisationState,
 	    .pMultisampleState = &kMultisampleState,
 	    .pDepthStencilState = nullptr,
-	    .pColorBlendState = &kColorBlendState,
+	    .pColorBlendState = &kColourBlendState,
 	    .pDynamicState = &kDynamicState,
 	    .layout = layout,
 	    .renderPass = VK_NULL_HANDLE,

@@ -419,9 +419,9 @@ void Backend::beginRendering() noexcept {
 	                      VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
 	                      VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT);
 
-	constexpr VkClearValue kClearColor = {.color = {.float32 = {0.0F, 0.0F, 0.0F, 1.0F}}};
+	constexpr VkClearValue kClearColour = {.color = {.float32 = {0.0F, 0.0F, 0.0F, 1.0F}}};
 
-	const VkRenderingAttachmentInfo kColorAttachment = {
+	const VkRenderingAttachmentInfo kColourAttachment = {
 	    .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
 	    .pNext = nullptr,
 	    .imageView = m_swapchainState.imageViews[m_currentImageIndex],
@@ -431,7 +431,7 @@ void Backend::beginRendering() noexcept {
 	    .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
 	    .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
 	    .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-	    .clearValue = kClearColor,
+	    .clearValue = kClearColour,
 	};
 
 	const VkRenderingInfo kRenderingInfo = {
@@ -442,7 +442,7 @@ void Backend::beginRendering() noexcept {
 	    .layerCount = 1,
 	    .viewMask = 0,
 	    .colorAttachmentCount = 1,
-	    .pColorAttachments = &kColorAttachment,
+	    .pColorAttachments = &kColourAttachment,
 	    .pDepthAttachment = nullptr,
 	    .pStencilAttachment = nullptr,
 	};

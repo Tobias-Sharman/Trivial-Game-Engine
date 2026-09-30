@@ -17,7 +17,7 @@ namespace trivial::platform::glfw {
 
 namespace {
 
-void initializeGlfw() noexcept {
+void initialiseGlfw() noexcept {
 	TRIVIAL_VERIFY(glfwInit() == GLFW_TRUE);
 }
 
@@ -28,7 +28,7 @@ Window::Window(const WindowConfig& config) noexcept {
 	TRIVIAL_ASSERT(config.size.height > 0);
 	TRIVIAL_ASSERT(!config.title.empty());
 
-	initializeGlfw();
+	initialiseGlfw();
 
 	// NOTE: Good for vulkan need to look to adjust when adding more apis
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);

@@ -5,7 +5,7 @@ Copyright 2026 Tobias Sharman
 <https://github.com/Tobias-Sharman/Trivial-Game-Engine>
 
 This product is licensed under the [Apache License, Version 2.0](LICENSE).
-This NOTICE file must be reproduced, per section 4(d) of that license, in any
+This NOTICE file must be reproduced, per section 4(d) of that licence, in any
 redistribution of this software or works derived from it — in source form,
 binary/object form, or (where such notices are otherwise displayed) within
 documentation or an in-application credits screen.
@@ -22,7 +22,7 @@ distribute.
 
 - **Repository:** <https://github.com/glfw/glfw>
 - **Version:** 3.5.1
-- **License:** zlib/libpng license
+- **Licence:** zlib/libpng license
 
 ```text
 Copyright (c) 2002-2006 Marcus Geelnard
@@ -165,15 +165,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Of the below projects they are not copied or linked into Trivial Engine, but
 due to the influence had on the development of components of the engine it is
-found appropriate to give acknowledgment even if not required by licenses.
+found appropriate to give acknowledgement even if not required by licences.
 
 ### parking_lot (Rust)
 
 - **Repository:** <https://github.com/Amanieu/parking_lot>
 - **Author:** Amanieu d'Antras
-- **License:** dual MIT / Apache-2.0
+- **Licence:** dual MIT / Apache-2.0
 
-Trivial Engine's synchronization primitives (SpinLock, Mutex,
+Trivial Engine's synchronisation primitives (SpinLock, Mutex,
 ConditionVariable, and the underlying ParkingLot implementation) were designed
 with reference to parking_lot's architecture. The approach taken by the engine
 is more narrow in application to fit more readily the engines needs without

@@ -54,9 +54,9 @@ VkSurfaceFormatKHR selectSurfaceFormat(std::span<const VkSurfaceFormatKHR> avail
 
 	for (const VkSurfaceFormatKHR& availableFormat : availableFormats) {
 		const bool kIsPreferredFormat = availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB;
-		const bool kIsPreferredColorSpace = availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+		const bool kIsPreferredColourSpace = availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 
-		if (kIsPreferredFormat && kIsPreferredColorSpace) {
+		if (kIsPreferredFormat && kIsPreferredColourSpace) {
 			return availableFormat;
 		}
 	}

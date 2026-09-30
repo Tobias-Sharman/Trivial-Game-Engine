@@ -24,7 +24,7 @@ void destroyPipelineLayout(VkDevice device, VkPipelineLayout layout) noexcept;
 
 VkPipeline createGraphicsPipeline(VkDevice device,
                                   VkPipelineLayout layout,
-                                  VkFormat colorFormat,
+                                  VkFormat colourFormat,
                                   VkShaderModule vertexModule,
                                   VkShaderModule fragmentModule) noexcept;
 void destroyGraphicsPipeline(VkDevice device, VkPipeline pipeline) noexcept;

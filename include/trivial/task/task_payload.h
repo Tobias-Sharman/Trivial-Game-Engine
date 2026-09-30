@@ -35,7 +35,7 @@ template <typename Callable>
 using TaskResult = std::invoke_result_t<std::decay_t<Callable>&>;
 
 // Invoking a moved-from TaskPayload, or one constructed from a null function
-// pointer or an empty callable wrapper, results in undefined behavior
+// pointer or an empty callable wrapper, results in undefined behaviour
 class TaskPayload { // NOLINT(cppcoreguidelines-pro-type-member-init)
 public:
 	template <typename Callable>
