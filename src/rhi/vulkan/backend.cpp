@@ -117,7 +117,7 @@ Backend::Backend(const ApplicationInfo& applicationInfo, const platform::Window&
 	    .oldSwapchain = VK_NULL_HANDLE,
 	});
 
-	const auto kImageCount = static_cast<std::uint32_t>(m_swapchainState.images.size());
+	const std::uint32_t kImageCount = static_cast<std::uint32_t>(m_swapchainState.images.size());
 
 	m_syncState = createFrameSyncState(m_device, kImageCount);
 	m_commandState = createCommandState(m_device, m_graphicsFamily, kImageCount);
@@ -191,7 +191,7 @@ bool Backend::beginFrame(std::uint64_t frameIndex) noexcept {
 		return false;
 	}
 
-	const auto kImageCount = static_cast<std::uint32_t>(m_swapchainState.images.size());
+	const std::uint32_t kImageCount = static_cast<std::uint32_t>(m_swapchainState.images.size());
 	m_currentImageSlot = static_cast<std::uint32_t>(frameIndex % kImageCount);
 
 	// NOLINTNEXTLINE(misc-const-correctness, misc-misplaced-const)

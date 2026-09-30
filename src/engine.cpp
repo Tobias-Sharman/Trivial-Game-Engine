@@ -27,7 +27,7 @@ Engine::Engine(const EngineConfig& config) noexcept
     , m_renderer(&m_gpu) {
 	memory::initCapabilities();
 
-	auto* mainThread = new (std::nothrow) thread::Thread(); // TODO: Custom allocator
+	thread::Thread* mainThread = new (std::nothrow) thread::Thread(); // TODO: Custom allocator
 	if (mainThread == nullptr) {
 		TRIVIAL_LOG_FATAL_PREFIX("Engine", "Failed to allocate main thread adoption record");
 		std::abort();
@@ -39,14 +39,14 @@ Engine::Engine(const EngineConfig& config) noexcept
 
 	const std::size_t kCapacity = 1 + taskConfig.workers.count + taskConfig.workers.maxStandbyWorkers;
 
-	auto* parkingLot = new (std::nothrow) sync::ParkingLot(kCapacity); // TODO: Custom allocator
+	sync::ParkingLot* parkingLot = new (std::nothrow) sync::ParkingLot(kCapacity); // TODO: Custom allocator
 	if (parkingLot == nullptr) {
 		TRIVIAL_LOG_FATAL_PREFIX("Engine", "Failed to allocate ParkingLot");
 		std::abort();
 	}
 	sync::setActiveParkingLot(parkingLot);
 
-	auto* taskSystem = new (std::nothrow) task::TaskSystem(taskConfig); // TODO: Custom allocator
+	task::TaskSystem* taskSystem = new (std::nothrow) task::TaskSystem(taskConfig); // TODO: Custom allocator
 	if (taskSystem == nullptr) {
 		TRIVIAL_LOG_FATAL_PREFIX("Engine", "Failed to allocate TaskSystem");
 		std::abort();

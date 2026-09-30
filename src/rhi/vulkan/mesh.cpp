@@ -66,7 +66,7 @@ MeshData createMeshData(VmaAllocator allocator,
 	// NOTE: need changing to handle large assets later without hard crash -> full handling with
 	// VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT
 
-	auto* destination = static_cast<std::uint8_t*>(allocationInfo.pMappedData);
+	std::uint8_t* destination = static_cast<std::uint8_t*>(allocationInfo.pMappedData);
 	std::memcpy(destination, vertices.data(), static_cast<std::size_t>(kVertexBytes));
 	//NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic) -> cba to to do subspan to avoid this
 	std::memcpy(destination + kVertexBytes, indices.data(), static_cast<std::size_t>(kIndexBytes));

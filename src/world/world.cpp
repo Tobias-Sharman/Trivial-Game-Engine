@@ -59,8 +59,8 @@ void World::destroy(Entity entity) {
 	m_positions2D.remove(entity);
 	m_velocities2D.remove(entity);
 
-	for (auto& [_, store] : m_componentStores) { // NOLINT(readability-identifier-naming)
-		store->remove(entity);
+	for (ComponentStoreMap::value_type& entry : m_componentStores) {
+		entry.second->remove(entity);
 	}
 
 	slot.alive = false;

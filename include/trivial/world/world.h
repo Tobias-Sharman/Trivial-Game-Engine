@@ -116,6 +116,8 @@ public:
 	}
 
 private:
+	using ComponentStoreMap = std::unordered_map<std::type_index, std::unique_ptr<IComponentStore>>;
+
 	struct EntitySlot {
 		Entity::ValType generation = 0;
 		bool alive = false; // TODO: Drop on redesign of entity storage style, should be able to encode in storage
@@ -148,7 +150,7 @@ private:
 
 	template <typename T>
 	[[nodiscard]] ComponentStore<T>* findDynamicStore() {
-		const auto kIt = m_componentStores.find(std::type_index(typeid(T)));
+		const ComponentStoreMap::iterator kIt = m_componentStores.find(std::type_index(typeid(T)));
 
 		if (kIt == m_componentStores.end()) {
 			return nullptr;
@@ -156,7 +158,7 @@ private:
 
 		IComponentStore* erasedStore = kIt->second.get();
 
-		auto* typedStore = static_cast<ErasedComponentStore<T>*>(erasedStore);
+		ErasedComponentStore<T>* typedStore = static_cast<ErasedComponentStore<T>*>(erasedStore);
 		ComponentStore<T>& componentStore = typedStore->store;
 
 		return &componentStore;
@@ -164,7 +166,7 @@ private:
 
 	template <typename T>
 	[[nodiscard]] const ComponentStore<T>* findDynamicStore() const {
-		const auto kIt = m_componentStores.find(std::type_index(typeid(T)));
+		const ComponentStoreMap::const_iterator kIt = m_componentStores.find(std::type_index(typeid(T)));
 
 		if (kIt == m_componentStores.end()) {
 			return nullptr;
@@ -172,7 +174,7 @@ private:
 
 		const IComponentStore* erasedStore = kIt->second.get();
 
-		const auto* typedStore = static_cast<const ErasedComponentStore<T>*>(erasedStore);
+		const ErasedComponentStore<T>* typedStore = static_cast<const ErasedComponentStore<T>*>(erasedStore);
 		const ComponentStore<T>& componentStore = typedStore->store;
 
 		return &componentStore;
@@ -186,7 +188,7 @@ private:
 			return *existingStore;
 		}
 
-		auto erasedStore = std::make_unique<ErasedComponentStore<T>>();
+		std::unique_ptr<ErasedComponentStore<T>> erasedStore = std::make_unique<ErasedComponentStore<T>>();
 		ComponentStore<T>& newStore = erasedStore->store;
 
 		m_componentStores.emplace(std::type_index(typeid(T)), std::move(erasedStore));
@@ -205,7 +207,7 @@ private:
 
 	// TODO: Custom type id would make this faster as could put into a vector
 	//       Would need to consider how this affects serialisation so leave until then
-	std::unordered_map<std::type_index, std::unique_ptr<IComponentStore>> m_componentStores;
+	ComponentStoreMap m_componentStores;
 };
 
 } // namespace trivial::world

@@ -308,7 +308,7 @@ TaskReleaseResult TaskSystem::release(TaskHandle task) noexcept {
 }
 
 void TaskSystem::runMainThreadReadyTasks() noexcept {
-	constexpr auto kMainThreadIndex = static_cast<std::size_t>(TaskAffinity::MainThread);
+	constexpr std::size_t kMainThreadIndex = static_cast<std::size_t>(TaskAffinity::MainThread);
 
 	TaskHandle handle{};
 
@@ -394,7 +394,7 @@ bool TaskSystem::parkWorker(std::size_t workerIndex) noexcept {
 		m_parkedWorkerIndices.push_back(workerIndex);
 	}
 
-	constexpr auto kAnyWorkerIndex = static_cast<std::size_t>(TaskAffinity::AnyWorker);
+	constexpr std::size_t kAnyWorkerIndex = static_cast<std::size_t>(TaskAffinity::AnyWorker);
 
 	if (!m_affinityQueues[kAnyWorkerIndex].empty() && m_activeSlots.tryAcquire()) {
 		if (!tryRemoveParkedIndex(workerIndex)) {
@@ -459,7 +459,7 @@ bool TaskSystem::tryRemoveParkedIndex(std::size_t workerIndex) noexcept {
 bool TaskSystem::tryClaimSharedTask(std::size_t workerIndex, TaskHandle& handle) noexcept {
 	Worker& worker = m_workers[workerIndex];
 
-	constexpr auto kAnyWorkerIndex = static_cast<std::size_t>(TaskAffinity::AnyWorker);
+	constexpr std::size_t kAnyWorkerIndex = static_cast<std::size_t>(TaskAffinity::AnyWorker);
 
 	const std::size_t kGranted = m_affinityQueues[kAnyWorkerIndex].tryPopWeightedBatchInto(worker.localQueue);
 	if (kGranted > 0 && worker.localQueue.tryPop(handle)) {
@@ -514,7 +514,7 @@ void TaskSystem::completeTask(TaskHandle handle) noexcept {
 }
 
 bool TaskSystem::tryPopAndRunOneAnyWorkerTask() noexcept {
-	constexpr auto kAnyWorkerIndex = static_cast<std::size_t>(TaskAffinity::AnyWorker);
+	constexpr std::size_t kAnyWorkerIndex = static_cast<std::size_t>(TaskAffinity::AnyWorker);
 
 	TaskHandle handle{};
 

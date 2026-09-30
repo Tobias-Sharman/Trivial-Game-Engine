@@ -91,43 +91,34 @@ static_assert(sizeof(Task<int>) == sizeof(TaskHandle));
 }
 
 template <typename Callable>
-[[nodiscard]] auto launch(Callable&& callable, const TaskLaunchOptions& options = {}) noexcept {
-	using StoredCallable = std::decay_t<Callable>;
-	using Result = std::invoke_result_t<StoredCallable&>;
-
-	static_assert(!std::is_reference_v<Result>, "Task reference results are not currently supported");
+[[nodiscard]] Task<TaskResult<Callable>> launch(Callable&& callable, const TaskLaunchOptions& options = {}) noexcept {
+	static_assert(!std::is_reference_v<TaskResult<Callable>>, "Task reference results are not currently supported");
 
 	const TaskHandle kHandle = launch(TaskPayload{std::forward<Callable>(callable)}, options);
 
-	return Task<Result>{kHandle};
+	return Task<TaskResult<Callable>>{kHandle};
 }
 
 template <typename Callable>
-[[nodiscard]] auto launch(Callable&& callable,
-                          TaskHandle prerequisite,
-                          const TaskLaunchOptions& options = {}) noexcept {
-	using StoredCallable = std::decay_t<Callable>;
-	using Result = std::invoke_result_t<StoredCallable&>;
-
-	static_assert(!std::is_reference_v<Result>, "Task reference results are not currently supported");
+[[nodiscard]] Task<TaskResult<Callable>> launch(Callable&& callable,
+                                                TaskHandle prerequisite,
+                                                const TaskLaunchOptions& options = {}) noexcept {
+	static_assert(!std::is_reference_v<TaskResult<Callable>>, "Task reference results are not currently supported");
 
 	const TaskHandle kHandle = launch(TaskPayload{std::forward<Callable>(callable)}, prerequisite, options);
 
-	return Task<Result>{kHandle};
+	return Task<TaskResult<Callable>>{kHandle};
 }
 
 template <typename Callable>
-[[nodiscard]] auto launch(Callable&& callable,
-                          std::span<const TaskHandle> prerequisites,
-                          const TaskLaunchOptions& options = {}) noexcept {
-	using StoredCallable = std::decay_t<Callable>;
-	using Result = std::invoke_result_t<StoredCallable&>;
-
-	static_assert(!std::is_reference_v<Result>, "Task reference results are not currently supported");
+[[nodiscard]] Task<TaskResult<Callable>> launch(Callable&& callable,
+                                                std::span<const TaskHandle> prerequisites,
+                                                const TaskLaunchOptions& options = {}) noexcept {
+	static_assert(!std::is_reference_v<TaskResult<Callable>>, "Task reference results are not currently supported");
 
 	const TaskHandle kHandle = launch(TaskPayload{std::forward<Callable>(callable)}, prerequisites, options);
 
-	return Task<Result>{kHandle};
+	return Task<TaskResult<Callable>>{kHandle};
 }
 
 inline void wait(TaskHandle task) noexcept {

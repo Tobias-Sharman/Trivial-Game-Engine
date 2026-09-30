@@ -31,6 +31,9 @@ concept InlineStorable = sizeof(Callable) <= TRIVIAL_TASK_PAYLOAD_INLINE_STORAGE
 
 } // namespace detail
 
+template <typename Callable>
+using TaskResult = std::invoke_result_t<std::decay_t<Callable>&>;
+
 // Invoking a moved-from TaskPayload, or one constructed from a null function
 // pointer or an empty callable wrapper, results in undefined behavior
 class TaskPayload { // NOLINT(cppcoreguidelines-pro-type-member-init)
@@ -38,8 +41,7 @@ public:
 	template <typename Callable>
 	    requires(!std::is_same_v<std::remove_cvref_t<Callable>, TaskPayload>
 	             && std::is_nothrow_constructible_v<std::decay_t<Callable>, Callable&&>
-	             && std::is_nothrow_invocable_v<std::decay_t<Callable>&>
-	             && !std::is_reference_v<std::invoke_result_t<std::decay_t<Callable>&>>
+	             && std::is_nothrow_invocable_v<std::decay_t<Callable>&> && !std::is_reference_v<TaskResult<Callable>>
 	             && std::is_nothrow_destructible_v<std::decay_t<Callable>>)
 	explicit TaskPayload(Callable&& callable) noexcept { // NOLINT(cppcoreguidelines-pro-type-member-init)
 		using StoredCallable = std::decay_t<Callable>;

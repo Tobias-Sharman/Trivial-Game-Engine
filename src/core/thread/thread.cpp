@@ -353,7 +353,7 @@ void Thread::join() noexcept {
 	m_stackAllocator = nullptr;
 	m_stackAllocation = ThreadStackAllocation{};
 #elif TRIVIAL_PLATFORM_WINDOWS
-	const auto kHandle = std::bit_cast<HANDLE>(m_nativeHandleStorage);
+	const HANDLE kHandle = std::bit_cast<HANDLE>(m_nativeHandleStorage);
 
 	WaitForSingleObject(kHandle, INFINITE);
 	CloseHandle(kHandle);

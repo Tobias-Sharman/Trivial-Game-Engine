@@ -805,18 +805,18 @@ void SegmentAllocator::releaseCommitBudget(std::size_t bytes) const noexcept {
 	}
 
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-	const auto kAddress = reinterpret_cast<std::uintptr_t>(ptr);
+	const std::uintptr_t kAddress = reinterpret_cast<std::uintptr_t>(ptr);
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-	const auto kBase = reinterpret_cast<std::uintptr_t>(m_base);
+	const std::uintptr_t kBase = reinterpret_cast<std::uintptr_t>(m_base);
 
 	return kAddress >= kBase && kAddress < kBase + (m_segmentCapacity << TRIVIAL_MEMORY_SEGMENT_SHIFT);
 }
 
 [[nodiscard]] std::size_t SegmentAllocator::segmentIndex(const void* ptr) const noexcept {
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-	const auto kAddress = reinterpret_cast<std::uintptr_t>(ptr);
+	const std::uintptr_t kAddress = reinterpret_cast<std::uintptr_t>(ptr);
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-	const auto kBase = reinterpret_cast<std::uintptr_t>(m_base);
+	const std::uintptr_t kBase = reinterpret_cast<std::uintptr_t>(m_base);
 
 	return static_cast<std::size_t>(kAddress - kBase) >> TRIVIAL_MEMORY_SEGMENT_SHIFT;
 }

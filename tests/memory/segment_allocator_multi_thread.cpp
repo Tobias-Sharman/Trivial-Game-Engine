@@ -79,7 +79,7 @@ TEST_F(SegmentAllocatorMultiThreadTest, AllocFreeNeverHandsOutSameSegment) {
 	std::atomic<std::size_t> exhaustions{0};
 
 	runOnAllTasks([&](std::size_t taskIndex) {
-		const auto kPattern = static_cast<unsigned char>(0x40 + taskIndex);
+		const unsigned char kPattern = static_cast<unsigned char>(0x40 + taskIndex);
 
 		for (std::size_t iteration = 0; iteration < g_kConcurrentIterations; ++iteration) {
 			void* segment = m_allocator.allocSegments(1, SegmentKind::Small);
@@ -131,7 +131,7 @@ TEST_F(SegmentAllocatorMultiThreadTest, MultiSegmentRunsStayContiguous) {
 	std::atomic<std::size_t> mismatches{0};
 
 	runOnAllTasks([&](std::size_t taskIndex) {
-		const auto kPattern = static_cast<unsigned char>(0x80 + taskIndex);
+		const unsigned char kPattern = static_cast<unsigned char>(0x80 + taskIndex);
 		const std::size_t kCount = 1 + (taskIndex % 3);
 
 		for (std::size_t iteration = 0; iteration < g_kConcurrentIterations / 4; ++iteration) {
