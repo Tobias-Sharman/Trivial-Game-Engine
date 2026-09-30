@@ -8,28 +8,18 @@
 
 #include <trivial/core/assert.h>
 
+#include "core/memory/memory_capabilities.h"
 #include "core/memory/virtual_memory.h"
 
 namespace trivial::thread {
-
-ThreadStackAllocator::ThreadStackAllocator() noexcept {
-	const memory::SystemInfo kSystemInfo = memory::probeSystemInfo();
-	m_pageSize = kSystemInfo.pageSize;
-	m_allocationGranularity = kSystemInfo.allocationGranularity;
-}
-
-ThreadStackAllocator::~ThreadStackAllocator() noexcept {
-	TRIVIAL_ASSERT(m_committedBytes == 0);
-}
 
 [[nodiscard]] bool ThreadStackAllocator::allocate(std::size_t stackSize,
                                                   ThreadStackAllocation& outAllocation,
                                                   int& outOsErrorCode) noexcept {
 	TRIVIAL_ASSERT(stackSize > 0);
 
-	const memory::SystemInfo kSystemInfo{.pageSize = m_pageSize, .allocationGranularity = m_allocationGranularity};
-	const std::size_t kPageSize = m_pageSize;
-	const std::size_t kAlignment = m_allocationGranularity;
+	const std::size_t kPageSize = memory::pageSize();
+	const std::size_t kAlignment = memory::allocationGranularity();
 
 	const std::size_t kGuardBytes = kPageSize;
 	const std::size_t kRequestedStackBytes = (stackSize + kPageSize - 1) & ~(kPageSize - 1);
@@ -39,7 +29,7 @@ ThreadStackAllocator::~ThreadStackAllocator() noexcept {
 
 	const std::size_t kStackBytes = totalBytes - kGuardBytes;
 
-	void* const kBase = memory::reserveAligned(totalBytes, kAlignment, kSystemInfo, outOsErrorCode);
+	void* const kBase = memory::reserveAligned(totalBytes, kAlignment, outOsErrorCode);
 
 	if (kBase == nullptr) {
 		return false;

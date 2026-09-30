@@ -31,7 +31,7 @@ neglected prior to a proper version 1.0.0.
 ## Current plan of action
 
 - Windows and linux basic testing
-- Remove unnecessary static const/constexpr for better forms, reduce auto usage,
+- Reduce auto usage, move from pointer to references as preference in fn args,
 and compiler attributes where appropriate
 - Custom Chrono with suitable types
 - Documentation update and create new documentation

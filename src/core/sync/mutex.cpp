@@ -1,3 +1,4 @@
+#define TRIVIAL_SYNC_MUTEX_IMPLEMENTATION
 #include <trivial/core/sync/mutex.h>
 
 #include <atomic>
@@ -24,9 +25,9 @@ void Mutex::lockSlow() noexcept {
 	std::uint8_t state = m_state.load(std::memory_order_relaxed);
 
 	for (;;) {
-		if ((state & s_kLockedBit) == 0) {
+		if ((state & TRIVIAL_SYNC_MUTEX_LOCKED_BIT) == 0) {
 			if (m_state.compare_exchange_weak(state,
-			                                  static_cast<std::uint8_t>(state | s_kLockedBit),
+			                                  static_cast<std::uint8_t>(state | TRIVIAL_SYNC_MUTEX_LOCKED_BIT),
 			                                  std::memory_order_acquire,
 			                                  std::memory_order_relaxed)) {
 				return;
@@ -35,22 +36,23 @@ void Mutex::lockSlow() noexcept {
 			continue;
 		}
 
-		if ((state & s_kParkedBit) == 0 && spinCount < TRIVIAL_SYNC_MAX_SPIN_COUNT) {
+		if ((state & TRIVIAL_SYNC_MUTEX_PARKED_BIT) == 0 && spinCount < TRIVIAL_SYNC_MAX_SPIN_COUNT) {
 			spinWaitForever(spinCount);
 			state = m_state.load(std::memory_order_relaxed);
 			continue;
 		}
 
-		if (((state & s_kParkedBit) == 0)
+		if (((state & TRIVIAL_SYNC_MUTEX_PARKED_BIT) == 0)
 		    && (!m_state.compare_exchange_weak(state,
-		                                       static_cast<std::uint8_t>(state | s_kParkedBit),
+		                                       static_cast<std::uint8_t>(state | TRIVIAL_SYNC_MUTEX_PARKED_BIT),
 		                                       std::memory_order_relaxed,
 		                                       std::memory_order_relaxed))) {
 			continue;
 		}
 
 		(void)activeParkingLot().park(keyFor(this), [this] {
-			return m_state.load(std::memory_order_relaxed) == (s_kLockedBit | s_kParkedBit);
+			return m_state.load(std::memory_order_relaxed)
+			       == (TRIVIAL_SYNC_MUTEX_LOCKED_BIT | TRIVIAL_SYNC_MUTEX_PARKED_BIT);
 		});
 
 		spinCount = 0;
@@ -61,7 +63,7 @@ void Mutex::lockSlow() noexcept {
 void Mutex::unlockSlow() noexcept {
 	activeParkingLot().unparkOne(keyFor(this), [this](ParkingLot::UnparkOneResult result) {
 		if (result.hasMoreWaiters) {
-			m_state.store(s_kParkedBit, std::memory_order_release);
+			m_state.store(TRIVIAL_SYNC_MUTEX_PARKED_BIT, std::memory_order_release);
 		} else {
 			m_state.store(0, std::memory_order_release);
 		}

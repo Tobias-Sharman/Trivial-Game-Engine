@@ -4,16 +4,13 @@
 #include <algorithm>
 #include <chrono>
 
+#include <trivial/time/time_config.h>
+
 class EngineTime {
 	using Clock = std::chrono::steady_clock;
 
-	constexpr static double s_kBaseMaxDeltaSeconds = 0.25;
-
 public:
-	explicit EngineTime(double maximumDeltaSeconds = s_kBaseMaxDeltaSeconds)
-	    : m_maximumDeltaSeconds(maximumDeltaSeconds) {
-		reset();
-	}
+	EngineTime() { reset(); }
 
 	void reset() {
 		m_start = Clock::now();
@@ -30,16 +27,12 @@ public:
 
 		m_previous = kNow;
 
-		m_deltaSeconds = std::clamp(m_rawDeltaSeconds, 0.0, m_maximumDeltaSeconds);
+		m_deltaSeconds = std::clamp(m_rawDeltaSeconds, 0.0, TRIVIAL_TIME_MAX_DELTA_SECONDS);
 	}
 
 	[[nodiscard]] double deltaSeconds() const noexcept { return m_deltaSeconds; }
 
 	[[nodiscard]] double rawDeltaSeconds() const noexcept { return m_rawDeltaSeconds; }
-
-	[[nodiscard]] double maximumDeltaSeconds() const noexcept { return m_maximumDeltaSeconds; }
-
-	void setMaximumDeltaSeconds(double value) noexcept { m_maximumDeltaSeconds = std::max(value, 0.0); }
 
 private:
 	Clock::time_point m_start;
@@ -49,8 +42,6 @@ private:
 	double m_deltaSeconds = 0.0;
 
 	// NOTE: Maybe add a frame counter and elapsed seconds when making a proper debug overlay
-
-	double m_maximumDeltaSeconds = s_kBaseMaxDeltaSeconds;
 };
 
 #endif // TRIVIAL_TIME_ENGINE_TIME_H

@@ -41,6 +41,14 @@
 
 #endif // Force inline macro
 
+#ifdef _MSC_VER
+#define TRIVIAL_NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
+
+#else
+#define TRIVIAL_NO_UNIQUE_ADDRESS [[no_unique_address]]
+
+#endif // No unique address
+
 #if TRIVIAL_COMPILER_MSVC || TRIVIAL_COMPILER_CLANG_CL
 #define TRIVIAL_DEBUG_BREAK() __debugbreak()
 

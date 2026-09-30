@@ -26,7 +26,7 @@ VmaAllocator createAllocator(VkInstance instance, VkPhysicalDevice physicalDevic
 	TRIVIAL_ASSERT(physicalDevice != VK_NULL_HANDLE);
 	TRIVIAL_ASSERT(device != VK_NULL_HANDLE);
 
-	static constexpr VmaVulkanFunctions s_kVulkanFunctions = makeVulkanFunctions();
+	constexpr VmaVulkanFunctions kVulkanFunctions = makeVulkanFunctions();
 
 	const VmaAllocatorCreateInfo kAllocatorCreateInfo = {
 	    .flags = 0,
@@ -36,7 +36,7 @@ VmaAllocator createAllocator(VkInstance instance, VkPhysicalDevice physicalDevic
 	    .pAllocationCallbacks = nullptr,
 	    .pDeviceMemoryCallbacks = nullptr,
 	    .pHeapSizeLimit = nullptr,
-	    .pVulkanFunctions = &s_kVulkanFunctions,
+	    .pVulkanFunctions = &kVulkanFunctions,
 	    .instance = instance,
 	    .vulkanApiVersion = VK_API_VERSION_1_3,
 #if VMA_EXTERNAL_MEMORY

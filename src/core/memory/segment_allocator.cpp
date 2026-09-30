@@ -1,4 +1,4 @@
-#include <trivial/core/memory/segment_allocator.h>
+#include "core/memory/segment_allocator.h"
 
 #include <algorithm>
 #include <bit>
@@ -14,6 +14,7 @@
 #include <trivial/core/profile.h>
 #include <trivial/core/sync/lock_guard.h>
 
+#include "core/memory/memory_capabilities.h"
 #include "core/memory/virtual_memory.h"
 
 #if TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
@@ -36,14 +37,17 @@
 // TODO: Some of these functions would for sure benefit from the safety gained
 //       from using a named struct
 
+#define TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_INVALID_INDEX (std::numeric_limits<std::size_t>::max())
+
+#define TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BITS_PER_WORD                                                                 \
+	(static_cast<std::size_t>(std::numeric_limits<std::uint64_t>::digits))
+#define TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_WORD_SHIFT                                                                    \
+	(static_cast<std::size_t>(std::countr_zero(TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BITS_PER_WORD)))
+#define TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BIT_INDEX_MASK                                                                \
+	(TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BITS_PER_WORD - std::size_t{1})
+#define TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_FULL_WORD (~std::uint64_t{0})
+
 namespace {
-
-constexpr std::size_t g_kInvalidIndex = static_cast<std::size_t>(-1);
-
-constexpr std::size_t g_kBitsPerWord = std::numeric_limits<std::uint64_t>::digits;
-constexpr std::size_t g_kWordShift = std::countr_zero(g_kBitsPerWord);
-constexpr std::size_t g_kBitIndexMask = g_kBitsPerWord - 1;
-constexpr std::uint64_t g_kFullWord = ~std::uint64_t{0};
 
 void* mapMetadata(std::size_t bytes, std::size_t pageSize, std::size_t& outMappingBytes, int& outOsErrorCode) noexcept {
 	const std::size_t kPayload = (bytes + pageSize - 1) & ~(pageSize - 1);
@@ -118,34 +122,40 @@ void unmapMetadata(void* payloadBase, std::size_t mappingBytes, std::size_t page
 
 bool isBitSet(const std::uint64_t* bits, std::size_t index) noexcept {
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-	return (bits[index >> g_kWordShift] & (std::uint64_t{1} << (index & g_kBitIndexMask))) != 0;
+	return (bits[index >> TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_WORD_SHIFT]
+	        & (std::uint64_t{1} << (index & TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BIT_INDEX_MASK)))
+	       != 0;
 }
 
 void setBit(std::uint64_t* bits, std::size_t index) noexcept {
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-	bits[index >> g_kWordShift] |= std::uint64_t{1} << (index & g_kBitIndexMask);
+	bits[index >> TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_WORD_SHIFT]
+	    |= std::uint64_t{1} << (index & TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BIT_INDEX_MASK);
 }
 
 void clearBit(std::uint64_t* bits, std::size_t index) noexcept {
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-	bits[index >> g_kWordShift] &= ~(std::uint64_t{1} << (index & g_kBitIndexMask));
+	bits[index >> TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_WORD_SHIFT]
+	    &= ~(std::uint64_t{1} << (index & TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BIT_INDEX_MASK));
 }
 
-// Can for sure SIMD this, but only worth bothering once the rutime dispatch is
-// in place and there is a workload that requires enough RAM for this to become
-// a bottleneck
-
+// NOTE: Can for sure SIMD this, but only worth bothering once the rutime
+// dispatch is in place and there is a workload that requires enough RAM for
+// this to become a bottleneck
 std::size_t findCachedRun(const std::uint64_t* cached, std::size_t capacity, std::size_t count) noexcept {
 	if (count == 0 || count > capacity) {
-		return g_kInvalidIndex;
+		return TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_INVALID_INDEX;
 	}
 
 	std::size_t run = 0;
 
 	for (std::size_t index = 0; index < capacity; ++index) {
+		const bool kWordStart = (index & TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BIT_INDEX_MASK) == 0;
+		const std::size_t kWordIndex = index >> TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_WORD_SHIFT;
+
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-		if ((index & g_kBitIndexMask) == 0 && cached[index >> g_kWordShift] == 0) {
-			index += g_kBitIndexMask;
+		if (kWordStart && cached[kWordIndex] == 0) {
+			index += TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BIT_INDEX_MASK;
 			run = 0;
 			continue;
 		}
@@ -161,20 +171,23 @@ std::size_t findCachedRun(const std::uint64_t* cached, std::size_t capacity, std
 		}
 	}
 
-	return g_kInvalidIndex;
+	return TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_INVALID_INDEX;
 }
 
 std::size_t findFreeRun(const std::uint64_t* allocated, std::size_t capacity, std::size_t count) noexcept {
 	if (count == 0 || count > capacity) {
-		return g_kInvalidIndex;
+		return TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_INVALID_INDEX;
 	}
 
 	std::size_t run = 0;
 
 	for (std::size_t index = 0; index < capacity; ++index) {
+		const bool kWordStart = (index & TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BIT_INDEX_MASK) == 0;
+		const std::size_t kWordIndex = index >> TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_WORD_SHIFT;
+
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-		if ((index & g_kBitIndexMask) == 0 && allocated[index >> g_kWordShift] == g_kFullWord) {
-			index += g_kBitIndexMask;
+		if (kWordStart && allocated[kWordIndex] == TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_FULL_WORD) {
+			index += TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BIT_INDEX_MASK;
 			run = 0;
 			continue;
 		}
@@ -190,7 +203,7 @@ std::size_t findFreeRun(const std::uint64_t* allocated, std::size_t capacity, st
 		}
 	}
 
-	return g_kInvalidIndex;
+	return TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_INVALID_INDEX;
 }
 
 } // namespace
@@ -210,37 +223,16 @@ namespace trivial::memory {
 	{
 		const sync::LockGuard kLock(m_stateMutex);
 
-		const SystemInfo kSystemInfo = probeSystemInfo();
-		// NOTE: Could save this varible when page size is known but makes code
-		//       even worse to read and would need adjustment of
-		//       probeSystemInfo() based on debug mode
-		const std::size_t kPageSize = kSystemInfo.pageSize;
+		const std::size_t kPageSize = pageSize();
 
-#if TRIVIAL_PLATFORM_PAGE_SIZE_KNOWN
-		TRIVIAL_ASSERT(kPageSize == TRIVIAL_PLATFORM_PAGE_SIZE);
-		TRIVIAL_ASSERT(kSystemInfo.allocationGranularity == TRIVIAL_PLATFORM_ALLOCATION_GRANULARITY);
-#else
-		m_capabilities.pageSize = kPageSize;
-		m_capabilities.allocationGranularity = kSystemInfo.allocationGranularity;
-#endif // TRIVIAL_PLATFORM_PAGE_SIZE_KNOWN
-
-#if TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
-		m_capabilities.largePageSize = kSystemInfo.largePageSize;
-#endif // TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
-
-#if TRIVIAL_MEMORY_ENABLE_DECOMMIT && TRIVIAL_PLATFORM_POSIX
-		const bool kLazy = TRIVIAL_MEMORY_PREFER_LAZY_DECOMMIT && probeMadvFree(kPageSize);
-		m_capabilities.decommitMode = kLazy ? DecommitMode::Lazy : DecommitMode::Eager;
-#endif // TRIVIAL_MEMORY_ENABLE_DECOMMIT && TRIVIAL_PLATFORM_POSIX
-
-		const std::size_t kTotalBytes = (reserveBytes + g_kSegmentMask) & ~g_kSegmentMask;
+		const std::size_t kTotalBytes = (reserveBytes + TRIVIAL_MEMORY_SEGMENT_MASK) & ~TRIVIAL_MEMORY_SEGMENT_MASK;
 
 #if TRIVIAL_PLATFORM_WINDOWS
 		void* rawBase = nullptr;
 		std::size_t rawBytes = 0;
-		void* const kBase = reserveAligned(kTotalBytes, g_kSegmentSize, kSystemInfo, rawBase, rawBytes, oomErrorCode);
+		void* const kBase = reserveAligned(kTotalBytes, TRIVIAL_MEMORY_SEGMENT_SIZE, rawBase, rawBytes, oomErrorCode);
 #else
-		void* const kBase = reserveAligned(kTotalBytes, g_kSegmentSize, kSystemInfo, oomErrorCode);
+		void* const kBase = reserveAligned(kTotalBytes, TRIVIAL_MEMORY_SEGMENT_SIZE, oomErrorCode);
 #endif // TRIVIAL_PLATFORM_WINDOWS
 
 		if (kBase == nullptr) {
@@ -249,14 +241,15 @@ namespace trivial::memory {
 			oomContext = "SegmentAllocator::init reservation failed";
 		} else {
 			m_base = kBase;
-			m_segmentCapacity = kTotalBytes >> g_kSegmentShift;
+			m_segmentCapacity = kTotalBytes >> TRIVIAL_MEMORY_SEGMENT_SHIFT;
 
 #if TRIVIAL_PLATFORM_WINDOWS
 			m_reservation = rawBase;
 			m_reservationBytes = rawBytes;
 #endif // TRIVIAL_PLATFORM_WINDOWS
 
-			const std::size_t kBitmapWords = (m_segmentCapacity + g_kBitsPerWord - 1) >> g_kWordShift;
+			const std::size_t kBitmapWords = (m_segmentCapacity + TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BITS_PER_WORD - 1)
+			                                 >> TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_WORD_SHIFT;
 			const std::size_t kBitmapBytes = kBitmapWords * sizeof(std::uint64_t);
 #if TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
 			constexpr std::size_t kBitmapCount = 3; // Additionaly a pinned tracker
@@ -337,11 +330,10 @@ void SegmentAllocator::shutdown() noexcept {
 	m_reservation = nullptr;
 	m_reservationBytes = 0;
 #else
-	releaseReservation(m_base, m_segmentCapacity << g_kSegmentShift);
+	releaseReservation(m_base, m_segmentCapacity << TRIVIAL_MEMORY_SEGMENT_SHIFT);
 #endif // TRIVIAL_PLATFORM_WINDOWS
 
-	// NOLINTNEXTLINE(readability-static-accessed-through-instance) - TODO: Fix static and non static usage in allocator
-	unmapMetadata(m_metadata, m_metadataMappingBytes, m_capabilities.pageSize);
+	unmapMetadata(m_metadata, m_metadataMappingBytes, pageSize());
 
 	m_metadata = nullptr;
 	m_metadataMappingBytes = 0;
@@ -375,17 +367,17 @@ void SegmentAllocator::shutdown() noexcept {
 	{
 		const sync::LockGuard kLock(m_stateMutex);
 
-		std::size_t index = g_kInvalidIndex;
+		std::size_t index = TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_INVALID_INDEX;
 
 		if (m_cachedSegments >= count) {
 			index = findCachedRun(m_cachedBitmap, m_segmentCapacity, count);
 		}
 
-		if (index == g_kInvalidIndex) {
+		if (index == TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_INVALID_INDEX) {
 			index = findFreeRun(m_allocatedBitmap, m_segmentCapacity, count);
 		}
 
-		if (index == g_kInvalidIndex) {
+		if (index == TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_INVALID_INDEX) {
 			needsOomReport = true;
 		} else {
 			for (std::size_t offset = 0; offset < count; ++offset) {
@@ -411,12 +403,12 @@ void SegmentAllocator::shutdown() noexcept {
 			m_highWaterSegments = std::max(m_highWaterSegments, index + count);
 
 			// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-			result = static_cast<char*>(m_base) + (index << g_kSegmentShift);
+			result = static_cast<char*>(m_base) + (index << TRIVIAL_MEMORY_SEGMENT_SHIFT);
 		}
 	}
 
 	if (result != nullptr) {
-		TRIVIAL_PROFILE_ALLOC("segments", result, count << g_kSegmentShift);
+		TRIVIAL_PROFILE_ALLOC("segments", result, count << TRIVIAL_MEMORY_SEGMENT_SHIFT);
 	}
 
 #if !TRIVIAL_ENABLE_MEMORY_DEBUG_STATS
@@ -424,7 +416,7 @@ void SegmentAllocator::shutdown() noexcept {
 #endif // !TRIVIAL_ENABLE_MEMORY_DEBUG_STATS
 
 	if (needsOomReport) {
-		handleOom(count << g_kSegmentShift, "SegmentAllocator::allocSegments exhausted reservation", 0);
+		handleOom(count << TRIVIAL_MEMORY_SEGMENT_SHIFT, "SegmentAllocator::allocSegments exhausted reservation", 0);
 	}
 
 	return result;
@@ -458,7 +450,7 @@ void SegmentAllocator::freeSegments(void* segments, std::size_t count) noexcept 
 		record = SegmentRecord{.committedPages = record.committedPages};
 
 #if TRIVIAL_MEMORY_ENABLE_DECOMMIT
-		if (m_cachedSegments >= g_kMaxCachedSegments) {
+		if (m_cachedSegments >= TRIVIAL_MEMORY_MAX_CACHED_SEGMENTS) {
 			purgeSegment(kSegment);
 			continue;
 		}
@@ -485,7 +477,7 @@ void SegmentAllocator::freeSegments(void* segments, std::size_t count) noexcept 
 
 #if TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
 [[nodiscard]] bool SegmentAllocator::enableLargePages() noexcept {
-	if (m_capabilities.largePageSize == 0) {
+	if (largePageSize() == 0) {
 		TRIVIAL_LOG_WARNING_PREFIX("SegmentAllocator", "large pages unsupported, falling back to normal pages");
 		return false;
 	}
@@ -514,6 +506,76 @@ void SegmentAllocator::disableLargePages() noexcept {
 
 	m_largePagesEnabled = false;
 }
+
+[[nodiscard]] bool SegmentAllocator::ensureCommittedLargePages(void* segment,
+                                                               std::size_t pages,
+                                                               int& outOsErrorCode) noexcept {
+	TRIVIAL_PROFILE_FUNCTION();
+	TRIVIAL_ASSERT(segment != nullptr);
+	TRIVIAL_ASSERT(owns(segment));
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+	TRIVIAL_ASSERT((reinterpret_cast<std::uintptr_t>(segment) & TRIVIAL_MEMORY_SEGMENT_MASK) == 0);
+
+	if (!m_largePagesEnabled) {
+		return ensureCommittedPages(segment, pages, outOsErrorCode);
+	}
+
+	const std::size_t kPageSize = pageSize();
+	TRIVIAL_ASSERT(pages <= TRIVIAL_MEMORY_SEGMENT_SIZE / kPageSize);
+	TRIVIAL_ASSERT((pages * kPageSize) % largePageSize() == 0);
+
+	std::size_t bytes = 0;
+	void* target = nullptr;
+
+	{
+		const sync::LockGuard kLock(m_stateMutex);
+
+		SegmentRecord& record = m_records[segmentIndex(segment)];
+		if (record.committedPages >= pages) {
+			return true;
+		}
+
+		const std::size_t kAlready = record.committedPages;
+		bytes = (pages - kAlready) * kPageSize;
+
+		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+		target = static_cast<char*>(segment) + (kAlready * kPageSize);
+	}
+
+#if TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
+	if (!claimCommitBudget(bytes)) {
+		outOsErrorCode = 0;
+		handleOom(bytes, "SegmentAllocator::ensureCommittedLargePages exceeds commit budget", 0);
+		return false;
+	}
+#endif // TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
+
+	if (!commitLargePages(target, bytes, largePageSize(), outOsErrorCode)) {
+#if TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
+		releaseCommitBudget(bytes);
+#endif // TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
+		return false;
+	}
+
+	{
+		const sync::LockGuard kLock(m_stateMutex);
+
+		const std::size_t kIndex = segmentIndex(segment);
+		SegmentRecord& record = m_records[kIndex];
+
+		if (record.committedPages < pages) {
+			record.committedPages = static_cast<std::uint16_t>(pages);
+		}
+
+#if TRIVIAL_PLATFORM_WINDOWS
+		// Large page backing is locked and cannot be partially released, so the
+		// segment is withheld from the purge sweep
+		setBit(m_pinnedBitmap, kIndex);
+#endif // TRIVIAL_PLATFORM_WINDOWS
+	}
+
+	return true;
+}
 #endif // TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
 
 [[nodiscard]] bool SegmentAllocator::ensureCommittedPages(void* segment,
@@ -523,10 +585,10 @@ void SegmentAllocator::disableLargePages() noexcept {
 	TRIVIAL_ASSERT(segment != nullptr);
 	TRIVIAL_ASSERT(owns(segment));
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-	TRIVIAL_ASSERT((reinterpret_cast<std::uintptr_t>(segment) & g_kSegmentMask) == 0);
+	TRIVIAL_ASSERT((reinterpret_cast<std::uintptr_t>(segment) & TRIVIAL_MEMORY_SEGMENT_MASK) == 0);
 
-	const std::size_t kPageSize = m_capabilities.pageSize; // NOLINT(readability-static-accessed-through-instance)
-	TRIVIAL_ASSERT(pages <= g_kSegmentSize / kPageSize);
+	const std::size_t kPageSize = pageSize();
+	TRIVIAL_ASSERT(pages <= TRIVIAL_MEMORY_SEGMENT_SIZE / kPageSize);
 
 	std::size_t bytes = 0;
 	void* target = nullptr;
@@ -577,86 +639,15 @@ void SegmentAllocator::disableLargePages() noexcept {
 	return true;
 }
 
-#if TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
-[[nodiscard]] bool SegmentAllocator::ensureCommittedLargePages(void* segment,
-                                                               std::size_t pages,
-                                                               int& outOsErrorCode) noexcept {
-	TRIVIAL_PROFILE_FUNCTION();
-	TRIVIAL_ASSERT(segment != nullptr);
-	TRIVIAL_ASSERT(owns(segment));
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-	TRIVIAL_ASSERT((reinterpret_cast<std::uintptr_t>(segment) & g_kSegmentMask) == 0);
-
-	if (!m_largePagesEnabled) {
-		return ensureCommittedPages(segment, pages, outOsErrorCode);
-	}
-
-	const std::size_t kPageSize = m_capabilities.pageSize;
-	TRIVIAL_ASSERT(pages <= g_kSegmentSize / kPageSize);
-	TRIVIAL_ASSERT((pages * kPageSize) % m_capabilities.largePageSize == 0);
-
-	std::size_t bytes = 0;
-	void* target = nullptr;
-
-	{
-		const sync::LockGuard kLock(m_stateMutex);
-
-		SegmentRecord& record = m_records[segmentIndex(segment)];
-		if (record.committedPages >= pages) {
-			return true;
-		}
-
-		const std::size_t kAlready = record.committedPages;
-		bytes = (pages - kAlready) * kPageSize;
-
-		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-		target = static_cast<char*>(segment) + (kAlready * kPageSize);
-	}
-
-#if TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
-	if (!claimCommitBudget(bytes)) {
-		outOsErrorCode = 0;
-		handleOom(bytes, "SegmentAllocator::ensureCommittedLargePages exceeds commit budget", 0);
-		return false;
-	}
-#endif // TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
-
-	if (!commitLargePages(target, bytes, m_capabilities.largePageSize, outOsErrorCode)) {
-#if TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
-		releaseCommitBudget(bytes);
-#endif // TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
-		return false;
-	}
-
-	{
-		const sync::LockGuard kLock(m_stateMutex);
-
-		const std::size_t kIndex = segmentIndex(segment);
-		SegmentRecord& record = m_records[kIndex];
-
-		if (record.committedPages < pages) {
-			record.committedPages = static_cast<std::uint16_t>(pages);
-		}
-
-#if TRIVIAL_PLATFORM_WINDOWS
-		// Large page backing is locked and cannot be partially released, so the
-		// segment is withheld from the purge sweep.
-		setBit(m_pinnedBitmap, kIndex);
-#endif // TRIVIAL_PLATFORM_WINDOWS
-	}
-
-	return true;
-}
-#endif // TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
-
+#if TRIVIAL_MEMORY_ENABLE_DECOMMIT
 void SegmentAllocator::trimCommittedPagesTo(void* segment, std::size_t pages) noexcept {
 	TRIVIAL_PROFILE_FUNCTION();
 	TRIVIAL_ASSERT(segment != nullptr);
 	TRIVIAL_ASSERT(owns(segment));
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-	TRIVIAL_ASSERT((reinterpret_cast<std::uintptr_t>(segment) & g_kSegmentMask) == 0);
+	TRIVIAL_ASSERT((reinterpret_cast<std::uintptr_t>(segment) & TRIVIAL_MEMORY_SEGMENT_MASK) == 0);
 
-	const std::size_t kPageSize = m_capabilities.pageSize; // NOLINT(readability-static-accessed-through-instance)
+	const std::size_t kPageSize = pageSize();
 
 	const sync::LockGuard kLock(m_stateMutex);
 
@@ -682,14 +673,15 @@ void SegmentAllocator::trimCommittedPagesTo(void* segment, std::size_t pages) no
 	record.committedPages = static_cast<std::uint16_t>(pages);
 }
 
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 void SegmentAllocator::decommitRange(void* addr, std::size_t bytes) const noexcept {
-	// NOLINTNEXTLINE(readability-static-accessed-through-instance)
-	decommitPages(addr, bytes, m_capabilities.pageSize, m_capabilities.decommitMode);
+	decommitPages(addr, bytes, pageSize());
 
 #if TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
 	releaseCommitBudget(bytes);
 #endif // TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
 }
+#endif // TRIVIAL_MEMORY_ENABLE_DECOMMIT
 
 #if TRIVIAL_MEMORY_ENABLE_TICK
 void SegmentAllocator::tick() noexcept {
@@ -710,7 +702,9 @@ void SegmentAllocator::tick() noexcept {
 		return;
 	}
 
-	const std::size_t kBudget = std::clamp(m_cachedSegments / g_kPurgeFraction, g_kMinPurgePerTick, g_kMaxPurgePerTick);
+	const std::size_t kBudget = std::clamp<std::size_t>(m_cachedSegments / TRIVIAL_MEMORY_PURGE_FRACTION,
+	                                                    TRIVIAL_MEMORY_MIN_PURGE_PER_TICK,
+	                                                    TRIVIAL_MEMORY_MAX_PURGE_PER_TICK);
 
 	std::size_t scanned = 0;
 	std::size_t purged = 0;
@@ -734,7 +728,7 @@ void SegmentAllocator::tick() noexcept {
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 		const std::uint32_t kAge = static_cast<std::uint32_t>(m_tick - m_records[kSegment].lastFreeTick);
 
-		if (kAge < g_kDecayTicks) {
+		if (kAge < TRIVIAL_MEMORY_DECAY_TICKS) {
 			continue;
 		}
 
@@ -745,15 +739,15 @@ void SegmentAllocator::tick() noexcept {
 }
 #endif // TRIVIAL_MEMORY_ENABLE_TICK
 
+#if TRIVIAL_MEMORY_ENABLE_DECOMMIT
 void SegmentAllocator::purgeSegment(std::size_t segment) noexcept {
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 	SegmentRecord& record = m_records[segment];
 
 	if (record.committedPages > 0) {
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-		void* addr = static_cast<char*>(m_base) + (segment << g_kSegmentShift);
-		// NOLINTNEXTLINE(readability-static-accessed-through-instance)
-		const std::size_t kBytes = static_cast<std::size_t>(record.committedPages) * m_capabilities.pageSize;
+		void* addr = static_cast<char*>(m_base) + (segment << TRIVIAL_MEMORY_SEGMENT_SHIFT);
+		const std::size_t kBytes = static_cast<std::size_t>(record.committedPages) * pageSize();
 
 		decommitRange(addr, kBytes);
 	}
@@ -769,12 +763,13 @@ void SegmentAllocator::purgeSegment(std::size_t segment) noexcept {
 		--m_cachedSegments;
 	}
 }
+#endif // TRIVIAL_MEMORY_ENABLE_DECOMMIT
 
 #if TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
 [[nodiscard]] bool SegmentAllocator::claimCommitBudget(std::size_t bytes) const noexcept {
 #if TRIVIAL_MEMORY_ENABLE_COMMIT_BUDGET
 #if TRIVIAL_MEMORY_FIXED_COMMIT_BUDGET
-	constexpr std::size_t kLimit = g_kCommitBudgetBytes;
+	constexpr std::size_t kLimit = TRIVIAL_MEMORY_COMMIT_BUDGET_BYTES;
 #else
 	const std::size_t kLimit = m_commitBudgetBytes;
 #endif // TRIVIAL_MEMORY_FIXED_COMMIT_BUDGET
@@ -814,7 +809,7 @@ void SegmentAllocator::releaseCommitBudget(std::size_t bytes) const noexcept {
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
 	const auto kBase = reinterpret_cast<std::uintptr_t>(m_base);
 
-	return kAddress >= kBase && kAddress < kBase + (m_segmentCapacity << g_kSegmentShift);
+	return kAddress >= kBase && kAddress < kBase + (m_segmentCapacity << TRIVIAL_MEMORY_SEGMENT_SHIFT);
 }
 
 [[nodiscard]] std::size_t SegmentAllocator::segmentIndex(const void* ptr) const noexcept {
@@ -823,7 +818,7 @@ void SegmentAllocator::releaseCommitBudget(std::size_t bytes) const noexcept {
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
 	const auto kBase = reinterpret_cast<std::uintptr_t>(m_base);
 
-	return static_cast<std::size_t>(kAddress - kBase) >> g_kSegmentShift;
+	return static_cast<std::size_t>(kAddress - kBase) >> TRIVIAL_MEMORY_SEGMENT_SHIFT;
 }
 
 #if TRIVIAL_ENABLE_MEMORY_DEBUG_STATS

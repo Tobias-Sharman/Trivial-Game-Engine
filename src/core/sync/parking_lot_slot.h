@@ -10,15 +10,15 @@
 
 #include "core/sync/parker.h"
 
-namespace trivial::sync {
+#define TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX (std::numeric_limits<std::size_t>::max())
 
-inline constexpr std::size_t g_kInvalidParkingLotSlotIndex = std::numeric_limits<std::size_t>::max();
+namespace trivial::sync {
 
 struct alignas(TRIVIAL_PLATFORM_FALSE_SHARING_ALIGNMENT) ParkingLotSlot {
 	std::atomic<std::uintptr_t> key{0};
 	Parker parker;
 
-	std::size_t nextInQueue = g_kInvalidParkingLotSlotIndex;
+	std::size_t nextInQueue = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
 };
 
 } // namespace trivial::sync

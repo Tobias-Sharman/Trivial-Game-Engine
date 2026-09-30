@@ -73,7 +73,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBits
 }
 
 VkDebugUtilsMessengerCreateInfoEXT makeDebugMessengerCreateInfo() noexcept {
-	static constexpr VkDebugUtilsMessengerCreateInfoEXT s_kCreateInfo = {
+	constexpr VkDebugUtilsMessengerCreateInfoEXT kCreateInfo = {
 	    .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
 	    .pNext = nullptr,
 	    .flags = 0,
@@ -87,7 +87,7 @@ VkDebugUtilsMessengerCreateInfoEXT makeDebugMessengerCreateInfo() noexcept {
 	    .pUserData = nullptr,
 	};
 
-	return s_kCreateInfo;
+	return kCreateInfo;
 }
 
 } // namespace

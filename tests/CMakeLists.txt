@@ -23,6 +23,7 @@ target_compile_features(gtest PUBLIC cxx_std_23)
 target_compile_features(gtest_main PUBLIC cxx_std_23)
 
 add_executable(trivial_tests
+	main.cpp
 	ecs/world_tests.cpp
 	math/angle.cpp
 	math/vector.cpp
@@ -49,7 +50,7 @@ add_executable(trivial_tests
 target_link_libraries(trivial_tests
 	PRIVATE
 		trivial
-		GTest::gtest_main
+		GTest::gtest
 )
 
 target_include_directories(trivial PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/config)

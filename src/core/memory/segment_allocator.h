@@ -1,5 +1,5 @@
-#ifndef TRIVIAL_CORE_MEMORY_SEGMENT_ALLOCATOR_H
-#define TRIVIAL_CORE_MEMORY_SEGMENT_ALLOCATOR_H
+#ifndef TRIVIAL_SRC_CORE_MEMORY_SEGMENT_ALLOCATOR_H
+#define TRIVIAL_SRC_CORE_MEMORY_SEGMENT_ALLOCATOR_H
 
 #include <cstddef>
 #include <cstdint>
@@ -13,11 +13,12 @@
 #include <atomic>
 #endif // TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
 
+#define TRIVIAL_MEMORY_SEGMENT_LAST_GENERAL_KIND (std::uint8_t{15})
+
 namespace trivial::memory {
 
-inline constexpr std::uint8_t g_kLastGeneralKind = 15;
-
-// NOTE: Upto g_kLastGeneralKind, which should remain 15, are reserved for the general allocator
+// NOTE: Upto TRIVIAL_MEMORY_SEGMENT_LAST_GENERAL_KIND, which should remain 15,
+//       are reserved for the general allocator
 enum class SegmentKind : std::uint8_t {
 	Invalid = 0,
 
@@ -39,7 +40,7 @@ enum class SegmentKind : std::uint8_t {
 
 [[nodiscard]] constexpr bool isGeneralAllocatorKind(SegmentKind kind) noexcept {
 	const std::uint8_t kValue = static_cast<std::uint8_t>(kind);
-	return kValue != 0 && kValue <= g_kLastGeneralKind;
+	return kValue != 0 && kValue <= TRIVIAL_MEMORY_SEGMENT_LAST_GENERAL_KIND;
 }
 
 [[nodiscard]] constexpr const char* segmentKindName(SegmentKind kind) noexcept {
@@ -122,17 +123,16 @@ public:
 #if TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
 	[[nodiscard]] bool enableLargePages() noexcept;
 	void disableLargePages() noexcept;
+
+	[[nodiscard]] bool ensureCommittedLargePages(void* segment, std::size_t pages, int& outOsErrorCode) noexcept;
 #endif // TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
 
 	[[nodiscard]] bool ensureCommittedPages(void* segment, std::size_t pages, int& outOsErrorCode) noexcept;
 
-#if TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
-	[[nodiscard]] bool ensureCommittedLargePages(void* segment, std::size_t pages, int& outOsErrorCode) noexcept;
-#endif // TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
-
 #if TRIVIAL_MEMORY_ENABLE_DECOMMIT
 	void trimCommittedPagesTo(void* segment, std::size_t pages) noexcept;
 #else
+	// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 	void trimCommittedPagesTo(void* segment, std::size_t pages) noexcept {
 		(void)segment;
 		(void)pages;
@@ -148,18 +148,16 @@ public:
 	[[nodiscard]] static void* segmentBase(void* ptr) noexcept {
 		char* raw = static_cast<char*>(ptr);
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast, cppcoreguidelines-pro-bounds-pointer-arithmetic)
-		return raw - (reinterpret_cast<std::uintptr_t>(raw) & g_kSegmentMask);
+		return raw - (reinterpret_cast<std::uintptr_t>(raw) & TRIVIAL_MEMORY_SEGMENT_MASK);
 	}
 
 	[[nodiscard]] static const void* segmentBase(const void* ptr) noexcept {
 		const char* raw = static_cast<const char*>(ptr);
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast, cppcoreguidelines-pro-bounds-pointer-arithmetic)
-		return raw - (reinterpret_cast<std::uintptr_t>(raw) & g_kSegmentMask);
+		return raw - (reinterpret_cast<std::uintptr_t>(raw) & TRIVIAL_MEMORY_SEGMENT_MASK);
 	}
 
 	[[nodiscard]] bool owns(const void* ptr) const noexcept;
-
-	[[nodiscard]] const MemoryCapabilities& capabilities() const noexcept { return m_capabilities; }
 
 	[[nodiscard]] std::size_t segmentCapacity() const noexcept { return m_segmentCapacity; }
 
@@ -203,6 +201,7 @@ private:
 
 	std::uint64_t* m_allocatedBitmap = nullptr;
 	std::uint64_t* m_cachedBitmap = nullptr;
+
 #if TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
 	// Segments backed by large pages can't be partially purged
 	std::uint64_t* m_pinnedBitmap = nullptr;
@@ -237,11 +236,9 @@ private:
 	mutable std::atomic<std::size_t> m_committedBytes{0};
 #endif // TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
 
-	MemoryCapabilities m_capabilities{};
-
 	OomHandler m_oomHandler = nullptr;
 };
 
 } // namespace trivial::memory
 
-#endif // TRIVIAL_CORE_MEMORY_SEGMENT_ALLOCATOR_H
+#endif // TRIVIAL_SRC_CORE_MEMORY_SEGMENT_ALLOCATOR_H

@@ -7,6 +7,10 @@
 #include <trivial/core/assert.h>
 #include <trivial/core/compiler.h>
 
+#define TRIVIAL_SYNC_ESCALATING_LOCK_LOCKED_BIT (std::uintptr_t{1})
+#define TRIVIAL_SYNC_ESCALATING_LOCK_QUEUE_LOCKED_BIT (std::uintptr_t{2})
+#define TRIVIAL_SYNC_ESCALATING_LOCK_QUEUE_MASK (~std::uintptr_t{3})
+
 namespace trivial::sync {
 
 class EscalatingLock {
@@ -14,7 +18,9 @@ public:
 	EscalatingLock() noexcept = default;
 
 	~EscalatingLock() noexcept {
-		TRIVIAL_ASSERT((m_state.load(std::memory_order_relaxed) & (s_kLockedBit | s_kQueueMask)) == 0);
+		TRIVIAL_ASSERT((m_state.load(std::memory_order_relaxed)
+		                & (TRIVIAL_SYNC_ESCALATING_LOCK_LOCKED_BIT | TRIVIAL_SYNC_ESCALATING_LOCK_QUEUE_MASK))
+		               == 0);
 	}
 
 	EscalatingLock(const EscalatingLock&) = delete;
@@ -26,7 +32,7 @@ public:
 	TRIVIAL_FORCE_INLINE void lock() noexcept {
 		std::uintptr_t expected = 0;
 		if (m_state.compare_exchange_weak(expected,
-		                                  s_kLockedBit,
+		                                  TRIVIAL_SYNC_ESCALATING_LOCK_LOCKED_BIT,
 		                                  std::memory_order_acquire,
 		                                  std::memory_order_relaxed)) {
 			return;
@@ -36,10 +42,12 @@ public:
 	}
 
 	TRIVIAL_FORCE_INLINE void unlock() noexcept {
-		const std::uintptr_t kPreviousState = m_state.fetch_sub(s_kLockedBit, std::memory_order_release);
-		TRIVIAL_ASSERT((kPreviousState & s_kLockedBit) != 0);
+		const std::uintptr_t kPreviousState
+		    = m_state.fetch_sub(TRIVIAL_SYNC_ESCALATING_LOCK_LOCKED_BIT, std::memory_order_release);
+		TRIVIAL_ASSERT((kPreviousState & TRIVIAL_SYNC_ESCALATING_LOCK_LOCKED_BIT) != 0);
 
-		if ((kPreviousState & s_kQueueLockedBit) != 0 || (kPreviousState & s_kQueueMask) == 0) {
+		if ((kPreviousState & TRIVIAL_SYNC_ESCALATING_LOCK_QUEUE_LOCKED_BIT) != 0
+		    || (kPreviousState & TRIVIAL_SYNC_ESCALATING_LOCK_QUEUE_MASK) == 0) {
 			return;
 		}
 
@@ -50,13 +58,15 @@ private:
 	TRIVIAL_COLD void lockSlow() noexcept;
 	TRIVIAL_COLD void unlockSlow() noexcept;
 
-	static constexpr std::uintptr_t s_kLockedBit = 1;
-	static constexpr std::uintptr_t s_kQueueLockedBit = 2;
-	static constexpr std::uintptr_t s_kQueueMask = ~static_cast<std::uintptr_t>(3);
-
 	std::atomic<std::uintptr_t> m_state{0};
 };
 
 } // namespace trivial::sync
+
+#ifndef TRIVIAL_SYNC_ESCALATING_LOCK_IMPLEMENTATION
+#undef TRIVIAL_SYNC_ESCALATING_LOCK_LOCKED_BIT
+#undef TRIVIAL_SYNC_ESCALATING_LOCK_QUEUE_LOCKED_BIT
+#undef TRIVIAL_SYNC_ESCALATING_LOCK_QUEUE_MASK
+#endif // TRIVIAL_SYNC_ESCALATING_LOCK_IMPLEMENTATION
 
 #endif // TRIVIAL_SRC_CORE_SYNC_ESCALATING_LOCK_H

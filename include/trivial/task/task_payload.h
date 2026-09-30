@@ -12,12 +12,24 @@
 #include <trivial/core/assert.h>
 #include <trivial/core/config.h>
 #include <trivial/core/log.h>
+#include <trivial/task/task_system_config.h>
 
 #if TRIVIAL_CONFIG_DEBUG
 #include <cstdint>
 #endif // TRIVIAL_CONFIG_DEBUG
 
+#define TRIVIAL_TASK_PAYLOAD_INLINE_STORAGE_ALIGNMENT alignof(std::max_align_t)
+
 namespace trivial::task {
+
+namespace detail {
+
+template <typename Callable>
+concept InlineStorable = sizeof(Callable) <= TRIVIAL_TASK_PAYLOAD_INLINE_STORAGE_SIZE
+                         && alignof(Callable) <= TRIVIAL_TASK_PAYLOAD_INLINE_STORAGE_ALIGNMENT
+                         && std::is_nothrow_move_constructible_v<Callable>;
+
+} // namespace detail
 
 // Invoking a moved-from TaskPayload, or one constructed from a null function
 // pointer or an empty callable wrapper, results in undefined behavior
@@ -32,7 +44,7 @@ public:
 	explicit TaskPayload(Callable&& callable) noexcept { // NOLINT(cppcoreguidelines-pro-type-member-init)
 		using StoredCallable = std::decay_t<Callable>;
 
-		if constexpr (s_kCanStoreInline<StoredCallable>) {
+		if constexpr (detail::InlineStorable<StoredCallable>) {
 			std::construct_at(rawStoragePointer<StoredCallable>(m_storage.data()), std::forward<Callable>(callable));
 
 			m_operations = &getInlineOperations<StoredCallable>();
@@ -90,9 +102,6 @@ public:
 	}
 
 private:
-	static constexpr std::size_t s_kInlineStorageSize = 40; // TODO: Profile and adjust
-	static constexpr std::size_t s_kInlineStorageAlignment = alignof(std::max_align_t);
-
 #if TRIVIAL_CONFIG_DEBUG
 	enum class OperationsKind : std::uint8_t {
 		Callable,
@@ -112,11 +121,6 @@ private:
 		void* (*get)(std::byte* storage) noexcept;
 		const void* (*getConst)(const std::byte* storage) noexcept;
 	};
-
-	template <typename Callable>
-	static constexpr bool s_kCanStoreInline
-	    = sizeof(Callable) <= s_kInlineStorageSize && alignof(Callable) <= s_kInlineStorageAlignment
-	      && std::is_nothrow_move_constructible_v<Callable>;
 
 	template <typename Object>
 	[[nodiscard]]
@@ -145,8 +149,8 @@ private:
 	template <typename Callable>
 	[[nodiscard]]
 	static Callable** getHeapPointerSlot(std::byte* storage) noexcept {
-		static_assert(sizeof(Callable*) <= s_kInlineStorageSize);
-		static_assert(alignof(Callable*) <= s_kInlineStorageAlignment);
+		static_assert(sizeof(Callable*) <= TRIVIAL_TASK_PAYLOAD_INLINE_STORAGE_SIZE);
+		static_assert(alignof(Callable*) <= TRIVIAL_TASK_PAYLOAD_INLINE_STORAGE_ALIGNMENT);
 
 		return getStoredObject<Callable*>(storage);
 	}
@@ -212,7 +216,7 @@ private:
 
 				    std::destroy_at(callable);
 
-				    if constexpr (s_kCanStoreInline<StoredResult>) {
+				    if constexpr (detail::InlineStorable<StoredResult>) {
 					    std::construct_at(rawStoragePointer<StoredResult>(storage), std::move(result));
 
 					    return &getInlineResultOperations<StoredResult>();
@@ -279,7 +283,7 @@ private:
 				    std::destroy_at(slot);
 				    delete callable;
 
-				    if constexpr (s_kCanStoreInline<StoredResult>) {
+				    if constexpr (detail::InlineStorable<StoredResult>) {
 					    std::construct_at(rawStoragePointer<StoredResult>(storage), std::move(result));
 
 					    return &getInlineResultOperations<StoredResult>();
@@ -426,7 +430,8 @@ private:
 		m_operations = operations;
 	}
 
-	alignas(s_kInlineStorageAlignment) std::array<std::byte, s_kInlineStorageSize> m_storage;
+	alignas(TRIVIAL_TASK_PAYLOAD_INLINE_STORAGE_ALIGNMENT)
+	    std::array<std::byte, TRIVIAL_TASK_PAYLOAD_INLINE_STORAGE_SIZE> m_storage;
 	const Operations* m_operations = nullptr;
 };
 
@@ -439,5 +444,7 @@ static_assert(std::is_nothrow_move_assignable_v<TaskPayload>);
 static_assert(std::is_nothrow_destructible_v<TaskPayload>);
 
 } // namespace trivial::task
+
+#undef TRIVIAL_TASK_PAYLOAD_INLINE_STORAGE_ALIGNMENT
 
 #endif // TRIVIAL_TASK_TASK_PAYLOAD_H

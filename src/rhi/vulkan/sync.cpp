@@ -13,12 +13,12 @@ namespace {
 VkSemaphore createSemaphore(VkDevice device) noexcept {
 	TRIVIAL_ASSERT(device != VK_NULL_HANDLE);
 
-	static constexpr VkSemaphoreCreateInfo s_kCreateInfo
+	constexpr VkSemaphoreCreateInfo kCreateInfo
 	    = {.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, .pNext = nullptr, .flags = 0};
 
 	VkSemaphore semaphore = VK_NULL_HANDLE;
 
-	const VkResult kResult = vkCreateSemaphore(device, &s_kCreateInfo, nullptr, &semaphore);
+	const VkResult kResult = vkCreateSemaphore(device, &kCreateInfo, nullptr, &semaphore);
 
 	TRIVIAL_VK_CHECK("vkCreateSemaphore failed", kResult);
 	TRIVIAL_ASSERT(semaphore != VK_NULL_HANDLE);
@@ -29,12 +29,12 @@ VkSemaphore createSemaphore(VkDevice device) noexcept {
 VkFence createFence(VkDevice device) noexcept {
 	TRIVIAL_ASSERT(device != VK_NULL_HANDLE);
 
-	static constexpr VkFenceCreateInfo s_kCreateInfo
+	constexpr VkFenceCreateInfo kCreateInfo
 	    = {.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, .pNext = nullptr, .flags = VK_FENCE_CREATE_SIGNALED_BIT};
 
 	VkFence fence = VK_NULL_HANDLE;
 
-	const VkResult kResult = vkCreateFence(device, &s_kCreateInfo, nullptr, &fence);
+	const VkResult kResult = vkCreateFence(device, &kCreateInfo, nullptr, &fence);
 
 	TRIVIAL_VK_CHECK("vkCreateFence failed", kResult);
 	TRIVIAL_ASSERT(fence != VK_NULL_HANDLE);

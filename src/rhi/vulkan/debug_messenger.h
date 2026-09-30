@@ -7,7 +7,7 @@
 
 #include <vulkan/vulkan_core.h>
 
-inline constexpr const char* g_kValidationLayerName = "VK_LAYER_KHRONOS_validation";
+#define TRIVIAL_RHI_VULKAN_VALIDATION_LAYER_NAME "VK_LAYER_KHRONOS_validation"
 
 namespace trivial::rhi::vulkan {
 

@@ -6,7 +6,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <deque>
-#include <limits>
 #include <span>
 #include <vector>
 
@@ -78,8 +77,6 @@ public:
 	void runMainThreadReadyTasks() noexcept;
 
 private:
-	static constexpr std::size_t s_kInvalidWorkerIndex = std::numeric_limits<std::size_t>::max();
-
 	[[nodiscard]] std::size_t tryGetCurrentWorkerIndex() const noexcept;
 
 	static void workerThreadEntry(void* arg) noexcept;

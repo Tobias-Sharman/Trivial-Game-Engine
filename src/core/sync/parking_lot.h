@@ -213,10 +213,10 @@ public:
 		bucket.lock.lock();
 
 		std::size_t* link = &bucket.queueHead;
-		std::size_t previousIndex = g_kInvalidParkingLotSlotIndex;
+		std::size_t previousIndex = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
 		std::size_t currentIndex = bucket.queueHead;
 
-		while (currentIndex != g_kInvalidParkingLotSlotIndex) {
+		while (currentIndex != TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX) {
 			ParkingLotSlot& current = m_slots[currentIndex];
 
 			if (current.key.load(std::memory_order_relaxed) != address) {
@@ -232,7 +232,7 @@ public:
 				bucket.queueTail = previousIndex;
 			}
 
-			current.nextInQueue = g_kInvalidParkingLotSlotIndex;
+			current.nextInQueue = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
 			current.key.store(0, std::memory_order_relaxed);
 			current.parker.beginUnpark().wake();
 			bucket.lock.unlock();
@@ -249,10 +249,10 @@ public:
 		bucket.lock.lock();
 
 		std::size_t* link = &bucket.queueHead;
-		std::size_t previousIndex = g_kInvalidParkingLotSlotIndex;
+		std::size_t previousIndex = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
 		std::size_t currentIndex = bucket.queueHead;
 
-		while (currentIndex != g_kInvalidParkingLotSlotIndex) {
+		while (currentIndex != TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX) {
 			ParkingLotSlot& current = m_slots[currentIndex];
 
 			if (current.key.load(std::memory_order_relaxed) != address) {
@@ -270,7 +270,7 @@ public:
 				bucket.queueTail = previousIndex;
 			} else {
 				std::size_t scanIndex = kNextIndex;
-				while (scanIndex != g_kInvalidParkingLotSlotIndex) {
+				while (scanIndex != TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX) {
 					const ParkingLotSlot& scan = m_slots[scanIndex];
 					if (scan.key.load(std::memory_order_relaxed) == address) {
 						hasMoreWaiters = true;
@@ -280,7 +280,7 @@ public:
 				}
 			}
 
-			current.nextInQueue = g_kInvalidParkingLotSlotIndex;
+			current.nextInQueue = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
 			current.key.store(0, std::memory_order_relaxed);
 
 			std::forward<Callback>(callback)(UnparkOneResult{.woke = true, .hasMoreWaiters = hasMoreWaiters});
@@ -299,10 +299,10 @@ public:
 		bucket.lock.lock();
 
 		std::size_t* link = &bucket.queueHead;
-		std::size_t previousIndex = g_kInvalidParkingLotSlotIndex;
+		std::size_t previousIndex = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
 		std::size_t currentIndex = bucket.queueHead;
 
-		while (currentIndex != g_kInvalidParkingLotSlotIndex) {
+		while (currentIndex != TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX) {
 			ParkingLotSlot& current = m_slots[currentIndex];
 
 			if (current.key.load(std::memory_order_relaxed) != address) {
@@ -319,7 +319,7 @@ public:
 				bucket.queueTail = previousIndex;
 			}
 
-			current.nextInQueue = g_kInvalidParkingLotSlotIndex;
+			current.nextInQueue = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
 			current.key.store(0, std::memory_order_relaxed);
 			current.parker.beginUnpark().wake();
 
@@ -345,10 +345,10 @@ public:
 		const bool kRequeue = std::forward<ShouldRequeue>(shouldRequeue)();
 
 		std::size_t* link = &fromBucket.queueHead;
-		std::size_t previousIndex = g_kInvalidParkingLotSlotIndex;
+		std::size_t previousIndex = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
 		std::size_t currentIndex = fromBucket.queueHead;
 
-		while (currentIndex != g_kInvalidParkingLotSlotIndex) {
+		while (currentIndex != TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX) {
 			ParkingLotSlot& current = m_slots[currentIndex];
 
 			if (current.key.load(std::memory_order_relaxed) != fromAddress) {
@@ -368,7 +368,7 @@ public:
 				current.key.store(toAddress, std::memory_order_relaxed);
 				pushToQueue(toBucket, currentIndex);
 			} else {
-				current.nextInQueue = g_kInvalidParkingLotSlotIndex;
+				current.nextInQueue = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
 				current.key.store(0, std::memory_order_relaxed);
 				current.parker.beginUnpark().wake();
 			}
@@ -406,10 +406,10 @@ public:
 		bool handledAny = false;
 		bool anyRequeued = false;
 		std::size_t* link = &fromBucket.queueHead;
-		std::size_t previousIndex = g_kInvalidParkingLotSlotIndex;
+		std::size_t previousIndex = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
 		std::size_t currentIndex = fromBucket.queueHead;
 
-		while (currentIndex != g_kInvalidParkingLotSlotIndex) {
+		while (currentIndex != TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX) {
 			ParkingLotSlot& current = m_slots[currentIndex];
 
 			if (current.key.load(std::memory_order_relaxed) != fromAddress) {
@@ -435,7 +435,7 @@ public:
 			}
 
 			if (kWakeThisOne) {
-				current.nextInQueue = g_kInvalidParkingLotSlotIndex;
+				current.nextInQueue = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
 				current.key.store(0, std::memory_order_relaxed);
 				current.parker.beginUnpark().wake();
 			} else {
@@ -474,9 +474,9 @@ private:
 	}
 
 	void pushToQueue(Bucket& bucket, std::size_t slotIndex) noexcept {
-		m_slots[slotIndex].nextInQueue = g_kInvalidParkingLotSlotIndex;
+		m_slots[slotIndex].nextInQueue = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
 
-		if (bucket.queueTail == g_kInvalidParkingLotSlotIndex) {
+		if (bucket.queueTail == TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX) {
 			bucket.queueHead = slotIndex;
 		} else {
 			m_slots[bucket.queueTail].nextInQueue = slotIndex;
@@ -487,10 +487,10 @@ private:
 
 	bool removeFromQueue(Bucket& bucket, std::size_t slotIndex) noexcept {
 		std::size_t* link = &bucket.queueHead;
-		std::size_t previousIndex = g_kInvalidParkingLotSlotIndex;
+		std::size_t previousIndex = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
 		std::size_t currentIndex = bucket.queueHead;
 
-		while (currentIndex != g_kInvalidParkingLotSlotIndex) {
+		while (currentIndex != TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX) {
 			if (currentIndex != slotIndex) {
 				link = &m_slots[currentIndex].nextInQueue;
 				previousIndex = currentIndex;
@@ -505,7 +505,7 @@ private:
 				bucket.queueTail = previousIndex;
 			}
 
-			m_slots[currentIndex].nextInQueue = g_kInvalidParkingLotSlotIndex;
+			m_slots[currentIndex].nextInQueue = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
 			return true;
 		}
 

@@ -60,13 +60,20 @@ public:
 	}
 
 	std::size_t tryPopWeightedBatchInto(TaskPriorityQueue& destination) noexcept {
+		static constexpr std::array<std::size_t, static_cast<std::size_t>(TaskPriority::Count)> s_kShares{
+		    TRIVIAL_TASK_PRIORITY_SHARE_BACKGROUND,
+		    TRIVIAL_TASK_PRIORITY_SHARE_NORMAL,
+		    TRIVIAL_TASK_PRIORITY_SHARE_HIGH,
+		    TRIVIAL_TASK_PRIORITY_SHARE_CRITICAL,
+		};
+
 		std::size_t grantedThisCall = 0;
 
 		for (std::size_t i = 0; i < m_buckets.size(); ++i) {
 			PriorityBucket& sourceBucket = m_buckets[i];
 			PriorityBucket& destBucket = destination.m_buckets[i];
 
-			std::size_t kTake = 0;
+			std::size_t take = 0;
 			ReadyQueue taken;
 
 			{
@@ -76,9 +83,9 @@ public:
 					continue;
 				}
 
-				kTake = std::min(s_kShares[i], sourceBucket.queue.size());
+				take = std::min(s_kShares[i], sourceBucket.queue.size());
 
-				for (std::size_t j = 0; j < kTake; ++j) {
+				for (std::size_t j = 0; j < take; ++j) {
 					taken.push_back(sourceBucket.queue.front());
 					sourceBucket.queue.pop_front();
 				}
@@ -92,7 +99,7 @@ public:
 				}
 			}
 
-			grantedThisCall += kTake;
+			grantedThisCall += take;
 		}
 
 		return grantedThisCall;
@@ -117,28 +124,6 @@ private:
 		mutable sync::Mutex mutex;
 		ReadyQueue queue;
 	};
-
-	static constexpr std::array<std::size_t, static_cast<std::size_t>(TaskPriority::Count)> s_kShares = []() consteval {
-		constexpr std::array<std::size_t, static_cast<std::size_t>(TaskPriority::Count)> kWeights{
-		    TRIVIAL_TASK_PRIORITY_WEIGHT_BACKGROUND,
-		    TRIVIAL_TASK_PRIORITY_WEIGHT_NORMAL,
-		    TRIVIAL_TASK_PRIORITY_WEIGHT_HIGH,
-		    TRIVIAL_TASK_PRIORITY_WEIGHT_CRITICAL,
-		};
-
-		std::size_t totalWeight = 0;
-		for (const std::size_t kWeight : kWeights) {
-			totalWeight += kWeight;
-		}
-
-		std::array<std::size_t, kWeights.size()> shares{};
-		for (std::size_t i = 0; i < kWeights.size(); ++i) {
-			// NOLINTNEXTLINE(clang-analyzer-core.DivideZero) -> covered by assert in task system config
-			shares[i] = (std::size_t{TRIVIAL_TASK_BATCH_SIZE} * kWeights[i]) / totalWeight;
-		}
-
-		return shares;
-	}();
 
 	std::array<PriorityBucket, static_cast<std::size_t>(TaskPriority::Count)> m_buckets;
 };

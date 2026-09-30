@@ -27,6 +27,9 @@ set_property(CACHE TRIVIAL_MEMORY_DEBUG PROPERTY STRINGS AUTO ON OFF)
 set(TRIVIAL_MEMORY_DEBUG_STATS "AUTO" CACHE STRING "Segment level memory statistics (AUTO/ON/OFF)")
 set_property(CACHE TRIVIAL_MEMORY_DEBUG_STATS PROPERTY STRINGS AUTO ON OFF)
 
+set(TRIVIAL_MEMORY_DECOMMIT "AUTO" CACHE STRING "Return freed memory to the OS (AUTO/ON/OFF)")
+set_property(CACHE TRIVIAL_MEMORY_DECOMMIT PROPERTY STRINGS AUTO ON OFF)
+
 # -----------------------------------------------------------------------------
 # Source files
 # -----------------------------------------------------------------------------
@@ -37,6 +40,7 @@ set(TRIVIAL_PRIVATE_SOURCES
 	src/core/assert.cpp
 	src/core/log.cpp
 	src/core/math/mat4.cpp
+	src/core/memory/memory_capabilities.cpp
 	src/core/memory/segment_allocator.cpp
 	src/core/sync/condition_variable.cpp
 	src/core/sync/escalating_lock.cpp
@@ -202,6 +206,11 @@ endif()
 set(TRIVIAL_MEMORY_DEBUG_STATS_DEFINE "")
 if(NOT TRIVIAL_MEMORY_DEBUG_STATS STREQUAL "AUTO")
 	set(TRIVIAL_MEMORY_DEBUG_STATS_DEFINE "#define TRIVIAL_ENABLE_MEMORY_DEBUG_STATS $<BOOL:${TRIVIAL_MEMORY_DEBUG_STATS}>")
+endif()
+
+set(TRIVIAL_MEMORY_DECOMMIT_DEFINE "")
+if(NOT TRIVIAL_MEMORY_DECOMMIT STREQUAL "AUTO")
+	set(TRIVIAL_MEMORY_DECOMMIT_DEFINE "#define TRIVIAL_MEMORY_ENABLE_DECOMMIT $<BOOL:${TRIVIAL_MEMORY_DECOMMIT}>")
 endif()
 
 configure_file(include/trivial/core/build_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/build_config.h.in @ONLY)

@@ -36,7 +36,7 @@
 #define TRIVIAL_PLATFORM_MACOS 0
 
 // Record of all minimums for reference for future changes:
-//     MADV_FREE - Linux 4.5 -> currently implemented here as a runtime probe
+//     MADV_FREE - Linux 4.5
 
 #else
 #error "Unsupported platform"

@@ -15,6 +15,7 @@
 #include <trivial/task/task.h>
 #include <trivial/task/task_system.h>
 
+#include "core/memory/memory_capabilities.h"
 #include "core/sync/parking_lot.h"
 
 namespace trivial {
@@ -24,6 +25,8 @@ Engine::Engine(const EngineConfig& config) noexcept
     , m_window(config.window)
     , m_gpu(config.graphicsApi, config.applicationInfo, m_window)
     , m_renderer(&m_gpu) {
+	memory::initCapabilities();
+
 	auto* mainThread = new (std::nothrow) thread::Thread(); // TODO: Custom allocator
 	if (mainThread == nullptr) {
 		TRIVIAL_LOG_FATAL_PREFIX("Engine", "Failed to allocate main thread adoption record");

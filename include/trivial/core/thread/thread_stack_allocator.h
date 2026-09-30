@@ -7,6 +7,8 @@
 
 #include <cstddef>
 
+#include <trivial/core/assert.h>
+
 namespace trivial::thread {
 
 struct ThreadStackAllocation {
@@ -20,8 +22,8 @@ struct ThreadStackAllocation {
 // thread when spawning or joining workers
 class ThreadStackAllocator {
 public:
-	ThreadStackAllocator() noexcept;
-	~ThreadStackAllocator() noexcept;
+	ThreadStackAllocator() noexcept = default;
+	~ThreadStackAllocator() noexcept { TRIVIAL_ASSERT(m_committedBytes == 0); }
 
 	ThreadStackAllocator(const ThreadStackAllocator&) = delete;
 	ThreadStackAllocator& operator=(const ThreadStackAllocator&) = delete;
@@ -38,9 +40,6 @@ public:
 	[[nodiscard]] std::size_t committedBytes() const noexcept { return m_committedBytes; }
 
 private:
-	std::size_t m_pageSize = 0;
-	std::size_t m_allocationGranularity = 0;
-
 	std::size_t m_committedBytes = 0;
 };
 

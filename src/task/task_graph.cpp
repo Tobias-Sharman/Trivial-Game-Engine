@@ -20,6 +20,7 @@
 #include <trivial/task/task_slot.h>
 #include <trivial/task/task_state.h>
 #include <trivial/task/task_status.h>
+#include <trivial/task/task_system_config.h>
 
 namespace trivial::task {
 
@@ -364,7 +365,7 @@ void* TaskGraph::getResultPointer(TaskHandle handle) noexcept {
 }
 
 TaskGraph::TaskPage* TaskGraph::pageAt(std::uint32_t pageIndex) noexcept {
-	if (pageIndex >= s_kMaxPageCount) {
+	if (pageIndex >= TRIVIAL_TASK_GRAPH_MAX_PAGE_COUNT) {
 		return nullptr;
 	}
 
@@ -372,7 +373,7 @@ TaskGraph::TaskPage* TaskGraph::pageAt(std::uint32_t pageIndex) noexcept {
 }
 
 const TaskGraph::TaskPage* TaskGraph::pageAt(std::uint32_t pageIndex) const noexcept {
-	if (pageIndex >= s_kMaxPageCount) {
+	if (pageIndex >= TRIVIAL_TASK_GRAPH_MAX_PAGE_COUNT) {
 		return nullptr;
 	}
 
@@ -380,7 +381,7 @@ const TaskGraph::TaskPage* TaskGraph::pageAt(std::uint32_t pageIndex) const noex
 }
 
 TaskGraph::TaskPage* TaskGraph::ensurePage(std::uint32_t pageIndex) noexcept {
-	if (pageIndex >= s_kMaxPageCount) {
+	if (pageIndex >= TRIVIAL_TASK_GRAPH_MAX_PAGE_COUNT) {
 		return nullptr;
 	}
 
@@ -411,7 +412,7 @@ TaskGraph::TaskPage* TaskGraph::ensurePage(std::uint32_t pageIndex) noexcept {
 }
 
 TaskSlot* TaskGraph::slotAt(std::uint32_t taskIndex) noexcept {
-	if (taskIndex >= s_kMaxTaskCount) {
+	if (taskIndex >= TRIVIAL_TASK_GRAPH_MAX_TASK_COUNT) {
 		return nullptr;
 	}
 
@@ -425,7 +426,7 @@ TaskSlot* TaskGraph::slotAt(std::uint32_t taskIndex) noexcept {
 }
 
 const TaskSlot* TaskGraph::slotAt(std::uint32_t taskIndex) const noexcept {
-	if (taskIndex >= s_kMaxTaskCount) {
+	if (taskIndex >= TRIVIAL_TASK_GRAPH_MAX_TASK_COUNT) {
 		return nullptr;
 	}
 
@@ -455,7 +456,7 @@ bool TaskGraph::allocateTaskIndex(std::uint32_t& taskIndex) noexcept {
 		return true;
 	}
 
-	if (m_nextUnusedTaskIndex >= s_kMaxTaskCount) {
+	if (m_nextUnusedTaskIndex >= TRIVIAL_TASK_GRAPH_MAX_TASK_COUNT) {
 		TRIVIAL_LOG_WARNING("TaskGraph capacity exhausted you should increase the max task count");
 		return false;
 	}
@@ -467,7 +468,7 @@ bool TaskGraph::allocateTaskIndex(std::uint32_t& taskIndex) noexcept {
 }
 
 void TaskGraph::releaseTaskIndex(std::uint32_t taskIndex) noexcept {
-	TRIVIAL_ASSERT(taskIndex < s_kMaxTaskCount);
+	TRIVIAL_ASSERT(taskIndex < TRIVIAL_TASK_GRAPH_MAX_TASK_COUNT);
 
 	const sync::LockGuard<sync::Mutex> kLock(m_allocationMutex);
 

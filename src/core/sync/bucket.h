@@ -13,8 +13,8 @@ namespace trivial::sync {
 struct alignas(TRIVIAL_PLATFORM_FALSE_SHARING_ALIGNMENT) Bucket {
 	EscalatingLock lock;
 
-	std::size_t queueHead = g_kInvalidParkingLotSlotIndex;
-	std::size_t queueTail = g_kInvalidParkingLotSlotIndex;
+	std::size_t queueHead = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
+	std::size_t queueTail = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
 };
 
 } // namespace trivial::sync

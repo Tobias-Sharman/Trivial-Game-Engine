@@ -229,14 +229,14 @@ bool Backend::beginFrame(std::uint64_t frameIndex) noexcept {
 
 	TRIVIAL_VK_CHECK("vkResetCommandBuffer failed", result);
 
-	static constexpr VkCommandBufferBeginInfo s_kBeginInfo = {
+	constexpr VkCommandBufferBeginInfo kBeginInfo = {
 	    .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
 	    .pNext = nullptr,
 	    .flags = 0,
 	    .pInheritanceInfo = nullptr,
 	};
 
-	result = vkBeginCommandBuffer(kCommandBuffer, &s_kBeginInfo);
+	result = vkBeginCommandBuffer(kCommandBuffer, &kBeginInfo);
 
 	TRIVIAL_VK_CHECK("vkBeginCommandBuffer failed", result);
 
@@ -341,8 +341,8 @@ void Backend::drawMesh(MeshHandle handle, const math::Affine2f& transform, const
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
 
 	VkBuffer vertexBuffer = mesh.buffer;
-	static constexpr VkDeviceSize s_kVertexOffset = 0;
-	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer, &s_kVertexOffset);
+	constexpr VkDeviceSize kVertexOffset = 0;
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer, &kVertexOffset);
 	vkCmdBindIndexBuffer(commandBuffer, mesh.buffer, mesh.indexOffset, VK_INDEX_TYPE_UINT16);
 
 	const PushConstants kPushConstants = {.tint = tint, .transform = transform};
@@ -419,7 +419,7 @@ void Backend::beginRendering() noexcept {
 	                      VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
 	                      VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT);
 
-	static constexpr VkClearValue s_kClearColor = {.color = {.float32 = {0.0F, 0.0F, 0.0F, 1.0F}}};
+	constexpr VkClearValue kClearColor = {.color = {.float32 = {0.0F, 0.0F, 0.0F, 1.0F}}};
 
 	const VkRenderingAttachmentInfo kColorAttachment = {
 	    .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
@@ -431,7 +431,7 @@ void Backend::beginRendering() noexcept {
 	    .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
 	    .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
 	    .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-	    .clearValue = s_kClearColor,
+	    .clearValue = kClearColor,
 	};
 
 	const VkRenderingInfo kRenderingInfo = {

@@ -1,3 +1,4 @@
+#define TRIVIAL_THREAD_IMPLEMENTATION
 #include <trivial/core/thread/thread.h>
 
 #include <algorithm>
@@ -51,7 +52,7 @@ std::atomic<std::uint32_t> g_nextThreadIndex{0};
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 thread_local trivial::thread::Thread* g_currentThread = nullptr; // Better linkage than member variable
 
-void copyName(const char* name, std::array<char, trivial::thread::Thread::s_kMaxNameLength>& outName) noexcept {
+void copyName(const char* name, std::array<char, TRIVIAL_THREAD_MAX_NAME_LENGTH>& outName) noexcept {
 	if (name == nullptr) {
 		outName[0] = '\0';
 		return;
@@ -64,13 +65,12 @@ void copyName(const char* name, std::array<char, trivial::thread::Thread::s_kMax
 }
 
 #if TRIVIAL_PLATFORM_WINDOWS
-void applyThreadDescription(HANDLE handle,
-                            const std::array<char, trivial::thread::Thread::kMaxNameLength>& name) noexcept {
+void applyThreadDescription(HANDLE handle, const std::array<char, TRIVIAL_THREAD_MAX_NAME_LENGTH>& name) noexcept {
 	if (name[0] == '\0') {
 		return;
 	}
 
-	std::array<wchar_t, trivial::thread::Thread::kMaxNameLength> wideName{};
+	std::array<wchar_t, TRIVIAL_THREAD_MAX_NAME_LENGTH> wideName{};
 
 	std::size_t i = 0;
 	for (; i < name.size() - 1 && name[i] != '\0'; ++i) {

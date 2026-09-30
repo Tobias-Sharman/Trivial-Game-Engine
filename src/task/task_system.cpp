@@ -4,6 +4,7 @@
 #include <atomic>
 #include <cstdint>
 #include <cstdlib>
+#include <limits>
 #include <span>
 #include <string>
 #include <utility>
@@ -26,6 +27,8 @@
 #include <trivial/task/worker.h>
 
 #include "core/sync/parking_lot.h"
+
+#define TRIVIAL_TASK_SYSTEM_INVALID_WORKER_INDEX (std::numeric_limits<std::size_t>::max())
 
 namespace {
 
@@ -215,7 +218,7 @@ void TaskSystem::wait(TaskHandle task) noexcept {
 
 	const std::size_t kWorkerIndex = tryGetCurrentWorkerIndex();
 
-	if (kWorkerIndex == s_kInvalidWorkerIndex) {
+	if (kWorkerIndex == TRIVIAL_TASK_SYSTEM_INVALID_WORKER_INDEX) {
 		latch.wait();
 		return;
 	}
@@ -269,7 +272,7 @@ void TaskSystem::wait(std::span<const TaskHandle> tasks) noexcept {
 
 	const std::size_t kWorkerIndex = tryGetCurrentWorkerIndex();
 
-	if (kWorkerIndex == s_kInvalidWorkerIndex) {
+	if (kWorkerIndex == TRIVIAL_TASK_SYSTEM_INVALID_WORKER_INDEX) {
 		latch.wait();
 		return;
 	}
@@ -322,7 +325,7 @@ void TaskSystem::runMainThreadReadyTasks() noexcept {
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 std::size_t TaskSystem::tryGetCurrentWorkerIndex() const noexcept {
 	if (g_currentWorker == nullptr) {
-		return s_kInvalidWorkerIndex;
+		return TRIVIAL_TASK_SYSTEM_INVALID_WORKER_INDEX;
 	}
 
 	TRIVIAL_ASSERT(g_currentWorkerSystem == this);

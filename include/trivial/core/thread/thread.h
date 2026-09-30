@@ -17,6 +17,8 @@
 #include <sys/qos.h>
 #endif // TRIVIAL_PLATFORM_MACOS
 
+#define TRIVIAL_THREAD_MAX_NAME_LENGTH (std::size_t{16})
+
 namespace trivial::thread {
 
 enum class ThreadType : std::uint8_t {
@@ -83,8 +85,6 @@ struct ThreadConfig {
 
 class Thread {
 public:
-	static constexpr std::size_t s_kMaxNameLength = 16;
-
 	Thread() noexcept = default;
 
 	~Thread() noexcept;
@@ -149,7 +149,7 @@ private:
 	ThreadType m_type = ThreadType::Unknown;
 	std::atomic<ThreadState> m_state{ThreadState::NotStarted};
 
-	std::array<char, s_kMaxNameLength> m_name{};
+	std::array<char, TRIVIAL_THREAD_MAX_NAME_LENGTH> m_name{};
 
 	ThreadStartRoutine m_startRoutine = nullptr;
 	void* m_arg = nullptr;
@@ -168,5 +168,9 @@ private:
 };
 
 } // namespace trivial::thread
+
+#ifndef TRIVIAL_THREAD_IMPLEMENTATION
+#undef TRIVIAL_THREAD_MAX_NAME_LENGTH
+#endif // TRIVIAL_THREAD_IMPLEMENTATION
 
 #endif // TRIVIAL_CORE_THREAD_THREAD_H

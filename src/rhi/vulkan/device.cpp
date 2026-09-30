@@ -12,9 +12,9 @@
 #include "rhi/vulkan/physical_device.h"
 #include "rhi/vulkan/result.h"
 
-namespace {
+#define TRIVIAL_RHI_VULKAN_PORTABILITY_SUBSET_EXTENSION_NAME "VK_KHR_portability_subset" // To avoid beta extensions
 
-constexpr const char* g_kPortabilitySubsetExtensionName = "VK_KHR_portability_subset"; // To avoid beta extensions
+namespace {
 
 struct DeviceSelection {
 	std::vector<const char*> extensions;
@@ -57,13 +57,15 @@ DeviceSelection makeDeviceSelection(std::span<const VkExtensionProperties> avail
 
 	requireDeviceExtension(&selection, availableExtensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
-	(void)enableOptionalDeviceExtension(&selection, availableExtensions, g_kPortabilitySubsetExtensionName);
+	(void)enableOptionalDeviceExtension(&selection,
+	                                    availableExtensions,
+	                                    TRIVIAL_RHI_VULKAN_PORTABILITY_SUBSET_EXTENSION_NAME);
 
 	return selection;
 }
 
-VkDeviceQueueCreateInfo makeDeviceQueueCreateInfo(std::uint32_t queueFamily) noexcept {
-	static constexpr float s_kQueuePriority = 1.0F;
+VkDeviceQueueCreateInfo makeDeviceQueueCreateInfo(std::uint32_t queueFamily, const float* priority) noexcept {
+	TRIVIAL_ASSERT(priority != nullptr);
 
 	VkDeviceQueueCreateInfo createInfo = {
 	    .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
@@ -71,24 +73,26 @@ VkDeviceQueueCreateInfo makeDeviceQueueCreateInfo(std::uint32_t queueFamily) noe
 	    .flags = 0,
 	    .queueFamilyIndex = queueFamily,
 	    .queueCount = 1, // Multiple queues -> mutex anyway so just use my own later as needed
-	    .pQueuePriorities = &s_kQueuePriority,
+	    .pQueuePriorities = priority,
 	};
 
 	return createInfo;
 }
 
 std::vector<VkDeviceQueueCreateInfo> makeDeviceQueueCreateInfos(
-    const trivial::rhi::vulkan::QueueFamilySelection* queueFamilies) noexcept {
+    const trivial::rhi::vulkan::QueueFamilySelection* queueFamilies,
+    const float* priority) noexcept {
 	TRIVIAL_ASSERT(queueFamilies != nullptr);
+	TRIVIAL_ASSERT(priority != nullptr);
 	TRIVIAL_ASSERT(queueFamilies->hasGraphicsFamily);
 	TRIVIAL_ASSERT(queueFamilies->hasPresentFamily);
 
 	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 
-	queueCreateInfos.push_back(makeDeviceQueueCreateInfo(queueFamilies->graphicsFamily));
+	queueCreateInfos.push_back(makeDeviceQueueCreateInfo(queueFamilies->graphicsFamily, priority));
 
 	if (queueFamilies->presentFamily != queueFamilies->graphicsFamily) {
-		queueCreateInfos.push_back(makeDeviceQueueCreateInfo(queueFamilies->presentFamily));
+		queueCreateInfos.push_back(makeDeviceQueueCreateInfo(queueFamilies->presentFamily, priority));
 	}
 
 	return queueCreateInfos;
@@ -129,7 +133,9 @@ VkDevice createDevice(VkPhysicalDevice physicalDevice, const QueueFamilySelectio
 
 	const DeviceFeatures kRequiredFeatures = makeRequiredDeviceFeatures();
 
-	const std::vector<VkDeviceQueueCreateInfo> kQueueCreateInfos = makeDeviceQueueCreateInfos(queueFamilies);
+	constexpr float kQueuePriority = 1.0F;
+	const std::vector<VkDeviceQueueCreateInfo> kQueueCreateInfos
+	    = makeDeviceQueueCreateInfos(queueFamilies, &kQueuePriority);
 
 	const std::vector<VkExtensionProperties> kAvailableExtensions = enumerateDeviceExtensions(physicalDevice);
 	const DeviceSelection kSelection = makeDeviceSelection(kAvailableExtensions);

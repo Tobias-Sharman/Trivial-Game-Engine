@@ -225,7 +225,7 @@ void destroyShaderModule(VkDevice device, VkShaderModule module) noexcept {
 VkPipelineLayout createPipelineLayout(VkDevice device) noexcept {
 	TRIVIAL_ASSERT(device != VK_NULL_HANDLE);
 
-	static constexpr VkPushConstantRange s_kPushConstantRange = {
+	constexpr VkPushConstantRange kPushConstantRange = {
 	    .stageFlags = static_cast<VkShaderStageFlags>(VK_SHADER_STAGE_VERTEX_BIT) | VK_SHADER_STAGE_FRAGMENT_BIT,
 	    .offset = 0,
 	    .size = sizeof(PushConstants),
@@ -238,7 +238,7 @@ VkPipelineLayout createPipelineLayout(VkDevice device) noexcept {
 	    .setLayoutCount = 0,
 	    .pSetLayouts = nullptr,
 	    .pushConstantRangeCount = 1,
-	    .pPushConstantRanges = &s_kPushConstantRange,
+	    .pPushConstantRanges = &kPushConstantRange,
 	};
 
 	VkPipelineLayout layout = VK_NULL_HANDLE;

@@ -7,12 +7,13 @@
 #include <gtest/gtest.h>
 
 #include <trivial/core/memory/memory_config.h>
-#include <trivial/core/memory/segment_allocator.h>
 #include <trivial/core/thread/thread.h>
 #include <trivial/task/task_handle.h>
 #include <trivial/task/task_payload.h>
 #include <trivial/task/task_system.h>
 
+#include "core/memory/memory_capabilities.h"
+#include "core/memory/segment_allocator.h"
 #include "support/helpers.h"
 
 using namespace trivial::memory;
@@ -20,7 +21,7 @@ using namespace trivial::memory;
 namespace {
 
 constexpr std::size_t g_kConcurrentSegments = 64;
-constexpr std::size_t g_kConcurrentReserve = g_kConcurrentSegments * g_kSegmentSize;
+constexpr std::size_t g_kConcurrentReserve = g_kConcurrentSegments * TRIVIAL_MEMORY_SEGMENT_SIZE;
 constexpr std::size_t g_kConcurrentTasks = 8;
 constexpr std::size_t g_kConcurrentIterations = 256;
 constexpr std::uint32_t g_kConcurrentWorkers = 4;
@@ -94,8 +95,7 @@ TEST_F(SegmentAllocatorMultiThreadTest, AllocFreeNeverHandsOutSameSegment) {
 				continue;
 			}
 
-			// NOLINTNEXTLINE(readability-static-accessed-through-instance)
-			const std::size_t kBytes = m_allocator.capabilities().pageSize;
+			const std::size_t kBytes = pageSize();
 			std::memset(segment, kPattern, kBytes);
 
 			for (std::size_t byte = 0; byte < kBytes; ++byte) {
@@ -146,22 +146,22 @@ TEST_F(SegmentAllocatorMultiThreadTest, MultiSegmentRunsStayContiguous) {
 
 			for (std::size_t offset = 0; offset < kCount && committed; ++offset) {
 				// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-				void* segment = static_cast<char*>(run) + (offset * g_kSegmentSize);
+				void* segment = static_cast<char*>(run) + (offset * TRIVIAL_MEMORY_SEGMENT_SIZE);
 				committed = m_allocator.ensureCommittedPages(segment, 1, error);
 			}
 
 			if (committed) {
-				// NOLINTNEXTLINE(readability-static-accessed-through-instance)
-				const std::size_t kPageSize = m_allocator.capabilities().pageSize;
+				const std::size_t kPageSize = pageSize();
 
 				for (std::size_t offset = 0; offset < kCount; ++offset) {
 					// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-					std::memset(static_cast<char*>(run) + (offset * g_kSegmentSize), kPattern, kPageSize);
+					std::memset(static_cast<char*>(run) + (offset * TRIVIAL_MEMORY_SEGMENT_SIZE), kPattern, kPageSize);
 				}
 
 				for (std::size_t offset = 0; offset < kCount; ++offset) {
+					const std::size_t kOffsetBytes = offset * TRIVIAL_MEMORY_SEGMENT_SIZE;
 					// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-					const unsigned char* page = static_cast<const unsigned char*>(run) + (offset * g_kSegmentSize);
+					const unsigned char* page = static_cast<const unsigned char*>(run) + kOffsetBytes;
 
 					// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 					if (page[0] != kPattern || page[kPageSize - 1] != kPattern) {
@@ -238,7 +238,7 @@ TEST_F(SegmentAllocatorMultiThreadTest, CommittedBytesReturnsToBaseline) {
 
 #if TRIVIAL_MEMORY_ENABLE_DECOMMIT
 	// Purge everything the run left cached
-	for (std::uint32_t tick = 0; tick <= g_kDecayTicks + m_allocator.segmentCapacity(); ++tick) {
+	for (std::uint32_t tick = 0; tick <= TRIVIAL_MEMORY_DECAY_TICKS + m_allocator.segmentCapacity(); ++tick) {
 		m_allocator.tick();
 	}
 

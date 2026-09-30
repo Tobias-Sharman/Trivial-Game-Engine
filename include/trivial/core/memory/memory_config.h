@@ -2,9 +2,8 @@
 #define TRIVIAL_CORE_MEMORY_MEMORY_CONFIG_H
 
 #include <cstddef>
-#include <cstdint>
 
-#include <trivial/core/config.h>
+#include <trivial/core/config.h> // IWYU pragma: export
 #include <trivial/core/platform.h>
 
 #ifndef TRIVIAL_ENABLE_MEMORY_DEBUG_STATS
@@ -24,7 +23,7 @@
 #endif
 
 #ifndef TRIVIAL_MEMORY_PREFER_LAZY_DECOMMIT
-#define TRIVIAL_MEMORY_PREFER_LAZY_DECOMMIT (!TRIVIAL_ENABLE_MEMORY_DEBUG_STATS)
+#define TRIVIAL_MEMORY_PREFER_LAZY_DECOMMIT 0
 #endif
 
 // NOTE: Not for regular usage only very specific well-informed workloads - will
@@ -51,6 +50,10 @@
 #define TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES (TRIVIAL_MEMORY_ENABLE_COMMIT_BUDGET || TRIVIAL_ENABLE_MEMORY_DEBUG_STATS)
 
 #define TRIVIAL_MEMORY_ENABLE_TICK (TRIVIAL_MEMORY_ENABLE_DECOMMIT || TRIVIAL_ENABLE_MEMORY_DEBUG_STATS)
+
+#define TRIVIAL_MEMORY_LAZY_DECOMMIT                                                                                   \
+	(TRIVIAL_MEMORY_ENABLE_DECOMMIT && TRIVIAL_MEMORY_PREFER_LAZY_DECOMMIT                                             \
+	 && (TRIVIAL_PLATFORM_WINDOWS || TRIVIAL_PLATFORM_SDK_HAS_MADV_FREE))
 
 // TODO: Tune shifts
 
@@ -118,83 +121,43 @@
 #error "TRIVIAL_MEMORY_ENABLE_COMMIT_BUDGET must be 0 or 1"
 #endif
 
-namespace trivial::memory {
+#define TRIVIAL_MEMORY_SEGMENT_SIZE (std::size_t{1} << TRIVIAL_MEMORY_SEGMENT_SHIFT)
+#define TRIVIAL_MEMORY_SEGMENT_MASK (TRIVIAL_MEMORY_SEGMENT_SIZE - std::size_t{1})
 
-inline constexpr std::size_t g_kSegmentShift = TRIVIAL_MEMORY_SEGMENT_SHIFT;
-inline constexpr std::size_t g_kSegmentSize = std::size_t{1} << g_kSegmentShift;
-inline constexpr std::size_t g_kSegmentMask = g_kSegmentSize - 1;
+#define TRIVIAL_MEMORY_SMALL_PAGE_SIZE (std::size_t{1} << TRIVIAL_MEMORY_SMALL_PAGE_SHIFT)
+#define TRIVIAL_MEMORY_SMALL_PAGE_MASK (TRIVIAL_MEMORY_SMALL_PAGE_SIZE - std::size_t{1})
+#define TRIVIAL_MEMORY_SMALL_PAGES_PER_SEGMENT (TRIVIAL_MEMORY_SEGMENT_SIZE >> TRIVIAL_MEMORY_SMALL_PAGE_SHIFT)
 
-inline constexpr std::size_t g_kSmallPageShift = TRIVIAL_MEMORY_SMALL_PAGE_SHIFT;
-inline constexpr std::size_t g_kSmallPageSize = std::size_t{1} << g_kSmallPageShift;
-inline constexpr std::size_t g_kSmallPageMask = g_kSmallPageSize - 1;
-inline constexpr std::size_t g_kSmallPagesPerSegment = g_kSegmentSize >> g_kSmallPageShift;
-
-inline constexpr std::size_t g_kSmallMaxSize = std::size_t{1} << TRIVIAL_MEMORY_SMALL_MAX_SHIFT;
-inline constexpr std::size_t g_kMediumMaxSize = std::size_t{1} << TRIVIAL_MEMORY_MEDIUM_MAX_SHIFT;
-
-inline constexpr std::uint32_t g_kFramesPerTick = TRIVIAL_MEMORY_FRAMES_PER_TICK;
-inline constexpr std::uint32_t g_kDecayTicks = TRIVIAL_MEMORY_DECAY_TICKS;
-inline constexpr std::size_t g_kMinPurgePerTick = TRIVIAL_MEMORY_MIN_PURGE_PER_TICK;
-inline constexpr std::size_t g_kPurgeFraction = TRIVIAL_MEMORY_PURGE_FRACTION;
-inline constexpr std::size_t g_kMaxPurgePerTick = TRIVIAL_MEMORY_MAX_PURGE_PER_TICK;
-inline constexpr std::size_t g_kMaxCachedSegments = TRIVIAL_MEMORY_MAX_CACHED_SEGMENTS;
+#define TRIVIAL_MEMORY_SMALL_MAX_SIZE (std::size_t{1} << TRIVIAL_MEMORY_SMALL_MAX_SHIFT)
+#define TRIVIAL_MEMORY_MEDIUM_MAX_SIZE (std::size_t{1} << TRIVIAL_MEMORY_MEDIUM_MAX_SHIFT)
 
 #if TRIVIAL_MEMORY_FIXED_COMMIT_BUDGET
-inline constexpr std::size_t g_kCommitBudgetBytes = TRIVIAL_MEMORY_COMMIT_BUDGET_BYTES;
-
-static_assert(g_kCommitBudgetBytes >= g_kSegmentSize, "Commit budget below a single segment");
+static_assert(TRIVIAL_MEMORY_COMMIT_BUDGET_BYTES >= TRIVIAL_MEMORY_SEGMENT_SIZE,
+              "Commit budget below a single segment");
 #endif // TRIVIAL_MEMORY_FIXED_COMMIT_BUDGET
 
 // NOLINTNEXTLINE(readability-magic-numbers)
-static_assert(g_kSegmentShift >= 16 && g_kSegmentShift <= 30, "Segment size outside sane range");
-static_assert(g_kSmallPageShift < g_kSegmentShift, "Small pages must be smaller than a segment");
-static_assert(g_kSmallPagesPerSegment >= 4, "Too few small pages per segment to be worth sharding");
-static_assert(g_kSmallMaxSize * 4 <= g_kSmallPageSize, "Small tier needs at least four blocks per page");
-static_assert(g_kMediumMaxSize * 4 <= g_kSegmentSize, "Medium tier needs several blocks per segment to drain");
-static_assert(g_kSmallMaxSize < g_kMediumMaxSize, "Tier boundaries out of order");
-static_assert(g_kFramesPerTick > 0, "Frames per tick must be non zero");
-static_assert(g_kPurgeFraction > 0, "Purge fraction must be non zero");
-static_assert(g_kMaxPurgePerTick >= g_kMinPurgePerTick, "Purge ceiling below its floor");
+static_assert(TRIVIAL_MEMORY_SEGMENT_SHIFT >= 16 && TRIVIAL_MEMORY_SEGMENT_SHIFT <= 30,
+              "Segment size outside sane range");
+static_assert(TRIVIAL_MEMORY_SMALL_PAGE_SHIFT < TRIVIAL_MEMORY_SEGMENT_SHIFT,
+              "Small pages must be smaller than a segment");
+static_assert(TRIVIAL_MEMORY_SMALL_PAGES_PER_SEGMENT >= 4, "Too few small pages per segment to be worth sharding");
+static_assert(TRIVIAL_MEMORY_SMALL_MAX_SIZE * 4 <= TRIVIAL_MEMORY_SMALL_PAGE_SIZE,
+              "Small tier needs at least four blocks per page");
+static_assert(TRIVIAL_MEMORY_MEDIUM_MAX_SIZE * 4 <= TRIVIAL_MEMORY_SEGMENT_SIZE,
+              "Medium tier needs several blocks per segment to drain");
+static_assert(TRIVIAL_MEMORY_SMALL_MAX_SIZE < TRIVIAL_MEMORY_MEDIUM_MAX_SIZE, "Tier boundaries out of order");
+static_assert(TRIVIAL_MEMORY_FRAMES_PER_TICK > 0, "Frames per tick must be non zero");
+static_assert(TRIVIAL_MEMORY_PURGE_FRACTION > 0, "Purge fraction must be non zero");
+static_assert(TRIVIAL_MEMORY_MAX_PURGE_PER_TICK >= TRIVIAL_MEMORY_MIN_PURGE_PER_TICK, "Purge ceiling below its floor");
 
 #if TRIVIAL_PLATFORM_PAGE_SIZE_KNOWN
-static_assert(g_kSegmentSize % TRIVIAL_PLATFORM_PAGE_SIZE == 0, "Segment size must be a whole number of pages");
-static_assert(g_kSmallPageSize % TRIVIAL_PLATFORM_PAGE_SIZE == 0, "Small page size must be a whole number of OS pages");
-static_assert(g_kSegmentSize >= TRIVIAL_PLATFORM_ALLOCATION_GRANULARITY,
+static_assert(TRIVIAL_MEMORY_SEGMENT_SIZE % TRIVIAL_PLATFORM_PAGE_SIZE == 0,
+              "Segment size must be a whole number of pages");
+static_assert(TRIVIAL_MEMORY_SMALL_PAGE_SIZE % TRIVIAL_PLATFORM_PAGE_SIZE == 0,
+              "Small page size must be a whole number of OS pages");
+static_assert(TRIVIAL_MEMORY_SEGMENT_SIZE >= TRIVIAL_PLATFORM_ALLOCATION_GRANULARITY,
               "Segments must be at least the reservation granularity");
 #endif // TRIVIAL_PLATFORM_PAGE_SIZE_KNOWN
-
-enum class DecommitMode : std::uint8_t {
-	Disabled,
-	Eager,
-	Lazy,
-};
-
-struct MemoryCapabilities {
-#if TRIVIAL_PLATFORM_PAGE_SIZE_KNOWN
-	// NOLINTNEXTLINE(readability-identifier-naming)
-	static constexpr std::size_t pageSize = TRIVIAL_PLATFORM_PAGE_SIZE;
-	// NOLINTNEXTLINE(readability-identifier-naming)
-	static constexpr std::size_t allocationGranularity = TRIVIAL_PLATFORM_ALLOCATION_GRANULARITY;
-#else
-	std::size_t pageSize = 0;
-	std::size_t allocationGranularity = 0;
-#endif // TRIVIAL_PLATFORM_PAGE_SIZE_KNOWN
-
-#if TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
-	std::size_t largePageSize = 0;
-#endif // TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
-
-#if !TRIVIAL_MEMORY_ENABLE_DECOMMIT
-	static constexpr DecommitMode decommitMode = DecommitMode::Disabled;
-#elif TRIVIAL_PLATFORM_WINDOWS
-	// VirtualFree has no lazy equivalent, so the mode is never in question
-	static constexpr DecommitMode decommitMode = DecommitMode::Eager;
-#else
-	// Eager or lazy depending on what the MADV_FREE probe found
-	DecommitMode decommitMode = DecommitMode::Eager;
-#endif // Decommit mode
-};
-
-} // namespace trivial::memory
 
 #endif // TRIVIAL_CORE_MEMORY_MEMORY_CONFIG_H

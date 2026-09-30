@@ -165,7 +165,7 @@ void enableOptionalValidation(InstanceSelection* selection,
 	const std::vector<VkLayerProperties> kAvailableLayers = enumerateInstanceLayers();
 
 	const bool kValidationLayerEnabled
-	    = enableOptionalInstanceLayer(selection, kAvailableLayers, g_kValidationLayerName);
+	    = enableOptionalInstanceLayer(selection, kAvailableLayers, TRIVIAL_RHI_VULKAN_VALIDATION_LAYER_NAME);
 
 	if (!kValidationLayerEnabled) {
 		TRIVIAL_LOG_WARNING("VK_LAYER_KHRONOS_validation is not available");

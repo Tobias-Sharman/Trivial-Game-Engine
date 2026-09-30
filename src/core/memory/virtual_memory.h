@@ -9,6 +9,10 @@
 #include <trivial/core/memory/memory_config.h>
 #include <trivial/core/platform.h>
 
+#if TRIVIAL_ENABLE_ASSERTS
+#include "core/memory/memory_capabilities.h"
+#endif // TRIVIAL_ENABLE_ASSERTS
+
 #if TRIVIAL_PLATFORM_WINDOWS
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -112,11 +116,10 @@ inline SystemInfo probeSystemInfo() noexcept {
 	return info;
 }
 
-#if TRIVIAL_PLATFORM_POSIX
-// MADV_FREE is declared on Linux and macOS but only implemented from Linux 4.5,
-// so availability is decided by trying it once on a scratch page
+#if TRIVIAL_PLATFORM_LINUX
+// MADV_FREE is declared on older kernels but only implemented from Linux 4.5,
+// so the minimum is checked by trying it once on a scratch page
 inline bool probeMadvFree(std::size_t pageSize) noexcept {
-#if TRIVIAL_PLATFORM_SDK_HAS_MADV_FREE
 	void* probe = mmap(nullptr, pageSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	if (probe == MAP_FAILED) {
 		return false;
@@ -126,12 +129,8 @@ inline bool probeMadvFree(std::size_t pageSize) noexcept {
 	(void)munmap(probe, pageSize);
 
 	return kSupported;
-#else
-	(void)pageSize;
-	return false;
-#endif // TRIVIAL_PLATFORM_SDK_HAS_MADV_FREE
 }
-#endif // TRIVIAL_PLATFORM_POSIX
+#endif // TRIVIAL_PLATFORM_LINUX
 
 inline std::size_t alignmentOffset(const void* base, std::size_t alignment) noexcept {
 	TRIVIAL_ASSERT(alignment > 0);
@@ -145,14 +144,13 @@ inline std::size_t alignmentOffset(const void* base, std::size_t alignment) noex
 #if TRIVIAL_PLATFORM_WINDOWS
 inline void* reserveAligned(std::size_t bytes,
                             std::size_t alignment,
-                            const SystemInfo& systemInfo,
                             void*& outRawBase,
                             std::size_t& outRawBytes,
                             int& outOsErrorCode) noexcept {
 	TRIVIAL_ASSERT(alignment > 0);
 	TRIVIAL_ASSERT((alignment & (alignment - 1)) == 0);
-	TRIVIAL_ASSERT(alignment % systemInfo.pageSize == 0);
-	TRIVIAL_ASSERT(alignment % systemInfo.allocationGranularity == 0);
+	TRIVIAL_ASSERT(alignment % pageSize() == 0);
+	TRIVIAL_ASSERT(alignment % allocationGranularity() == 0);
 	TRIVIAL_ASSERT(bytes % alignment == 0);
 
 	if (bytes == 0 || bytes > SIZE_MAX - alignment) {
@@ -195,15 +193,12 @@ inline void* reserveAligned(std::size_t bytes,
 }
 
 #elif TRIVIAL_PLATFORM_POSIX
-inline void* reserveAligned(std::size_t bytes,
-                            std::size_t alignment,
-                            const SystemInfo& systemInfo,
-                            int& outOsErrorCode) noexcept {
+inline void* reserveAligned(std::size_t bytes, std::size_t alignment, int& outOsErrorCode) noexcept {
 	TRIVIAL_ASSERT(alignment > 0);
 	TRIVIAL_ASSERT((alignment & (alignment - 1)) == 0);
-	TRIVIAL_ASSERT(alignment % systemInfo.pageSize == 0);
+	TRIVIAL_ASSERT(alignment % pageSize() == 0);
+	TRIVIAL_ASSERT(alignment % allocationGranularity() == 0);
 	TRIVIAL_ASSERT(bytes % alignment == 0);
-	(void)systemInfo;
 
 	if (bytes == 0 || bytes > SIZE_MAX - alignment) {
 		outOsErrorCode = 0;
@@ -266,11 +261,26 @@ inline bool commitPages(void* addr, std::size_t bytes, std::size_t pageSize, int
 		return false;
 	}
 
+#if TRIVIAL_MEMORY_LAZY_DECOMMIT
+	DWORD oldProtect = 0;
+	if (VirtualProtect(addr, bytes, PAGE_READWRITE, &oldProtect) == 0) {
+		outOsErrorCode = static_cast<int>(GetLastError());
+		return false;
+	}
+#endif // TRIVIAL_MEMORY_LAZY_DECOMMIT
+
 #elif TRIVIAL_PLATFORM_POSIX
 	if (mprotect(addr, bytes, PROT_READ | PROT_WRITE) != 0) {
 		outOsErrorCode = errno;
 		return false;
 	}
+
+#if TRIVIAL_PLATFORM_MACOS
+	if (madvise(addr, bytes, MADV_FREE_REUSE) != 0) {
+		outOsErrorCode = errno;
+		return false;
+	}
+#endif // TRIVIAL_PLATFORM_MACOS
 
 #endif // Platform check
 
@@ -309,14 +319,8 @@ inline bool commitLargePages(void* addr, std::size_t bytes, std::size_t largePag
 }
 #endif // TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
 
-inline void decommitPages(void* addr,
-                          std::size_t bytes,
-                          std::size_t pageSize,
-                          trivial::memory::DecommitMode mode) noexcept {
-	if (mode == trivial::memory::DecommitMode::Disabled) {
-		return;
-	}
-
+#if TRIVIAL_MEMORY_ENABLE_DECOMMIT
+inline void decommitPages(void* addr, std::size_t bytes, std::size_t pageSize) noexcept {
 	TRIVIAL_ASSERT(addr != nullptr);
 	TRIVIAL_ASSERT(bytes > 0);
 	TRIVIAL_ASSERT(bytes % pageSize == 0);
@@ -325,20 +329,30 @@ inline void decommitPages(void* addr,
 	(void)pageSize;
 
 #if TRIVIAL_PLATFORM_WINDOWS
-	bool ok = VirtualFree(addr, bytes, MEM_DECOMMIT) != 0;
-	TRIVIAL_ASSERT(ok);
-	(void)ok;
+#if TRIVIAL_MEMORY_LAZY_DECOMMIT
+	if (VirtualAlloc(addr, bytes, MEM_RESET, PAGE_READWRITE) != nullptr) {
+		DWORD oldProtect = 0;
+		const bool kProtected = VirtualProtect(addr, bytes, PAGE_NOACCESS, &oldProtect) != 0;
+		TRIVIAL_ASSERT(kProtected);
+		(void)kProtected;
+
+		return;
+	}
+#endif // TRIVIAL_MEMORY_LAZY_DECOMMIT
+
+	const bool kDecommitted = VirtualFree(addr, bytes, MEM_DECOMMIT) != 0;
+	TRIVIAL_ASSERT(kDecommitted);
+	(void)kDecommitted;
 
 #elif TRIVIAL_PLATFORM_POSIX
-#if TRIVIAL_PLATFORM_MACOS
-	// MADV_DONTNEED does not reliably release pages on Darwin
-	// MADV_FREE_REUSABLE for eager release for updating process accounting
-	// MADV_FREE defers reclaim to memory pressure
-	const int kAdvice = mode == trivial::memory::DecommitMode::Lazy ? MADV_FREE : MADV_FREE_REUSABLE;
-#elif TRIVIAL_PLATFORM_SDK_HAS_MADV_FREE
-	const int kAdvice = mode == trivial::memory::DecommitMode::Lazy ? MADV_FREE : MADV_DONTNEED;
+#if TRIVIAL_MEMORY_LAZY_DECOMMIT
+	constexpr int kAdvice = MADV_FREE;
+#elif TRIVIAL_PLATFORM_MACOS
+	// MADV_DONTNEED does not reliably release pages on Darwin,
+	// MADV_FREE_REUSABLE releases eagerly and updates process accounting
+	constexpr int kAdvice = MADV_FREE_REUSABLE;
 #else
-	const int kAdvice = MADV_DONTNEED;
+	constexpr int kAdvice = MADV_DONTNEED;
 #endif // Decommit advice
 
 	const bool kOk = madvise(addr, bytes, kAdvice) == 0;
@@ -352,6 +366,7 @@ inline void decommitPages(void* addr,
 
 #endif // Platform check
 }
+#endif // TRIVIAL_MEMORY_ENABLE_DECOMMIT
 
 } // namespace trivial::memory
 
