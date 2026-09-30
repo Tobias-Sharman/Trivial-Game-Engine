@@ -31,7 +31,8 @@ neglected prior to a proper version 1.0.0.
 ## Current plan of action
 
 - Windows and linux basic testing
-- Function decoration with const args and compiler attributes where appropriate
+- Remove unnecessary static const/constexpr for better forms, reduce auto usage,
+and compiler attributes where appropriate
 - Custom Chrono with suitable types
 - Documentation update and create new documentation
 - Allocator

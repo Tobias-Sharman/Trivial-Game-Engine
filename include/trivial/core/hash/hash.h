@@ -10,12 +10,12 @@
 
 namespace trivial::hash {
 
-[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr std::size_t fibonacciHash(const std::uintptr_t kKey,
-                                                                       const std::uint32_t kBits) noexcept {
+[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr std::size_t fibonacciHash(std::uintptr_t key,
+                                                                       std::uint32_t bits) noexcept {
 	constexpr std::uint32_t kProductBits = 64U;
-	TRIVIAL_ASSERT(kBits > 0U && kBits <= kProductBits); // NOLINT(readability-simplify-boolean-expr)
+	TRIVIAL_ASSERT(bits > 0U && bits <= kProductBits); // NOLINT(readability-simplify-boolean-expr)
 
-	return kKey * TRIVIAL_HASH_FIBONACCI_MULTIPLIER >> (kProductBits - kBits);
+	return key * TRIVIAL_HASH_FIBONACCI_MULTIPLIER >> (kProductBits - bits);
 }
 
 } // namespace trivial::hash

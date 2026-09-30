@@ -45,10 +45,10 @@ public:
 		bool anyRequeued;
 	};
 
-	explicit ParkingLot(const std::size_t kCapacity) noexcept
-	    : m_slots(kCapacity)
-	    , m_buckets(bucketCountFor(kCapacity))
-	    , m_bucketBits(static_cast<std::uint32_t>(std::countr_zero(bucketCountFor(kCapacity)))) {}
+	explicit ParkingLot(std::size_t capacity) noexcept
+	    : m_slots(capacity)
+	    , m_buckets(bucketCountFor(capacity))
+	    , m_bucketBits(static_cast<std::uint32_t>(std::countr_zero(bucketCountFor(capacity)))) {}
 
 	~ParkingLot() noexcept = default;
 
@@ -59,12 +59,12 @@ public:
 	ParkingLot& operator=(ParkingLot&&) = delete;
 
 	template <typename Validate>
-	[[nodiscard]] TRIVIAL_FORCE_INLINE ParkResult park(const std::uintptr_t kAddress, Validate&& validate) noexcept {
+	[[nodiscard]] TRIVIAL_FORCE_INLINE ParkResult park(std::uintptr_t address, Validate&& validate) noexcept {
 		const std::size_t kSlotIndex = currentSlotIndex();
 		ParkingLotSlot& slot = m_slots[kSlotIndex];
 		TRIVIAL_ASSERT(slot.key.load(std::memory_order_relaxed) == 0);
 
-		Bucket& bucket = bucketFor(kAddress);
+		Bucket& bucket = bucketFor(address);
 		bucket.lock.lock();
 
 		if (!std::forward<Validate>(validate)()) [[unlikely]] {
@@ -73,7 +73,7 @@ public:
 		}
 
 		slot.parker.prepare();
-		slot.key.store(kAddress, std::memory_order_relaxed);
+		slot.key.store(address, std::memory_order_relaxed);
 		pushToQueue(bucket, kSlotIndex);
 		bucket.lock.unlock();
 
@@ -83,14 +83,14 @@ public:
 	}
 
 	template <typename Validate, typename BeforeSleep>
-	[[nodiscard]] TRIVIAL_FORCE_INLINE ParkResult park(const std::uintptr_t kAddress,
+	[[nodiscard]] TRIVIAL_FORCE_INLINE ParkResult park(std::uintptr_t address,
 	                                                   Validate&& validate,
 	                                                   BeforeSleep&& beforeSleep) noexcept {
 		const std::size_t kSlotIndex = currentSlotIndex();
 		ParkingLotSlot& slot = m_slots[kSlotIndex];
 		TRIVIAL_ASSERT(slot.key.load(std::memory_order_relaxed) == 0);
 
-		Bucket& bucket = bucketFor(kAddress);
+		Bucket& bucket = bucketFor(address);
 		bucket.lock.lock();
 
 		if (!std::forward<Validate>(validate)()) [[unlikely]] {
@@ -99,7 +99,7 @@ public:
 		}
 
 		slot.parker.prepare();
-		slot.key.store(kAddress, std::memory_order_relaxed);
+		slot.key.store(address, std::memory_order_relaxed);
 		pushToQueue(bucket, kSlotIndex);
 		bucket.lock.unlock();
 
@@ -110,14 +110,14 @@ public:
 	}
 
 	template <typename Validate>
-	[[nodiscard]] TRIVIAL_FORCE_INLINE ParkResult parkFor(const std::uintptr_t kAddress,
-	                                                      const std::chrono::nanoseconds kTimeout,
+	[[nodiscard]] TRIVIAL_FORCE_INLINE ParkResult parkFor(std::uintptr_t address,
+	                                                      std::chrono::nanoseconds timeout,
 	                                                      Validate&& validate) noexcept {
 		const std::size_t kSlotIndex = currentSlotIndex();
 		ParkingLotSlot& slot = m_slots[kSlotIndex];
 		TRIVIAL_ASSERT(slot.key.load(std::memory_order_relaxed) == 0);
 
-		Bucket& bucket = bucketFor(kAddress);
+		Bucket& bucket = bucketFor(address);
 		bucket.lock.lock();
 
 		if (!std::forward<Validate>(validate)()) [[unlikely]] {
@@ -126,11 +126,11 @@ public:
 		}
 
 		slot.parker.prepare();
-		slot.key.store(kAddress, std::memory_order_relaxed);
+		slot.key.store(address, std::memory_order_relaxed);
 		pushToQueue(bucket, kSlotIndex);
 		bucket.lock.unlock();
 
-		if (slot.parker.parkFor(kTimeout)) {
+		if (slot.parker.parkFor(timeout)) {
 			slot.key.store(0, std::memory_order_relaxed);
 			return ParkResult::Unparked;
 		}
@@ -158,15 +158,15 @@ public:
 	}
 
 	template <typename Validate, typename BeforeSleep>
-	[[nodiscard]] TRIVIAL_FORCE_INLINE ParkResult parkFor(const std::uintptr_t kAddress,
-	                                                      const std::chrono::nanoseconds kTimeout,
+	[[nodiscard]] TRIVIAL_FORCE_INLINE ParkResult parkFor(std::uintptr_t address,
+	                                                      std::chrono::nanoseconds timeout,
 	                                                      Validate&& validate,
 	                                                      BeforeSleep&& beforeSleep) noexcept {
 		const std::size_t kSlotIndex = currentSlotIndex();
 		ParkingLotSlot& slot = m_slots[kSlotIndex];
 		TRIVIAL_ASSERT(slot.key.load(std::memory_order_relaxed) == 0);
 
-		Bucket& bucket = bucketFor(kAddress);
+		Bucket& bucket = bucketFor(address);
 		bucket.lock.lock();
 
 		if (!std::forward<Validate>(validate)()) [[unlikely]] {
@@ -175,13 +175,13 @@ public:
 		}
 
 		slot.parker.prepare();
-		slot.key.store(kAddress, std::memory_order_relaxed);
+		slot.key.store(address, std::memory_order_relaxed);
 		pushToQueue(bucket, kSlotIndex);
 		bucket.lock.unlock();
 
 		std::forward<BeforeSleep>(beforeSleep)();
 
-		if (slot.parker.parkFor(kTimeout)) {
+		if (slot.parker.parkFor(timeout)) {
 			slot.key.store(0, std::memory_order_relaxed);
 			return ParkResult::Unparked;
 		}
@@ -208,8 +208,8 @@ public:
 		}
 	}
 
-	[[nodiscard]] bool unparkOne(const std::uintptr_t kAddress) noexcept {
-		Bucket& bucket = bucketFor(kAddress);
+	[[nodiscard]] bool unparkOne(std::uintptr_t address) noexcept {
+		Bucket& bucket = bucketFor(address);
 		bucket.lock.lock();
 
 		std::size_t* link = &bucket.queueHead;
@@ -219,7 +219,7 @@ public:
 		while (currentIndex != g_kInvalidParkingLotSlotIndex) {
 			ParkingLotSlot& current = m_slots[currentIndex];
 
-			if (current.key.load(std::memory_order_relaxed) != kAddress) {
+			if (current.key.load(std::memory_order_relaxed) != address) {
 				link = &current.nextInQueue;
 				previousIndex = currentIndex;
 				currentIndex = *link;
@@ -244,8 +244,8 @@ public:
 	}
 
 	template <typename Callback>
-	void unparkOne(const std::uintptr_t kAddress, Callback&& callback) noexcept {
-		Bucket& bucket = bucketFor(kAddress);
+	void unparkOne(std::uintptr_t address, Callback&& callback) noexcept {
+		Bucket& bucket = bucketFor(address);
 		bucket.lock.lock();
 
 		std::size_t* link = &bucket.queueHead;
@@ -255,7 +255,7 @@ public:
 		while (currentIndex != g_kInvalidParkingLotSlotIndex) {
 			ParkingLotSlot& current = m_slots[currentIndex];
 
-			if (current.key.load(std::memory_order_relaxed) != kAddress) {
+			if (current.key.load(std::memory_order_relaxed) != address) {
 				link = &current.nextInQueue;
 				previousIndex = currentIndex;
 				currentIndex = *link;
@@ -272,7 +272,7 @@ public:
 				std::size_t scanIndex = kNextIndex;
 				while (scanIndex != g_kInvalidParkingLotSlotIndex) {
 					const ParkingLotSlot& scan = m_slots[scanIndex];
-					if (scan.key.load(std::memory_order_relaxed) == kAddress) {
+					if (scan.key.load(std::memory_order_relaxed) == address) {
 						hasMoreWaiters = true;
 						break;
 					}
@@ -294,8 +294,8 @@ public:
 		bucket.lock.unlock();
 	}
 
-	void unparkAll(const std::uintptr_t kAddress) noexcept {
-		Bucket& bucket = bucketFor(kAddress);
+	void unparkAll(std::uintptr_t address) noexcept {
+		Bucket& bucket = bucketFor(address);
 		bucket.lock.lock();
 
 		std::size_t* link = &bucket.queueHead;
@@ -305,7 +305,7 @@ public:
 		while (currentIndex != g_kInvalidParkingLotSlotIndex) {
 			ParkingLotSlot& current = m_slots[currentIndex];
 
-			if (current.key.load(std::memory_order_relaxed) != kAddress) {
+			if (current.key.load(std::memory_order_relaxed) != address) {
 				link = &current.nextInQueue;
 				previousIndex = currentIndex;
 				currentIndex = *link;
@@ -330,11 +330,11 @@ public:
 	}
 
 	template <typename ShouldRequeue>
-	[[nodiscard]] bool unparkOneRequeue(const std::uintptr_t kFromAddress,
-	                                    const std::uintptr_t kToAddress,
+	[[nodiscard]] bool unparkOneRequeue(std::uintptr_t fromAddress,
+	                                    std::uintptr_t toAddress,
 	                                    ShouldRequeue&& shouldRequeue) noexcept {
-		Bucket& fromBucket = bucketFor(kFromAddress);
-		Bucket& toBucket = bucketFor(kToAddress);
+		Bucket& fromBucket = bucketFor(fromAddress);
+		Bucket& toBucket = bucketFor(toAddress);
 		const bool kSameBucket = (&fromBucket == &toBucket);
 
 		fromBucket.lock.lock();
@@ -351,7 +351,7 @@ public:
 		while (currentIndex != g_kInvalidParkingLotSlotIndex) {
 			ParkingLotSlot& current = m_slots[currentIndex];
 
-			if (current.key.load(std::memory_order_relaxed) != kFromAddress) {
+			if (current.key.load(std::memory_order_relaxed) != fromAddress) {
 				link = &current.nextInQueue;
 				previousIndex = currentIndex;
 				currentIndex = *link;
@@ -365,7 +365,7 @@ public:
 			}
 
 			if (kRequeue) {
-				current.key.store(kToAddress, std::memory_order_relaxed);
+				current.key.store(toAddress, std::memory_order_relaxed);
 				pushToQueue(toBucket, currentIndex);
 			} else {
 				current.nextInQueue = g_kInvalidParkingLotSlotIndex;
@@ -389,11 +389,11 @@ public:
 	}
 
 	template <typename ShouldRequeue>
-	[[nodiscard]] UnparkAllRequeueResult unparkAllRequeue(const std::uintptr_t kFromAddress,
-	                                                      const std::uintptr_t kToAddress,
+	[[nodiscard]] UnparkAllRequeueResult unparkAllRequeue(std::uintptr_t fromAddress,
+	                                                      std::uintptr_t toAddress,
 	                                                      ShouldRequeue&& shouldRequeue) noexcept {
-		Bucket& fromBucket = bucketFor(kFromAddress);
-		Bucket& toBucket = bucketFor(kToAddress);
+		Bucket& fromBucket = bucketFor(fromAddress);
+		Bucket& toBucket = bucketFor(toAddress);
 		const bool kSameBucket = (&fromBucket == &toBucket);
 
 		fromBucket.lock.lock();
@@ -412,7 +412,7 @@ public:
 		while (currentIndex != g_kInvalidParkingLotSlotIndex) {
 			ParkingLotSlot& current = m_slots[currentIndex];
 
-			if (current.key.load(std::memory_order_relaxed) != kFromAddress) {
+			if (current.key.load(std::memory_order_relaxed) != fromAddress) {
 				link = &current.nextInQueue;
 				previousIndex = currentIndex;
 				currentIndex = *link;
@@ -439,7 +439,7 @@ public:
 				current.key.store(0, std::memory_order_relaxed);
 				current.parker.beginUnpark().wake();
 			} else {
-				current.key.store(kToAddress, std::memory_order_relaxed);
+				current.key.store(toAddress, std::memory_order_relaxed);
 				if (!kSameBucket) {
 					pushToQueue(toBucket, currentIndex);
 				}
@@ -465,33 +465,33 @@ private:
 		return kCurrent->index();
 	}
 
-	[[nodiscard]] TRIVIAL_FORCE_INLINE Bucket& bucketFor(const std::uintptr_t kAddress) noexcept {
-		return m_buckets[hash::fibonacciHash(kAddress, m_bucketBits)];
+	[[nodiscard]] TRIVIAL_FORCE_INLINE Bucket& bucketFor(std::uintptr_t address) noexcept {
+		return m_buckets[hash::fibonacciHash(address, m_bucketBits)];
 	}
 
-	[[nodiscard]] static std::size_t bucketCountFor(const std::size_t kCapacity) noexcept {
-		return std::bit_ceil(kCapacity * TRIVIAL_SYNC_PARKING_LOT_LOAD_FACTOR);
+	[[nodiscard]] static std::size_t bucketCountFor(std::size_t capacity) noexcept {
+		return std::bit_ceil(capacity * TRIVIAL_SYNC_PARKING_LOT_LOAD_FACTOR);
 	}
 
-	void pushToQueue(Bucket& bucket, const std::size_t kSlotIndex) noexcept {
-		m_slots[kSlotIndex].nextInQueue = g_kInvalidParkingLotSlotIndex;
+	void pushToQueue(Bucket& bucket, std::size_t slotIndex) noexcept {
+		m_slots[slotIndex].nextInQueue = g_kInvalidParkingLotSlotIndex;
 
 		if (bucket.queueTail == g_kInvalidParkingLotSlotIndex) {
-			bucket.queueHead = kSlotIndex;
+			bucket.queueHead = slotIndex;
 		} else {
-			m_slots[bucket.queueTail].nextInQueue = kSlotIndex;
+			m_slots[bucket.queueTail].nextInQueue = slotIndex;
 		}
 
-		bucket.queueTail = kSlotIndex;
+		bucket.queueTail = slotIndex;
 	}
 
-	bool removeFromQueue(Bucket& bucket, const std::size_t kSlotIndex) noexcept {
+	bool removeFromQueue(Bucket& bucket, std::size_t slotIndex) noexcept {
 		std::size_t* link = &bucket.queueHead;
 		std::size_t previousIndex = g_kInvalidParkingLotSlotIndex;
 		std::size_t currentIndex = bucket.queueHead;
 
 		while (currentIndex != g_kInvalidParkingLotSlotIndex) {
-			if (currentIndex != kSlotIndex) {
+			if (currentIndex != slotIndex) {
 				link = &m_slots[currentIndex].nextInQueue;
 				previousIndex = currentIndex;
 				currentIndex = *link;

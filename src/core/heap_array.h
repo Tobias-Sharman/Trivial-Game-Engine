@@ -11,10 +11,10 @@ namespace trivial::core {
 template <typename T>
 class HeapArray {
 public:
-	explicit HeapArray(const std::size_t kSize) noexcept
+	explicit HeapArray(std::size_t size) noexcept
 	    // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
-	    : m_elements(std::make_unique<T[]>(kSize))
-	    , m_size(kSize) {}
+	    : m_elements(std::make_unique<T[]>(size))
+	    , m_size(size) {}
 
 	~HeapArray() noexcept = default;
 
@@ -24,14 +24,14 @@ public:
 	HeapArray(HeapArray&&) = delete;
 	HeapArray& operator=(HeapArray&&) = delete;
 
-	[[nodiscard]] T& operator[](const std::size_t kIndex) noexcept {
-		TRIVIAL_ASSERT(kIndex < m_size);
-		return m_elements[kIndex];
+	[[nodiscard]] T& operator[](std::size_t index) noexcept {
+		TRIVIAL_ASSERT(index < m_size);
+		return m_elements[index];
 	}
 
-	[[nodiscard]] const T& operator[](const std::size_t kIndex) const noexcept {
-		TRIVIAL_ASSERT(kIndex < m_size);
-		return m_elements[kIndex];
+	[[nodiscard]] const T& operator[](std::size_t index) const noexcept {
+		TRIVIAL_ASSERT(index < m_size);
+		return m_elements[index];
 	}
 
 	[[nodiscard]] std::size_t size() const noexcept { return m_size; }

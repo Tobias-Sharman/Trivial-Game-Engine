@@ -59,8 +59,8 @@ void Mutex::lockSlow() noexcept {
 }
 
 void Mutex::unlockSlow() noexcept {
-	activeParkingLot().unparkOne(keyFor(this), [this](const ParkingLot::UnparkOneResult kResult) {
-		if (kResult.hasMoreWaiters) {
+	activeParkingLot().unparkOne(keyFor(this), [this](ParkingLot::UnparkOneResult result) {
+		if (result.hasMoreWaiters) {
 			m_state.store(s_kParkedBit, std::memory_order_release);
 		} else {
 			m_state.store(0, std::memory_order_release);
