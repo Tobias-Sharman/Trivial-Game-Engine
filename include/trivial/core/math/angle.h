@@ -9,43 +9,47 @@ namespace trivial::math {
 template <FloatingPoint T>
 class Angle {
 public:
-	[[nodiscard]] static constexpr Angle fromRadians(T radians) {
+	[[nodiscard]] static constexpr Angle fromRadians(T radians) noexcept {
 		Angle result;
 		result.m_radians = radians;
 		return result;
 	}
 
-	[[nodiscard]] static constexpr Angle fromDegrees(T degrees) {
+	[[nodiscard]] static constexpr Angle fromDegrees(T degrees) noexcept {
 		return fromRadians(degrees * constants::g_kDegreesToRadians<T>);
 	}
 
-	[[nodiscard]] constexpr T radians() const { return m_radians; }
-	[[nodiscard]] constexpr T degrees() const { return m_radians * constants::g_kRadiansToDegrees<T>; }
+	[[nodiscard]] constexpr T radians() const noexcept { return m_radians; }
+	[[nodiscard]] constexpr T degrees() const noexcept { return m_radians * constants::g_kRadiansToDegrees<T>; }
 
-	[[nodiscard]] constexpr Angle operator+() const { return *this; }
-	[[nodiscard]] constexpr Angle operator-() const { return fromRadians(-m_radians); }
+	[[nodiscard]] constexpr Angle operator+() const noexcept { return *this; }
+	[[nodiscard]] constexpr Angle operator-() const noexcept { return fromRadians(-m_radians); }
 
-	[[nodiscard]] constexpr Angle operator+(Angle other) const { return fromRadians(m_radians + other.m_radians); }
-	[[nodiscard]] constexpr Angle operator-(Angle other) const { return fromRadians(m_radians - other.m_radians); }
-	[[nodiscard]] constexpr Angle operator*(T scalar) const { return fromRadians(m_radians * scalar); }
-	[[nodiscard]] constexpr Angle operator/(T scalar) const { return fromRadians(m_radians / scalar); }
+	[[nodiscard]] constexpr Angle operator+(Angle other) const noexcept {
+		return fromRadians(m_radians + other.m_radians);
+	}
+	[[nodiscard]] constexpr Angle operator-(Angle other) const noexcept {
+		return fromRadians(m_radians - other.m_radians);
+	}
+	[[nodiscard]] constexpr Angle operator*(T scalar) const noexcept { return fromRadians(m_radians * scalar); }
+	[[nodiscard]] constexpr Angle operator/(T scalar) const noexcept { return fromRadians(m_radians / scalar); }
 
-	constexpr Angle& operator+=(Angle other) {
+	constexpr Angle& operator+=(Angle other) noexcept {
 		m_radians += other.m_radians;
 		return *this;
 	}
 
-	constexpr Angle& operator-=(Angle other) {
+	constexpr Angle& operator-=(Angle other) noexcept {
 		m_radians -= other.m_radians;
 		return *this;
 	}
 
-	constexpr Angle& operator*=(T scalar) {
+	constexpr Angle& operator*=(T scalar) noexcept {
 		m_radians *= scalar;
 		return *this;
 	}
 
-	constexpr Angle& operator/=(T scalar) {
+	constexpr Angle& operator/=(T scalar) noexcept {
 		m_radians /= scalar;
 		return *this;
 	}
@@ -63,7 +67,7 @@ private:
 };
 
 template <FloatingPoint T>
-[[nodiscard]] constexpr Angle<T> operator*(T scalar, Angle<T> angle) {
+[[nodiscard]] constexpr Angle<T> operator*(T scalar, Angle<T> angle) noexcept {
 	return angle * scalar;
 }
 

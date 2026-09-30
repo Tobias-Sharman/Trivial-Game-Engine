@@ -26,22 +26,24 @@ public:
 
 	// TODO: Cover delete, copy, move, etc. ro5/6
 
-	[[nodiscard]] static constexpr Entity make(ValType index, ValType generation) {
+	[[nodiscard]] static constexpr Entity make(ValType index, ValType generation) noexcept {
 		return Entity{(generation << TRIVIAL_ECS_ENTITY_GENERATION_SHIFT) | index};
 	}
 
-	[[nodiscard]] static constexpr Entity fromValue(ValType value) { return Entity{value}; }
+	[[nodiscard]] static constexpr Entity fromValue(ValType value) noexcept { return Entity{value}; }
 
-	[[nodiscard]] constexpr bool valid() const { return index() != TRIVIAL_ECS_ENTITY_INVALID_INDEX; }
+	[[nodiscard]] constexpr bool valid() const noexcept { return index() != TRIVIAL_ECS_ENTITY_INVALID_INDEX; }
 
-	[[nodiscard]] constexpr ValType index() const { return m_value & TRIVIAL_ECS_ENTITY_INDEX_MASK; }
-	[[nodiscard]] constexpr ValType generation() const { return m_value >> TRIVIAL_ECS_ENTITY_GENERATION_SHIFT; }
-	[[nodiscard]] constexpr ValType value() const { return m_value; }
+	[[nodiscard]] constexpr ValType index() const noexcept { return m_value & TRIVIAL_ECS_ENTITY_INDEX_MASK; }
+	[[nodiscard]] constexpr ValType generation() const noexcept {
+		return m_value >> TRIVIAL_ECS_ENTITY_GENERATION_SHIFT;
+	}
+	[[nodiscard]] constexpr ValType value() const noexcept { return m_value; }
 
 	[[nodiscard]] constexpr bool operator==(const Entity&) const = default;
 
 private:
-	explicit constexpr Entity(ValType value)
+	explicit constexpr Entity(ValType value) noexcept
 	    : m_value(value) {}
 
 	ValType m_value = TRIVIAL_ECS_ENTITY_INVALID_INDEX;

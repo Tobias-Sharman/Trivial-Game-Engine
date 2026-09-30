@@ -19,7 +19,7 @@ struct Drawable {
 
 class Renderer {
 public:
-	explicit Renderer(gpu::Context* gpu);
+	explicit Renderer(gpu::Context* gpu) noexcept;
 
 	~Renderer() = default;
 

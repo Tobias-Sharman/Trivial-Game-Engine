@@ -45,7 +45,9 @@ const char* debugMessageTypePrefix(VkDebugUtilsMessageTypeFlagsEXT messageType) 
 	return s_kPrefixes[kIndex];
 }
 
-void logDebugMessage(VkDebugUtilsMessageSeverityFlagBitsEXT severity, const char* prefix, const char* message) {
+void logDebugMessage(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
+                     const char* prefix,
+                     const char* message) noexcept {
 	TRIVIAL_ASSERT(prefix != nullptr);
 	TRIVIAL_ASSERT(message != nullptr);
 
@@ -97,9 +99,10 @@ namespace trivial::rhi::vulkan {
 VkDebugUtilsMessengerEXT createDebugMessenger(VkInstance instance) noexcept {
 	TRIVIAL_ASSERT(instance != VK_NULL_HANDLE);
 
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-	const PFN_vkCreateDebugUtilsMessengerEXT kCreateDebugUtilsMessenger = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
-	    vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"));
+	const PFN_vkCreateDebugUtilsMessengerEXT kCreateDebugUtilsMessenger
+	    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+	    = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
+	        vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"));
 
 	if (kCreateDebugUtilsMessenger == nullptr) {
 		TRIVIAL_LOG_ERROR("vkCreateDebugUtilsMessengerEXT is not available");
@@ -127,9 +130,10 @@ void destroyDebugMessenger(VkInstance instance, VkDebugUtilsMessengerEXT debugMe
 		return;
 	}
 
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-	const PFN_vkDestroyDebugUtilsMessengerEXT kDestroyDebugUtilsMessenger = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
-	    vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
+	const PFN_vkDestroyDebugUtilsMessengerEXT kDestroyDebugUtilsMessenger
+	    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+	    = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
+	        vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
 
 	TRIVIAL_ASSERT(kDestroyDebugUtilsMessenger != nullptr);
 

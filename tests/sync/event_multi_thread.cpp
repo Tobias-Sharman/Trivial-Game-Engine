@@ -19,7 +19,7 @@ struct EventWaitContext {
 	std::atomic<std::size_t>* wokeCount;
 };
 
-void waitWorker(void* arg) {
+void waitWorker(void* arg) noexcept {
 	const EventWaitContext* context = static_cast<EventWaitContext*>(arg);
 	context->event->wait();
 	context->wokeCount->fetch_add(1, std::memory_order_acq_rel);

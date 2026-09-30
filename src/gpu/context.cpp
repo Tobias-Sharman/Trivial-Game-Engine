@@ -13,7 +13,7 @@
 
 namespace {
 
-trivial::GraphicsApi resolveGraphicsApi(trivial::GraphicsApi requested) {
+trivial::GraphicsApi resolveGraphicsApi(trivial::GraphicsApi requested) noexcept {
 	// TODO: Select based on system once there is support for multiple apis
 	if (requested == trivial::GraphicsApi::Auto) {
 		return trivial::GraphicsApi::Vulkan;
@@ -24,7 +24,7 @@ trivial::GraphicsApi resolveGraphicsApi(trivial::GraphicsApi requested) {
 
 std::unique_ptr<trivial::rhi::Backend> createBackend(trivial::GraphicsApi graphicsApi,
                                                      const trivial::ApplicationInfo& applicationInfo,
-                                                     const trivial::platform::Window& window) {
+                                                     const trivial::platform::Window& window) noexcept {
 	const trivial::GraphicsApi kGraphicsApi = resolveGraphicsApi(graphicsApi);
 
 	switch (kGraphicsApi) {
@@ -42,14 +42,16 @@ std::unique_ptr<trivial::rhi::Backend> createBackend(trivial::GraphicsApi graphi
 
 namespace trivial::gpu {
 
-Context::Context(GraphicsApi graphicsApi, const ApplicationInfo& applicationInfo, const platform::Window& window)
+Context::Context(GraphicsApi graphicsApi,
+                 const ApplicationInfo& applicationInfo,
+                 const platform::Window& window) noexcept
     : m_backend(createBackend(graphicsApi, applicationInfo, window)) {
 	TRIVIAL_ASSERT(m_backend != nullptr);
 }
 
 Context::~Context() = default;
 
-void Context::waitIdle() {
+void Context::waitIdle() noexcept {
 	TRIVIAL_ASSERT(m_backend != nullptr);
 
 	m_backend->waitIdle();

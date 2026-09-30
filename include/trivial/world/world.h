@@ -29,16 +29,16 @@ public:
 	World(World&&) = delete;
 	World& operator=(World&&) = delete;
 
-	[[nodiscard]] Entity create();
-	void destroy(Entity entity);
+	[[nodiscard]] Entity create() noexcept;
+	void destroy(Entity entity) noexcept;
 
-	[[nodiscard]] bool alive(Entity entity) const;
+	[[nodiscard]] bool alive(Entity entity) const noexcept;
 
-	[[nodiscard]] Entity::ValType aliveCount() const { return m_aliveCount; }
-	[[nodiscard]] Entity::ValType capacity() const { return static_cast<Entity::ValType>(m_entities.size()); }
+	[[nodiscard]] Entity::ValType aliveCount() const noexcept { return m_aliveCount; }
+	[[nodiscard]] Entity::ValType capacity() const noexcept { return static_cast<Entity::ValType>(m_entities.size()); }
 
 	template <typename T>
-	void add(Entity entity, const T& component) {
+	void add(Entity entity, const T& component) noexcept {
 		if (!alive(entity)) {
 			return;
 		}
@@ -51,7 +51,7 @@ public:
 	}
 
 	template <typename T>
-	void add(Entity entity, T&& component) {
+	void add(Entity entity, T&& component) noexcept {
 		if (!alive(entity)) {
 			return;
 		}
@@ -64,7 +64,7 @@ public:
 	}
 
 	template <typename T>
-	void remove(Entity entity) {
+	void remove(Entity entity) noexcept {
 		if constexpr (isStandardComponent<T>()) {
 			standardStore<T>().remove(entity);
 		} else {
@@ -79,7 +79,7 @@ public:
 	}
 
 	template <typename T>
-	[[nodiscard]] bool has(Entity entity) const {
+	[[nodiscard]] bool has(Entity entity) const noexcept {
 		if (!alive(entity)) {
 			return false;
 		}
@@ -94,7 +94,7 @@ public:
 	}
 
 	template <typename T>
-	[[nodiscard]] T& get(Entity entity) {
+	[[nodiscard]] T& get(Entity entity) noexcept {
 		if constexpr (isStandardComponent<T>()) {
 			return standardStore<T>().get(entity);
 		} else {
@@ -105,7 +105,7 @@ public:
 	}
 
 	template <typename T>
-	[[nodiscard]] const T& get(Entity entity) const {
+	[[nodiscard]] const T& get(Entity entity) const noexcept {
 		if constexpr (isStandardComponent<T>()) {
 			return standardStore<T>().get(entity);
 		} else {
@@ -124,14 +124,14 @@ private:
 	};
 
 	template <typename T>
-	[[nodiscard]] static constexpr bool isStandardComponent() {
+	[[nodiscard]] static constexpr bool isStandardComponent() noexcept {
 		return std::is_same_v<T, Position2D> || std::is_same_v<T, Velocity2D>;
 	}
 
 	// TODO: Can probably make this cleaner and more scaleable for more types, do when adding them
 
 	template <typename T>
-	[[nodiscard]] ComponentStore<T>& standardStore() {
+	[[nodiscard]] ComponentStore<T>& standardStore() noexcept {
 		if constexpr (std::is_same_v<T, Position2D>) {
 			return m_positions2D;
 		} else if constexpr (std::is_same_v<T, Velocity2D>) {
@@ -140,7 +140,7 @@ private:
 	}
 
 	template <typename T>
-	[[nodiscard]] const ComponentStore<T>& standardStore() const {
+	[[nodiscard]] const ComponentStore<T>& standardStore() const noexcept {
 		if constexpr (std::is_same_v<T, Position2D>) {
 			return m_positions2D;
 		} else if constexpr (std::is_same_v<T, Velocity2D>) {
@@ -149,7 +149,7 @@ private:
 	}
 
 	template <typename T>
-	[[nodiscard]] ComponentStore<T>* findDynamicStore() {
+	[[nodiscard]] ComponentStore<T>* findDynamicStore() noexcept {
 		const ComponentStoreMap::iterator kIt = m_componentStores.find(std::type_index(typeid(T)));
 
 		if (kIt == m_componentStores.end()) {
@@ -165,7 +165,7 @@ private:
 	}
 
 	template <typename T>
-	[[nodiscard]] const ComponentStore<T>* findDynamicStore() const {
+	[[nodiscard]] const ComponentStore<T>* findDynamicStore() const noexcept {
 		const ComponentStoreMap::const_iterator kIt = m_componentStores.find(std::type_index(typeid(T)));
 
 		if (kIt == m_componentStores.end()) {
@@ -181,7 +181,7 @@ private:
 	}
 
 	template <typename T>
-	[[nodiscard]] ComponentStore<T>& getOrCreateDynamicStore() {
+	[[nodiscard]] ComponentStore<T>& getOrCreateDynamicStore() noexcept {
 		ComponentStore<T>* existingStore = findDynamicStore<T>();
 
 		if (existingStore != nullptr) {

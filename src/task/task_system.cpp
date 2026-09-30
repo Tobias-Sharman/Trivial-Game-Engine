@@ -51,7 +51,7 @@ thread_local trivial::task::TaskSystem* g_currentWorkerSystem = nullptr;
 
 namespace trivial::task {
 
-TaskSystem::TaskSystem(const TaskSystemConfig& config)
+TaskSystem::TaskSystem(const TaskSystemConfig& config) noexcept
     : m_targetActiveWorkerCount(static_cast<std::size_t>(config.workers.count))
     , m_activeSlots(m_targetActiveWorkerCount)
     , m_waitHelpMaxDepth(config.waitHelpMaxDepth) {
@@ -346,7 +346,7 @@ void TaskSystem::workerThreadEntry(void* arg) noexcept {
 	system->runWorkerLoop(kIndex);
 }
 
-void TaskSystem::runWorkerLoop(std::size_t workerIndex) {
+void TaskSystem::runWorkerLoop(std::size_t workerIndex) noexcept {
 	Worker& worker = m_workers[workerIndex];
 
 	TRIVIAL_PROFILE_THREAD(thread::Thread::current()->name());

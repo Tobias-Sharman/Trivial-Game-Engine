@@ -50,7 +50,7 @@ struct ThreadCreateResult {
 	int platformErrorCode = 0;
 };
 
-using ThreadStartRoutine = void (*)(void* arg);
+using ThreadStartRoutine = void (*)(void* arg) noexcept;
 
 struct NativeHandleStorage {
 private:

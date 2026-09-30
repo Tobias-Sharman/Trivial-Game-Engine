@@ -22,7 +22,7 @@ struct WaitContext {
 	std::atomic<std::size_t>* wokeCount;
 };
 
-void waitWorker(void* arg) {
+void waitWorker(void* arg) noexcept {
 	const WaitContext* context = static_cast<WaitContext*>(arg);
 
 	context->mutex->lock();

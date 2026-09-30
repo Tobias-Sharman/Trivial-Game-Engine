@@ -19,7 +19,7 @@ struct LatchCountDownContext {
 	std::atomic<std::size_t>* completed;
 };
 
-void countDownWorker(void* arg) {
+void countDownWorker(void* arg) noexcept {
 	const LatchCountDownContext* context = static_cast<LatchCountDownContext*>(arg);
 	context->completed->fetch_add(1, std::memory_order_acq_rel);
 	context->latch->countDown();

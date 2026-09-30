@@ -18,9 +18,9 @@ enum class LogLevel : uint8_t {
 
 #if TRIVIAL_ENABLE_LOGGING
 
-void logMessage(LogLevel level, const char* message);
-void logMessageWithPrefix(LogLevel level, const char* prefix, const char* message);
-void logOomFailure(const char* prefix, const char* context, std::size_t requestedSize, int osErrorCode);
+void logMessage(LogLevel level, const char* message) noexcept;
+void logMessageWithPrefix(LogLevel level, const char* prefix, const char* message) noexcept;
+void logOomFailure(const char* prefix, const char* context, std::size_t requestedSize, int osErrorCode) noexcept;
 
 #endif // TRIVIAL_ENABLE_LOGGING
 

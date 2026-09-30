@@ -43,7 +43,7 @@ struct TaskSystemConfig {
 
 class TaskSystem {
 public:
-	explicit TaskSystem(const TaskSystemConfig& config);
+	explicit TaskSystem(const TaskSystemConfig& config) noexcept;
 
 	~TaskSystem() noexcept;
 
@@ -81,7 +81,7 @@ private:
 
 	static void workerThreadEntry(void* arg) noexcept;
 
-	void runWorkerLoop(std::size_t workerIndex);
+	void runWorkerLoop(std::size_t workerIndex) noexcept;
 
 	[[nodiscard]] bool parkWorker(std::size_t workerIndex) noexcept;
 

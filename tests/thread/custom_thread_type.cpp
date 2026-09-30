@@ -17,7 +17,7 @@
 
 namespace {
 
-void markRan(void* arg) {
+void markRan(void* arg) noexcept {
 	static_cast<std::atomic<bool>*>(arg)->store(true, std::memory_order_release);
 }
 
@@ -92,7 +92,7 @@ TEST(ThreadTest, IndexVisibleInEntry) {
 	IndexObservation observation{.thread = &thread, .observedIndex = &observedIndex};
 	const trivial::thread::ThreadCreateResult kResult = thread.create(
 	    config,
-	    [](void* arg) {
+	    [](void* arg) noexcept {
 		    const IndexObservation* observation = static_cast<IndexObservation*>(arg);
 		    observation->observedIndex->store(observation->thread->index(), std::memory_order_release);
 	    },
@@ -120,7 +120,7 @@ TEST(ThreadTest, IndicesAreDistinct) {
 		trivial::tests::attachStackAllocator(config);
 #endif // TRIVIAL_PLATFORM_POSIX
 
-		const trivial::thread::ThreadCreateResult kResult = thread.create(config, [](void*) {}, nullptr);
+		const trivial::thread::ThreadCreateResult kResult = thread.create(config, [](void*) noexcept {}, nullptr);
 		ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
 
 		EXPECT_EQ(std::ranges::find(seenIndices, thread.index()), seenIndices.end());
@@ -152,7 +152,7 @@ TEST(ThreadTest, CurrentResolvesToSelf) {
 	CurrentObservation observation{.thread = &thread, .matched = &matched};
 	const trivial::thread::ThreadCreateResult kResult = thread.create(
 	    config,
-	    [](void* arg) {
+	    [](void* arg) noexcept {
 		    const CurrentObservation* observation = static_cast<CurrentObservation*>(arg);
 		    observation->matched->store(trivial::thread::Thread::current() == observation->thread,
 			                            std::memory_order_release);
@@ -209,7 +209,7 @@ TEST(ThreadTest, DestructorAbortsIfJoinable) {
 
 		    const trivial::thread::ThreadCreateResult kResult = thread.create(
 		        config,
-		        [](void*) {
+		        [](void*) noexcept {
 			        std::this_thread::sleep_for(std::chrono::milliseconds(200));
 		        }, // NOLINT(readability-magic-numbers)
 		        nullptr);

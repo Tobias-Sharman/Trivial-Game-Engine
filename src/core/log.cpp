@@ -10,7 +10,7 @@ namespace trivial::core {
 
 namespace {
 
-const char* logLevelName(LogLevel logLevel) {
+const char* logLevelName(LogLevel logLevel) noexcept {
 	switch (logLevel) {
 		case LogLevel::Debug:
 			return "debug";
@@ -31,7 +31,7 @@ const char* logLevelName(LogLevel logLevel) {
 
 // TODO: proper logging system safe under multithreading
 
-void logMessage(LogLevel level, const char* message) {
+void logMessage(LogLevel level, const char* message) noexcept {
 	(void)std::fputs("Trivial ", stderr);
 	(void)std::fputs(logLevelName(level), stderr);
 	(void)std::fputs(": ", stderr);
@@ -39,7 +39,7 @@ void logMessage(LogLevel level, const char* message) {
 	(void)std::fputc('\n', stderr);
 }
 
-void logMessageWithPrefix(LogLevel level, const char* prefix, const char* message) {
+void logMessageWithPrefix(LogLevel level, const char* prefix, const char* message) noexcept {
 	(void)std::fputs("Trivial ", stderr);
 	(void)std::fputs(logLevelName(level), stderr);
 	(void)std::fputs(" [", stderr);
@@ -49,7 +49,7 @@ void logMessageWithPrefix(LogLevel level, const char* prefix, const char* messag
 	(void)std::fputc('\n', stderr);
 }
 
-void logOomFailure(const char* prefix, const char* context, std::size_t requestedSize, int osErrorCode) {
+void logOomFailure(const char* prefix, const char* context, std::size_t requestedSize, int osErrorCode) noexcept {
 	(void)std::fprintf(stderr, // NOLINT(cppcoreguidelines-pro-type-vararg)
 	                   "Trivial %s [%s]: %s (requested %zu bytes, os error %d)\n",
 	                   logLevelName(LogLevel::Fatal),

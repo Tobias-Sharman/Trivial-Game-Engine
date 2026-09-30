@@ -8,7 +8,7 @@
 
 namespace trivial::world {
 
-Entity World::create() {
+Entity World::create() noexcept {
 	TRIVIAL_PROFILE_FUNCTION();
 
 	if (!m_freeIndices.empty()) {
@@ -44,7 +44,7 @@ Entity World::create() {
 	return Entity::make(kIndex, 0);
 }
 
-void World::destroy(Entity entity) {
+void World::destroy(Entity entity) noexcept {
 	TRIVIAL_PROFILE_FUNCTION();
 
 	if (!alive(entity)) {
@@ -76,7 +76,7 @@ void World::destroy(Entity entity) {
 	m_freeIndices.push_back(kIndex);
 }
 
-bool World::alive(Entity entity) const {
+bool World::alive(Entity entity) const noexcept {
 	if (!entity.valid()) {
 		return false;
 	}

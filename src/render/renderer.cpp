@@ -8,7 +8,7 @@
 
 namespace trivial::render {
 
-Renderer::Renderer(gpu::Context* gpu)
+Renderer::Renderer(gpu::Context* gpu) noexcept
     : m_gpu(gpu) {
 	TRIVIAL_ASSERT(m_gpu != nullptr);
 }

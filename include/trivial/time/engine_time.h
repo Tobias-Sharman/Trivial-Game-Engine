@@ -10,9 +10,9 @@ class EngineTime {
 	using Clock = std::chrono::steady_clock;
 
 public:
-	EngineTime() { reset(); }
+	EngineTime() noexcept { reset(); }
 
-	void reset() {
+	void reset() noexcept {
 		m_start = Clock::now();
 		m_previous = m_start;
 
@@ -20,7 +20,7 @@ public:
 		m_deltaSeconds = 0.0;
 	}
 
-	void tick() {
+	void tick() noexcept {
 		const Clock::time_point kNow = Clock::now();
 
 		m_rawDeltaSeconds = std::chrono::duration<double>(kNow - m_previous).count();

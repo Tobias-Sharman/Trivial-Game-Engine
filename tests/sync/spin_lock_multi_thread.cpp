@@ -16,7 +16,7 @@ struct LockCounterContext {
 	std::size_t* counter;
 };
 
-void lockWorker(void* arg) {
+void lockWorker(void* arg) noexcept {
 	const LockCounterContext* context = static_cast<LockCounterContext*>(arg);
 
 	for (std::size_t i = 0; i < g_kConcurrentIterations; ++i) {
@@ -26,7 +26,7 @@ void lockWorker(void* arg) {
 	}
 }
 
-void tryLockWorker(void* arg) {
+void tryLockWorker(void* arg) noexcept {
 	const LockCounterContext* context = static_cast<LockCounterContext*>(arg);
 
 	for (std::size_t i = 0; i < g_kConcurrentIterations; ++i) {

@@ -17,7 +17,9 @@ namespace trivial::gpu {
 
 class Context {
 public:
-	explicit Context(GraphicsApi graphicsApi, const ApplicationInfo& applicationInfo, const platform::Window& window);
+	explicit Context(GraphicsApi graphicsApi,
+	                 const ApplicationInfo& applicationInfo,
+	                 const platform::Window& window) noexcept;
 
 	~Context();
 
@@ -38,9 +40,9 @@ public:
 	}
 	void endFrame() noexcept { m_backend->endFrame(); }
 
-	[[nodiscard]] GraphicsApi activeGraphicsApi() const { return m_backend->graphicsApi(); }
+	[[nodiscard]] GraphicsApi activeGraphicsApi() const noexcept { return m_backend->graphicsApi(); }
 
-	void waitIdle();
+	void waitIdle() noexcept;
 
 private:
 	std::unique_ptr<rhi::Backend> m_backend;

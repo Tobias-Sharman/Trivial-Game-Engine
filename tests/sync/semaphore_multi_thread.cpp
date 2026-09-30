@@ -19,7 +19,7 @@ struct SemaphoreCounterContext {
 	std::size_t* counter;
 };
 
-void incrementWorker(void* arg) {
+void incrementWorker(void* arg) noexcept {
 	const SemaphoreCounterContext* context = static_cast<SemaphoreCounterContext*>(arg);
 
 	for (std::size_t i = 0; i < g_kConcurrentIterations; ++i) {
@@ -44,7 +44,7 @@ struct SemaphoreReleaseContext {
 	std::atomic<bool>* released;
 };
 
-void releaseWorker(void* arg) {
+void releaseWorker(void* arg) noexcept {
 	const SemaphoreReleaseContext* context = static_cast<SemaphoreReleaseContext*>(arg);
 	context->released->store(true, std::memory_order_release);
 	context->semaphore->release();

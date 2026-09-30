@@ -16,7 +16,7 @@ struct MutexCounterContext {
 	std::size_t* counter;
 };
 
-void incrementWorker(void* arg) {
+void incrementWorker(void* arg) noexcept {
 	const MutexCounterContext* context = static_cast<MutexCounterContext*>(arg);
 
 	for (std::size_t i = 0; i < g_kConcurrentIterations; ++i) {
