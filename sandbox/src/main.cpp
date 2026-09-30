@@ -45,7 +45,7 @@ public:
 int main() {
 	trivial::EngineConfig config{};
 	config.applicationInfo.name = "Boids";
-	config.window.size = {.height = 500, .width = 500}; // NOLINT(readability-magic-numbers)
+	config.window.size = {.width = 500, .height = 500}; // NOLINT(readability-magic-numbers)
 	config.window.title = "Boids";
 
 	trivial::Engine engine(config);

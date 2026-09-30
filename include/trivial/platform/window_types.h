@@ -9,8 +9,8 @@
 namespace trivial::platform {
 
 struct WindowSize {
-	std::uint32_t height = TRIVIAL_PLATFORM_DEFAULT_WINDOW_HEIGHT;
 	std::uint32_t width = TRIVIAL_PLATFORM_DEFAULT_WINDOW_WIDTH;
+	std::uint32_t height = TRIVIAL_PLATFORM_DEFAULT_WINDOW_HEIGHT;
 };
 
 struct WindowConfig {

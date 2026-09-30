@@ -24,8 +24,8 @@ void initializeGlfw() noexcept {
 } // namespace
 
 Window::Window(const WindowConfig& config) noexcept {
-	TRIVIAL_ASSERT(config.size.height > 0);
 	TRIVIAL_ASSERT(config.size.width > 0);
+	TRIVIAL_ASSERT(config.size.height > 0);
 	TRIVIAL_ASSERT(!config.title.empty());
 
 	initializeGlfw();
@@ -65,7 +65,7 @@ WindowSize Window::framebufferSize() const noexcept {
 	TRIVIAL_ASSERT(width >= 0);
 	TRIVIAL_ASSERT(height >= 0);
 
-	return {.height = static_cast<std::uint32_t>(width), .width = static_cast<std::uint32_t>(height)};
+	return {.width = static_cast<std::uint32_t>(width), .height = static_cast<std::uint32_t>(height)};
 }
 
 std::span<const char* const> Window::requiredVulkanInstanceExtensions() noexcept {

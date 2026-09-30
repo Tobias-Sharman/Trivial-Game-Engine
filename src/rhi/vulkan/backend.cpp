@@ -211,7 +211,7 @@ bool Backend::beginFrame(std::uint64_t frameIndex) noexcept {
 	                               &imageIndex);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-		resize({.height = m_swapchainState.imageExtent.width, .width = m_swapchainState.imageExtent.height});
+		resize({.width = m_swapchainState.imageExtent.width, .height = m_swapchainState.imageExtent.height});
 		return false;
 	}
 
@@ -317,7 +317,7 @@ void Backend::endFrame() noexcept {
 	result = vkQueuePresentKHR(m_presentQueue, &kPresentInfo);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-		resize({.height = m_swapchainState.imageExtent.width, .width = m_swapchainState.imageExtent.height});
+		resize({.width = m_swapchainState.imageExtent.width, .height = m_swapchainState.imageExtent.height});
 		return;
 	}
 

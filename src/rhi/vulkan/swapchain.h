@@ -22,7 +22,7 @@ struct SwapchainCreateParams {
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 	VkDevice device = VK_NULL_HANDLE;
 	VkSurfaceKHR surface = VK_NULL_HANDLE;
-	platform::WindowSize requestedSize = {.height = 0U, .width = 0U};
+	platform::WindowSize requestedSize = {.width = 0U, .height = 0U};
 	std::uint32_t graphicsFamily = 0;
 	std::uint32_t presentFamily = 0;
 	VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE;
