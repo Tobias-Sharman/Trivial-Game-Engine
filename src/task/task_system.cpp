@@ -349,9 +349,7 @@ void TaskSystem::workerThreadEntry(void* arg) noexcept {
 void TaskSystem::runWorkerLoop(std::size_t workerIndex) {
 	Worker& worker = m_workers[workerIndex];
 
-#if TRIVIAL_ENABLE_TRACY
 	TRIVIAL_PROFILE_THREAD(thread::Thread::current()->name());
-#endif // TRIVIAL_ENABLE_TRACY
 
 	bool holdingSlot = m_activeSlots.tryAcquire();
 

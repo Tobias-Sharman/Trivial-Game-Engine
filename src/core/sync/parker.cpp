@@ -4,7 +4,6 @@
 #include <limits>
 
 #include <trivial/core/assert.h>
-#include <trivial/core/config.h>
 #include <trivial/core/platform.h>
 #include <trivial/core/time/time_constants.h>
 
@@ -44,28 +43,22 @@ long futexSyscall(const std::atomic<std::uint32_t>* state,
 }
 
 void futexWait(const std::atomic<std::uint32_t>& state, const timespec* timeout) noexcept {
-#if TRIVIAL_ENABLE_ASSERTS
 	const long kResult = futexSyscall(&state, FUTEX_WAIT | FUTEX_PRIVATE_FLAG, 1, timeout);
 	TRIVIAL_ASSERT(kResult == 0 || kResult == -1); // NOLINT(readability-simplify-boolean-expr)
 	if (kResult == -1) {
 		// NOLINTNEXTLINE(readability-simplify-boolean-expr)
 		TRIVIAL_ASSERT(errno == EINTR || errno == EAGAIN || (timeout != nullptr && errno == ETIMEDOUT));
 	}
-#else
-	futexSyscall(&state, FUTEX_WAIT | FUTEX_PRIVATE_FLAG, 1, timeout);
-#endif
+	(void)kResult;
 }
 
 void futexWake(const std::atomic<std::uint32_t>& state) noexcept {
-#if TRIVIAL_ENABLE_ASSERTS
 	const long kResult = futexSyscall(&state, FUTEX_WAKE | FUTEX_PRIVATE_FLAG, 1, nullptr);
 	TRIVIAL_ASSERT(kResult == 0 || kResult == 1 || kResult == -1); // NOLINT(readability-simplify-boolean-expr)
 	if (kResult == -1) {
 		TRIVIAL_ASSERT(errno == EFAULT);
 	}
-#else
-	futexSyscall(&state, FUTEX_WAKE | FUTEX_PRIVATE_FLAG, 1, nullptr);
-#endif
+	(void)kResult;
 }
 
 } // namespace
@@ -261,17 +254,10 @@ void Parker::park() noexcept {
 		ts.tv_sec = sec;
 		ts.tv_nsec = nsec;
 
-#if TRIVIAL_ENABLE_ASSERTS
 		const int kWaitResult = pthread_cond_timedwait(&m_state.condvar, &m_state.mutex, &ts);
-		if (ts.tv_sec < 0) {
-			// NOLINTNEXTLINE(readability-simplify-boolean-expr)
-			TRIVIAL_ASSERT(kWaitResult == 0 || kWaitResult == ETIMEDOUT || kWaitResult == EINVAL);
-		} else {
-			TRIVIAL_ASSERT(kWaitResult == 0 || kWaitResult == ETIMEDOUT); // NOLINT(readability-simplify-boolean-expr)
-		}
-#else
-		pthread_cond_timedwait(&m_state.condvar, &m_state.mutex, &ts);
-#endif
+		// NOLINTNEXTLINE(readability-simplify-boolean-expr)
+		TRIVIAL_ASSERT(kWaitResult == 0 || kWaitResult == ETIMEDOUT || (ts.tv_sec < 0 && kWaitResult == EINVAL));
+		(void)kWaitResult;
 	}
 
 	TRIVIAL_VERIFY(pthread_mutex_unlock(&m_state.mutex) == 0);

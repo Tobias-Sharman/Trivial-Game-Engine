@@ -115,6 +115,11 @@ public:
 
 	void shutdown() noexcept;
 
+	// NOTE: In theory can remove kind from this api for release modes but would
+	//       make consumers poor. Reliance on LTO is an option but not worth
+	//       reliance now
+	// TODO: Plan migration of kind to operate on higher level (i.e. different
+	//       higher level allocators with some kind of debug layer)
 	[[nodiscard]] void* allocSegments(std::size_t count, SegmentKind kind) noexcept;
 	void freeSegments(void* segments, std::size_t count) noexcept;
 

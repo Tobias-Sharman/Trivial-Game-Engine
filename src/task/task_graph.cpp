@@ -28,20 +28,18 @@ TaskGraph::~TaskGraph() noexcept {
 	for (const std::atomic<TaskPage*>& pageEntry : m_pages) {
 		const TaskPage* page = pageEntry.load(std::memory_order_relaxed);
 
-#if TRIVIAL_CONFIG_DEBUG
 		// NOTE: Only valid if no workers or tasks are running
-		if (page != nullptr) {
-			for (const TaskSlot& slot : *page) {
-				if (!slot.isOccupied()) {
-					continue;
+		if constexpr (TRIVIAL_ENABLE_ASSERTS) {
+			if (page != nullptr) {
+				for (const TaskSlot& slot : *page) {
+					if (!slot.isOccupied()) {
+						continue;
+					}
+
+					TRIVIAL_ASSERT(slot.state().status() != TaskStatus::Running);
 				}
-
-				const TaskStatus kStatus = slot.state().status();
-
-				TRIVIAL_ASSERT(kStatus != TaskStatus::Running);
 			}
 		}
-#endif // TRIVIAL_CONFIG_DEBUG
 
 		delete page;
 	}
@@ -74,15 +72,12 @@ TaskCreateDispatchOutcome TaskGraph::createDispatched(TaskPayload payload,
 	const TaskHandle kHandle{.index = taskIndex, .generation = slot->generation()};
 
 	for (const TaskHandle kPrerequisite : prerequisites) {
-#if TRIVIAL_ENABLE_ASSERTS
 		const TaskPrerequisiteResult kResult = addPrerequisiteLocked(kHandle, *slot, kPrerequisite);
 
 		// NOLINTNEXTLINE(readability-simplify-boolean-expr)
 		TRIVIAL_ASSERT(kResult == TaskPrerequisiteResult::Success
 		               || kResult == TaskPrerequisiteResult::DuplicateDependency);
-#else
-		(void)addPrerequisiteLocked(kHandle, *slot, kPrerequisite);
-#endif // TRIVIAL_ENABLE_ASSERTS
+		(void)kResult;
 	}
 
 	if (state.prerequisites.empty()) {

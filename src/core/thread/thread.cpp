@@ -378,11 +378,11 @@ void Thread::yield() noexcept {
 	sched_yield();
 
 #elif TRIVIAL_PLATFORM_WINDOWS
-#if TRIVIAL_THREAD_WINDOWS_YIELD_USE_SLEEP_ZERO
-	Sleep(0);
-#else
-	SwitchToThread();
-#endif // TRIVIAL_THREAD_WINDOWS_YIELD_USE_SLEEP_ZERO
+	if constexpr (TRIVIAL_THREAD_WINDOWS_YIELD_USE_SLEEP_ZERO) {
+		Sleep(0);
+	} else {
+		SwitchToThread();
+	}
 
 #endif // Platform-specific yield
 }

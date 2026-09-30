@@ -261,13 +261,13 @@ inline bool commitPages(void* addr, std::size_t bytes, std::size_t pageSize, int
 		return false;
 	}
 
-#if TRIVIAL_MEMORY_LAZY_DECOMMIT
-	DWORD oldProtect = 0;
-	if (VirtualProtect(addr, bytes, PAGE_READWRITE, &oldProtect) == 0) {
-		outOsErrorCode = static_cast<int>(GetLastError());
-		return false;
+	if constexpr (TRIVIAL_MEMORY_LAZY_DECOMMIT) {
+		DWORD oldProtect = 0;
+		if (VirtualProtect(addr, bytes, PAGE_READWRITE, &oldProtect) == 0) {
+			outOsErrorCode = static_cast<int>(GetLastError());
+			return false;
+		}
 	}
-#endif // TRIVIAL_MEMORY_LAZY_DECOMMIT
 
 #elif TRIVIAL_PLATFORM_POSIX
 	if (mprotect(addr, bytes, PROT_READ | PROT_WRITE) != 0) {
@@ -329,20 +329,16 @@ inline void decommitPages(void* addr, std::size_t bytes, std::size_t pageSize) n
 	(void)pageSize;
 
 #if TRIVIAL_PLATFORM_WINDOWS
-#if TRIVIAL_MEMORY_LAZY_DECOMMIT
-	if (VirtualAlloc(addr, bytes, MEM_RESET, PAGE_READWRITE) != nullptr) {
-		DWORD oldProtect = 0;
-		const bool kProtected = VirtualProtect(addr, bytes, PAGE_NOACCESS, &oldProtect) != 0;
-		TRIVIAL_ASSERT(kProtected);
-		(void)kProtected;
+	if constexpr (TRIVIAL_MEMORY_LAZY_DECOMMIT) {
+		if (VirtualAlloc(addr, bytes, MEM_RESET, PAGE_READWRITE) != nullptr) {
+			DWORD oldProtect = 0;
+			TRIVIAL_VERIFY(VirtualProtect(addr, bytes, PAGE_NOACCESS, &oldProtect) != 0);
 
-		return;
+			return;
+		}
 	}
-#endif // TRIVIAL_MEMORY_LAZY_DECOMMIT
 
-	const bool kDecommitted = VirtualFree(addr, bytes, MEM_DECOMMIT) != 0;
-	TRIVIAL_ASSERT(kDecommitted);
-	(void)kDecommitted;
+	TRIVIAL_VERIFY(VirtualFree(addr, bytes, MEM_DECOMMIT) != 0);
 
 #elif TRIVIAL_PLATFORM_POSIX
 #if TRIVIAL_MEMORY_LAZY_DECOMMIT
@@ -355,14 +351,8 @@ inline void decommitPages(void* addr, std::size_t bytes, std::size_t pageSize) n
 	constexpr int kAdvice = MADV_DONTNEED;
 #endif // Decommit advice
 
-	const bool kOk = madvise(addr, bytes, kAdvice) == 0;
-	TRIVIAL_ASSERT(kOk);
-	(void)kOk;
-
-	if (mprotect(addr, bytes, PROT_NONE) != 0) {
-		TRIVIAL_ASSERT(false);
-		return;
-	}
+	TRIVIAL_VERIFY(madvise(addr, bytes, kAdvice) == 0);
+	TRIVIAL_VERIFY(mprotect(addr, bytes, PROT_NONE) == 0);
 
 #endif // Platform check
 }

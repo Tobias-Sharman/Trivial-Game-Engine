@@ -251,11 +251,7 @@ namespace trivial::memory {
 			const std::size_t kBitmapWords = (m_segmentCapacity + TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BITS_PER_WORD - 1)
 			                                 >> TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_WORD_SHIFT;
 			const std::size_t kBitmapBytes = kBitmapWords * sizeof(std::uint64_t);
-#if TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
-			constexpr std::size_t kBitmapCount = 3; // Additionaly a pinned tracker
-#else
-			constexpr std::size_t kBitmapCount = 2; // Allocated and cached bitmaps
-#endif // TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
+			constexpr std::size_t kBitmapCount = TRIVIAL_MEMORY_ENABLE_LARGE_PAGES ? 3 : 2;
 
 			const std::size_t kMetadataBytes
 			    = (kBitmapCount * kBitmapBytes) + (m_segmentCapacity * sizeof(SegmentRecord));
@@ -411,9 +407,7 @@ void SegmentAllocator::shutdown() noexcept {
 		TRIVIAL_PROFILE_ALLOC("segments", result, count << TRIVIAL_MEMORY_SEGMENT_SHIFT);
 	}
 
-#if !TRIVIAL_ENABLE_MEMORY_DEBUG_STATS
 	(void)kind;
-#endif // !TRIVIAL_ENABLE_MEMORY_DEBUG_STATS
 
 	if (needsOomReport) {
 		handleOom(count << TRIVIAL_MEMORY_SEGMENT_SHIFT, "SegmentAllocator::allocSegments exhausted reservation", 0);
