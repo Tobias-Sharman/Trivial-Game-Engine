@@ -5,6 +5,7 @@
 #include <cstddef>
 
 #include <trivial/core/compiler.h>
+#include <trivial/core/config.h>
 
 namespace trivial::sync {
 
@@ -35,6 +36,12 @@ public:
 
 	void acquire() noexcept;
 	void release() noexcept;
+
+	// This HAS to be used with care for a suprious change, e.g. only for a
+	// single threaded check, and is as such not standard api to be used
+#if TRIVIAL_ENABLE_ASSERTS
+	[[nodiscard]] std::size_t debugCount() const noexcept { return m_count.load(std::memory_order_acquire); }
+#endif // TRIVIAL_ENABLE_ASSERTS
 
 private:
 	std::atomic<std::size_t> m_count;

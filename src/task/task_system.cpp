@@ -86,27 +86,49 @@ TaskSystem::TaskSystem(const TaskSystemConfig& config)
 }
 
 TaskSystem::~TaskSystem() noexcept {
-	constexpr auto kAnyWorkerIndex = static_cast<std::size_t>(TaskAffinity::AnyWorker);
-	constexpr auto kMainThreadIndex = static_cast<std::size_t>(TaskAffinity::MainThread);
+	TRIVIAL_PROFILE_SCOPE("TaskSystem shutdown");
 
-	for (;;) {
+	{
+		TRIVIAL_PROFILE_SCOPE("TaskSystem shutdown: main thread drain");
+
 		runMainThreadReadyTasks();
+	}
 
-		while (tryPopAndRunOneAnyWorkerTask()) {}
+	{
+		TRIVIAL_PROFILE_SCOPE("TaskSystem shutdown: general drain to joining workers");
 
-		bool allParked = true;
+		for (Worker& worker : m_workers) {
+			worker.stopping.store(true, std::memory_order_release);
+			(void)sync::activeParkingLot().unparkOne(keyFor(worker));
+		}
 
-		for (const Worker& worker : m_workers) {
-			if (worker.state.load(std::memory_order_acquire) != WorkerState::Parked) {
-				allParked = false;
+		for (;;) {
+			runMainThreadReadyTasks();
+
+			if (!tryPopAndRunOneAnyWorkerTask()) {
+				break;
 			}
 		}
 
-		const bool kInjectionQueuesEmpty
-		    = m_affinityQueues[kAnyWorkerIndex].empty() && m_affinityQueues[kMainThreadIndex].empty();
+		for (Worker& worker : m_workers) {
+			if (worker.thread.joinable()) {
+				worker.thread.join();
+			}
+		}
+	}
 
-		if (allParked && kInjectionQueuesEmpty) {
-			break;
+	{
+		// If any tasks were spawned post the above general drain
+		// NOTE: If for some reason this becomes noticeably long then need an
+		// flag
+		TRIVIAL_PROFILE_SCOPE("TaskSystem shutdown: single-threaded tail");
+
+		for (;;) {
+			runMainThreadReadyTasks();
+
+			if (!tryPopAndRunOneAnyWorkerTask()) {
+				break;
+			}
 		}
 	}
 
@@ -114,18 +136,13 @@ TaskSystem::~TaskSystem() noexcept {
 	for (const Worker& worker : m_workers) {
 		TRIVIAL_ASSERT(worker.localQueue.empty());
 	}
+
+	TRIVIAL_ASSERT(m_affinityQueues[static_cast<std::size_t>(TaskAffinity::AnyWorker)].empty());
+	TRIVIAL_ASSERT(m_affinityQueues[static_cast<std::size_t>(TaskAffinity::MainThread)].empty());
+
+	TRIVIAL_ASSERT(m_activeSlots.debugCount() == m_targetActiveWorkerCount);
+	TRIVIAL_ASSERT(m_parkedWorkerIndices.empty());
 #endif // TRIVIAL_ENABLE_ASSERTS
-
-	for (Worker& worker : m_workers) {
-		worker.stopping.store(true, std::memory_order_relaxed);
-		(void)sync::activeParkingLot().unparkOne(keyFor(worker));
-	}
-
-	for (Worker& worker : m_workers) {
-		if (worker.thread.joinable()) {
-			worker.thread.join();
-		}
-	}
 }
 
 TaskHandle TaskSystem::launch(TaskPayload payload, const TaskLaunchOptions& options) noexcept {
@@ -340,7 +357,7 @@ void TaskSystem::runWorkerLoop(std::size_t workerIndex) {
 
 	bool holdingSlot = m_activeSlots.tryAcquire();
 
-	while (!worker.stopping.load(std::memory_order_relaxed)) {
+	for (;;) {
 		TaskHandle handle{};
 
 		if (worker.localQueue.tryPop(handle)) {
@@ -348,29 +365,20 @@ void TaskSystem::runWorkerLoop(std::size_t workerIndex) {
 			continue;
 		}
 
-		if (holdingSlot) {
-			constexpr auto kAnyWorkerIndex = static_cast<std::size_t>(TaskAffinity::AnyWorker);
-
-			const std::size_t kGranted = m_affinityQueues[kAnyWorkerIndex].tryPopWeightedBatchInto(worker.localQueue);
-			if (kGranted > 0 && worker.localQueue.tryPop(handle)) {
-				runAndCompleteClaimedTask(handle);
-				continue;
-			}
-
-			if (tryStealTask(workerIndex, handle)) {
-				runAndCompleteClaimedTask(handle);
-				continue;
-			}
-
-			m_activeSlots.release();
-			holdingSlot = false;
+		if (holdingSlot && tryClaimSharedTask(workerIndex, handle)) {
+			runAndCompleteClaimedTask(handle);
+			continue;
 		}
 
-		if (!parkWorker(workerIndex)) {
+		if (worker.stopping.load(std::memory_order_acquire)) {
 			break;
 		}
 
-		holdingSlot = true;
+		if (holdingSlot) {
+			m_activeSlots.release();
+		}
+
+		holdingSlot = parkWorker(workerIndex);
 	}
 
 	if (holdingSlot) {
@@ -391,7 +399,10 @@ bool TaskSystem::parkWorker(std::size_t workerIndex) noexcept {
 	constexpr auto kAnyWorkerIndex = static_cast<std::size_t>(TaskAffinity::AnyWorker);
 
 	if (!m_affinityQueues[kAnyWorkerIndex].empty() && m_activeSlots.tryAcquire()) {
-		removeParkedIndex(workerIndex);
+		if (!tryRemoveParkedIndex(workerIndex)) {
+			m_activeSlots.release();
+		}
+
 		worker.state.store(WorkerState::Active, std::memory_order_relaxed);
 		return true;
 	}
@@ -401,14 +412,11 @@ bool TaskSystem::parkWorker(std::size_t workerIndex) noexcept {
 		       && !worker.stopping.load(std::memory_order_relaxed);
 	});
 
-	return !worker.stopping.load(std::memory_order_relaxed);
-}
+	if (worker.state.load(std::memory_order_acquire) == WorkerState::Active) {
+		return true;
+	}
 
-void TaskSystem::wakeWorker(std::size_t workerIndex) noexcept {
-	Worker& worker = m_workers[workerIndex];
-
-	worker.state.store(WorkerState::Active, std::memory_order_release);
-	(void)sync::activeParkingLot().unparkOne(keyFor(worker));
+	return !tryRemoveParkedIndex(workerIndex);
 }
 
 void TaskSystem::wakeOneIfUnderTarget() noexcept {
@@ -416,37 +424,51 @@ void TaskSystem::wakeOneIfUnderTarget() noexcept {
 		return;
 	}
 
-	std::size_t indexToWake = 0;
-	bool foundParked = false;
+	Worker* workerToWake = nullptr;
 
 	{
 		const sync::LockGuard<sync::Mutex> kParkedLock(m_parkedIndicesMutex);
 
 		if (!m_parkedWorkerIndices.empty()) {
-			indexToWake = m_parkedWorkerIndices.back();
+			workerToWake = &m_workers[m_parkedWorkerIndices.back()];
 			m_parkedWorkerIndices.pop_back();
-			foundParked = true;
+			workerToWake->state.store(WorkerState::Active, std::memory_order_release);
 		}
 	}
 
-	if (!foundParked) {
+	if (workerToWake == nullptr) {
 		m_activeSlots.release();
 		return;
 	}
 
-	wakeWorker(indexToWake);
+	(void)sync::activeParkingLot().unparkOne(keyFor(*workerToWake));
 }
 
-void TaskSystem::removeParkedIndex(std::size_t workerIndex) noexcept {
+bool TaskSystem::tryRemoveParkedIndex(std::size_t workerIndex) noexcept {
 	const sync::LockGuard<sync::Mutex> kParkedLock(m_parkedIndicesMutex);
 
 	for (std::size_t i = 0; i < m_parkedWorkerIndices.size(); ++i) {
 		if (m_parkedWorkerIndices[i] == workerIndex) {
 			m_parkedWorkerIndices[i] = m_parkedWorkerIndices.back();
 			m_parkedWorkerIndices.pop_back();
-			return;
+			return true;
 		}
 	}
+
+	return false;
+}
+
+bool TaskSystem::tryClaimSharedTask(std::size_t workerIndex, TaskHandle& handle) noexcept {
+	Worker& worker = m_workers[workerIndex];
+
+	constexpr auto kAnyWorkerIndex = static_cast<std::size_t>(TaskAffinity::AnyWorker);
+
+	const std::size_t kGranted = m_affinityQueues[kAnyWorkerIndex].tryPopWeightedBatchInto(worker.localQueue);
+	if (kGranted > 0 && worker.localQueue.tryPop(handle)) {
+		return true;
+	}
+
+	return tryStealTask(workerIndex, handle);
 }
 
 bool TaskSystem::tryStealTask(std::size_t workerIndex, TaskHandle& handle) noexcept {

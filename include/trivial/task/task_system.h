@@ -87,11 +87,12 @@ private:
 	void runWorkerLoop(std::size_t workerIndex);
 
 	[[nodiscard]] bool parkWorker(std::size_t workerIndex) noexcept;
-	void wakeWorker(std::size_t workerIndex) noexcept;
 
 	void wakeOneIfUnderTarget() noexcept;
 
-	void removeParkedIndex(std::size_t workerIndex) noexcept;
+	[[nodiscard]] bool tryRemoveParkedIndex(std::size_t workerIndex) noexcept;
+
+	[[nodiscard]] bool tryClaimSharedTask(std::size_t workerIndex, TaskHandle& handle) noexcept;
 
 	[[nodiscard]] bool tryStealTask(std::size_t workerIndex, TaskHandle& handle) noexcept;
 
