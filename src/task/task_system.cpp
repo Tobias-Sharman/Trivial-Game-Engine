@@ -47,11 +47,6 @@ thread_local trivial::task::Worker* g_currentWorker = nullptr;
 thread_local trivial::task::TaskSystem* g_currentWorkerSystem = nullptr;
 #endif // TRIVIAL_ENABLE_ASSERTS
 
-[[nodiscard]] std::uintptr_t keyFor(const trivial::task::Worker& worker) noexcept {
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-	return reinterpret_cast<std::uintptr_t>(&worker);
-}
-
 } // namespace
 
 namespace trivial::task {
@@ -102,7 +97,7 @@ TaskSystem::~TaskSystem() noexcept {
 
 		for (Worker& worker : m_workers) {
 			worker.stopping.store(true, std::memory_order_release);
-			(void)sync::activeParkingLot().unparkOne(keyFor(worker));
+			(void)sync::activeParkingLot().unparkOne(sync::parkingKey(worker));
 		}
 
 		for (;;) {
@@ -410,7 +405,7 @@ bool TaskSystem::parkWorker(std::size_t workerIndex) noexcept {
 		return true;
 	}
 
-	(void)sync::activeParkingLot().park(keyFor(worker), [&worker] {
+	(void)sync::activeParkingLot().park(sync::parkingKey(worker), [&worker] {
 		return worker.state.load(std::memory_order_acquire) != WorkerState::Active
 		       && !worker.stopping.load(std::memory_order_relaxed);
 	});
@@ -444,7 +439,7 @@ void TaskSystem::wakeOneIfUnderTarget() noexcept {
 		return;
 	}
 
-	(void)sync::activeParkingLot().unparkOne(keyFor(*workerToWake));
+	(void)sync::activeParkingLot().unparkOne(sync::parkingKey(*workerToWake));
 }
 
 bool TaskSystem::tryRemoveParkedIndex(std::size_t workerIndex) noexcept {

@@ -99,7 +99,7 @@ Backend::Backend(const ApplicationInfo& applicationInfo, const platform::Window&
 	m_graphicsFamily = kPhysicalDeviceSelection.queueFamilies.graphicsFamily;
 	m_presentFamily = kPhysicalDeviceSelection.queueFamilies.presentFamily;
 
-	m_device = createDevice(m_physicalDevice, &kPhysicalDeviceSelection.queueFamilies);
+	m_device = createDevice(m_physicalDevice, kPhysicalDeviceSelection.queueFamilies);
 
 	m_graphicsQueue = getDeviceQueue(m_device, m_graphicsFamily);
 	m_presentQueue = getDeviceQueue(m_device, m_presentFamily);
@@ -147,13 +147,13 @@ Backend::~Backend() {
 	destroyPipelineLayout(m_device, m_pipelineLayout);
 
 	for (MeshData& mesh : m_meshes) {
-		destroyMeshData(m_allocator, &mesh);
+		destroyMeshData(m_allocator, mesh);
 	}
 	m_meshes.clear();
 
-	destroyCommandState(m_device, &m_commandState);
-	destroyFrameSyncState(m_device, &m_syncState);
-	destroySwapchain(m_device, &m_swapchainState);
+	destroyCommandState(m_device, m_commandState);
+	destroyFrameSyncState(m_device, m_syncState);
+	destroySwapchain(m_device, m_swapchainState);
 
 	destroyAllocator(m_allocator);
 
@@ -359,7 +359,7 @@ void Backend::drawMesh(MeshHandle handle, const math::Affine2f& transform, const
 void Backend::destroyMesh(MeshHandle handle) noexcept {
 	TRIVIAL_ASSERT(handle < m_meshes.size());
 
-	destroyMeshData(m_allocator, &m_meshes[handle]);
+	destroyMeshData(m_allocator, m_meshes[handle]);
 }
 
 GraphicsApi Backend::graphicsApi() const noexcept {
@@ -383,10 +383,10 @@ void Backend::resize(platform::WindowSize size) noexcept {
 
 	waitIdle();
 
-	destroyCommandState(m_device, &m_commandState);
-	destroyFrameSyncState(m_device, &m_syncState);
+	destroyCommandState(m_device, m_commandState);
+	destroyFrameSyncState(m_device, m_syncState);
 
-	SwapchainState kOldSwapchainState = m_swapchainState;
+	SwapchainState oldSwapchainState = m_swapchainState;
 
 	m_swapchainState = createSwapchain({
 	    .physicalDevice = m_physicalDevice,
@@ -395,10 +395,10 @@ void Backend::resize(platform::WindowSize size) noexcept {
 	    .requestedSize = size,
 	    .graphicsFamily = m_graphicsFamily,
 	    .presentFamily = m_presentFamily,
-	    .oldSwapchain = kOldSwapchainState.swapchain,
+	    .oldSwapchain = oldSwapchainState.swapchain,
 	});
 
-	destroySwapchain(m_device, &kOldSwapchainState);
+	destroySwapchain(m_device, oldSwapchainState);
 
 	const std::uint32_t kImageCount = static_cast<std::uint32_t>(m_swapchainState.images.size());
 

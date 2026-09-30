@@ -90,20 +90,19 @@ trivial::rhi::vulkan::QueueFamilySelection selectQueueFamilies(VkPhysicalDevice 
 	return selection;
 }
 
-void initialiseDeviceFeatures(trivial::rhi::vulkan::DeviceFeatures* features) noexcept {
-	TRIVIAL_ASSERT(features != nullptr);
+void initialiseDeviceFeatures(trivial::rhi::vulkan::DeviceFeatures& features) noexcept {
 
-	*features = {};
+	features = {};
 
-	features->features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-	features->vulkan13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+	features.features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+	features.vulkan13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
 }
 
 trivial::rhi::vulkan::DeviceFeatures queryDeviceFeatures(VkPhysicalDevice physicalDevice) noexcept {
 	TRIVIAL_ASSERT(physicalDevice != VK_NULL_HANDLE);
 
 	trivial::rhi::vulkan::DeviceFeatures features = {};
-	initialiseDeviceFeatures(&features);
+	initialiseDeviceFeatures(features);
 
 	features.features.pNext = &features.vulkan13;
 	vkGetPhysicalDeviceFeatures2(physicalDevice, &features.features);
@@ -112,28 +111,24 @@ trivial::rhi::vulkan::DeviceFeatures queryDeviceFeatures(VkPhysicalDevice physic
 	return features;
 }
 
-bool supportsRequiredVulkan13Features(const VkPhysicalDeviceVulkan13Features* supportedFeatures,
-                                      const VkPhysicalDeviceVulkan13Features* requiredFeatures) noexcept {
-	TRIVIAL_ASSERT(supportedFeatures != nullptr);
-	TRIVIAL_ASSERT(requiredFeatures != nullptr);
+bool supportsRequiredVulkan13Features(const VkPhysicalDeviceVulkan13Features& supportedFeatures,
+                                      const VkPhysicalDeviceVulkan13Features& requiredFeatures) noexcept {
 
 	// NOTE: Expand for all options as needed later when caring about more support to save complexity
-	if (requiredFeatures->synchronization2 == VK_TRUE && supportedFeatures->synchronization2 != VK_TRUE) {
+	if (requiredFeatures.synchronization2 == VK_TRUE && supportedFeatures.synchronization2 != VK_TRUE) {
 		return false;
 	}
-	if (requiredFeatures->dynamicRendering == VK_TRUE && supportedFeatures->dynamicRendering != VK_TRUE) {
+	if (requiredFeatures.dynamicRendering == VK_TRUE && supportedFeatures.dynamicRendering != VK_TRUE) {
 		return false;
 	}
 
 	return true;
 }
 
-bool supportsRequiredDeviceFeatures(const trivial::rhi::vulkan::DeviceFeatures* supportedFeatures,
-                                    const trivial::rhi::vulkan::DeviceFeatures* requiredFeatures) noexcept {
-	TRIVIAL_ASSERT(supportedFeatures != nullptr);
-	TRIVIAL_ASSERT(requiredFeatures != nullptr);
+bool supportsRequiredDeviceFeatures(const trivial::rhi::vulkan::DeviceFeatures& supportedFeatures,
+                                    const trivial::rhi::vulkan::DeviceFeatures& requiredFeatures) noexcept {
 
-	return supportsRequiredVulkan13Features(&supportedFeatures->vulkan13, &requiredFeatures->vulkan13);
+	return supportsRequiredVulkan13Features(supportedFeatures.vulkan13, requiredFeatures.vulkan13);
 }
 
 } // namespace
@@ -196,7 +191,7 @@ std::vector<VkExtensionProperties> enumerateDeviceExtensions(VkPhysicalDevice ph
 
 DeviceFeatures makeRequiredDeviceFeatures() noexcept {
 	DeviceFeatures features = {};
-	initialiseDeviceFeatures(&features);
+	initialiseDeviceFeatures(features);
 
 	features.vulkan13.synchronization2 = VK_TRUE;
 	features.vulkan13.dynamicRendering = VK_TRUE;
@@ -215,7 +210,7 @@ PhysicalDeviceSelection selectPhysicalDevice(std::span<const VkPhysicalDevice> p
 	for (VkPhysicalDevice physicalDevice : physicalDevices) {
 		const DeviceFeatures kSupportedFeatures = queryDeviceFeatures(physicalDevice);
 
-		if (!supportsRequiredDeviceFeatures(&kSupportedFeatures, &kRequiredFeatures)) {
+		if (!supportsRequiredDeviceFeatures(kSupportedFeatures, kRequiredFeatures)) {
 			continue;
 		}
 

@@ -60,11 +60,10 @@ std::vector<VkExtensionProperties> enumerateInstanceExtensions() noexcept {
 	return extensions;
 }
 
-void requireInstanceExtension(InstanceSelection* selection,
+void requireInstanceExtension(InstanceSelection& selection,
                               std::span<const VkExtensionProperties> availableExtensions,
                               const char* extensionName) noexcept {
 
-	TRIVIAL_ASSERT(selection != nullptr);
 	TRIVIAL_ASSERT(extensionName != nullptr);
 
 	const bool kExtensionAvailable = hasInstanceExtension(availableExtensions, extensionName);
@@ -75,24 +74,23 @@ void requireInstanceExtension(InstanceSelection* selection,
 
 	TRIVIAL_ASSERT(kExtensionAvailable);
 
-	selection->extensions.push_back(extensionName);
+	selection.extensions.push_back(extensionName);
 }
 
-bool enableOptionalInstanceExtension(InstanceSelection* selection,
+bool enableOptionalInstanceExtension(InstanceSelection& selection,
                                      std::span<const VkExtensionProperties> availableExtensions,
                                      const char* extensionName) noexcept {
-	TRIVIAL_ASSERT(selection != nullptr);
 	TRIVIAL_ASSERT(extensionName != nullptr);
 
 	if (!hasInstanceExtension(availableExtensions, extensionName)) {
 		return false;
 	}
 
-	selection->extensions.push_back(extensionName);
+	selection.extensions.push_back(extensionName);
 	return true;
 }
 
-void addRequiredExtensions(InstanceSelection* selection,
+void addRequiredExtensions(InstanceSelection& selection,
                            std::span<const char* const> requiredExtensions,
                            std::span<const VkExtensionProperties> availableExtensions) noexcept {
 	for (const char* requiredExtension : requiredExtensions) {
@@ -100,7 +98,7 @@ void addRequiredExtensions(InstanceSelection* selection,
 	}
 }
 
-void enableOptionalPortability(InstanceSelection* selection,
+void enableOptionalPortability(InstanceSelection& selection,
                                std::span<const VkExtensionProperties> availableExtensions) noexcept {
 	const bool kPortabilityEnumerationEnabled
 	    = enableOptionalInstanceExtension(selection,
@@ -108,7 +106,7 @@ void enableOptionalPortability(InstanceSelection* selection,
 	                                      VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
 
 	if (kPortabilityEnumerationEnabled) {
-		selection->flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+		selection.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
 	}
 }
 
@@ -146,21 +144,20 @@ std::vector<VkLayerProperties> enumerateInstanceLayers() noexcept {
 	return layers;
 }
 
-bool enableOptionalInstanceLayer(InstanceSelection* selection,
+bool enableOptionalInstanceLayer(InstanceSelection& selection,
                                  std::span<const VkLayerProperties> availableLayers,
                                  const char* layerName) noexcept {
-	TRIVIAL_ASSERT(selection != nullptr);
 	TRIVIAL_ASSERT(layerName != nullptr);
 
 	if (!hasInstanceLayer(availableLayers, layerName)) {
 		return false;
 	}
 
-	selection->layers.push_back(layerName);
+	selection.layers.push_back(layerName);
 	return true;
 }
 
-void enableOptionalValidation(InstanceSelection* selection,
+void enableOptionalValidation(InstanceSelection& selection,
                               std::span<const VkExtensionProperties> availableExtensions) noexcept {
 	const std::vector<VkLayerProperties> kAvailableLayers = enumerateInstanceLayers();
 
@@ -187,11 +184,11 @@ InstanceSelection makeInstanceSelection(std::span<const char* const> requiredExt
 
 	InstanceSelection selection = {};
 
-	addRequiredExtensions(&selection, requiredExtensions, availableExtensions);
-	enableOptionalPortability(&selection, availableExtensions);
+	addRequiredExtensions(selection, requiredExtensions, availableExtensions);
+	enableOptionalPortability(selection, availableExtensions);
 
 #if TRIVIAL_ENABLE_VULKAN_VALIDATION
-	enableOptionalValidation(&selection, availableExtensions);
+	enableOptionalValidation(selection, availableExtensions);
 #endif // TRIVIAL_ENABLE_VULKAN_VALIDATION
 
 	return selection;

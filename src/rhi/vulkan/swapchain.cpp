@@ -244,23 +244,22 @@ SwapchainState createSwapchain(const SwapchainCreateParams& params) noexcept {
 	return state;
 }
 
-void destroySwapchain(VkDevice device, SwapchainState* state) noexcept {
+void destroySwapchain(VkDevice device, SwapchainState& state) noexcept {
 	TRIVIAL_ASSERT(device != VK_NULL_HANDLE);
-	TRIVIAL_ASSERT(state != nullptr);
 
-	for (VkImageView imageView : state->imageViews) {
+	for (VkImageView imageView : state.imageViews) {
 		vkDestroyImageView(device, imageView, nullptr);
 	}
-	state->imageViews.clear();
-	state->images.clear();
+	state.imageViews.clear();
+	state.images.clear();
 
-	if (state->swapchain != VK_NULL_HANDLE) {
-		vkDestroySwapchainKHR(device, state->swapchain, nullptr);
-		state->swapchain = VK_NULL_HANDLE;
+	if (state.swapchain != VK_NULL_HANDLE) {
+		vkDestroySwapchainKHR(device, state.swapchain, nullptr);
+		state.swapchain = VK_NULL_HANDLE;
 	}
 
-	state->imageFormat = VK_FORMAT_UNDEFINED;
-	state->imageExtent = {};
+	state.imageFormat = VK_FORMAT_UNDEFINED;
+	state.imageExtent = {};
 }
 
 } // namespace trivial::rhi::vulkan

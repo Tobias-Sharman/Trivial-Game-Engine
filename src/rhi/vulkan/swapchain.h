@@ -29,7 +29,7 @@ struct SwapchainCreateParams {
 };
 
 SwapchainState createSwapchain(const SwapchainCreateParams& params) noexcept;
-void destroySwapchain(VkDevice device, SwapchainState* state) noexcept;
+void destroySwapchain(VkDevice device, SwapchainState& state) noexcept;
 
 } // namespace trivial::rhi::vulkan
 

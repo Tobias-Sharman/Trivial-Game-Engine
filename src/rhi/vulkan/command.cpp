@@ -45,15 +45,14 @@ CommandState createCommandState(VkDevice device, std::uint32_t graphicsFamily, s
 	return state;
 }
 
-void destroyCommandState(VkDevice device, CommandState* state) noexcept {
+void destroyCommandState(VkDevice device, CommandState& state) noexcept {
 	TRIVIAL_ASSERT(device != VK_NULL_HANDLE);
-	TRIVIAL_ASSERT(state != nullptr);
 
-	state->commandBuffers.clear();
+	state.commandBuffers.clear();
 
-	if (state->commandPool != VK_NULL_HANDLE) {
-		vkDestroyCommandPool(device, state->commandPool, nullptr);
-		state->commandPool = VK_NULL_HANDLE;
+	if (state.commandPool != VK_NULL_HANDLE) {
+		vkDestroyCommandPool(device, state.commandPool, nullptr);
+		state.commandPool = VK_NULL_HANDLE;
 	}
 }
 

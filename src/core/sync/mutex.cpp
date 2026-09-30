@@ -9,15 +9,6 @@
 
 #include "core/sync/parking_lot.h"
 
-namespace {
-
-[[nodiscard]] std::uintptr_t keyFor(const trivial::sync::Mutex* const kMutex) noexcept {
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-	return reinterpret_cast<std::uintptr_t>(kMutex);
-}
-
-} // namespace
-
 namespace trivial::sync {
 
 void Mutex::lockSlow() noexcept {
@@ -50,7 +41,7 @@ void Mutex::lockSlow() noexcept {
 			continue;
 		}
 
-		(void)activeParkingLot().park(keyFor(this), [this] {
+		(void)activeParkingLot().park(parkingKey(*this), [this] {
 			return m_state.load(std::memory_order_relaxed)
 			       == (TRIVIAL_SYNC_MUTEX_LOCKED_BIT | TRIVIAL_SYNC_MUTEX_PARKED_BIT);
 		});
@@ -61,7 +52,7 @@ void Mutex::lockSlow() noexcept {
 }
 
 void Mutex::unlockSlow() noexcept {
-	activeParkingLot().unparkOne(keyFor(this), [this](ParkingLot::UnparkOneResult result) {
+	activeParkingLot().unparkOne(parkingKey(*this), [this](ParkingLot::UnparkOneResult result) {
 		if (result.hasMoreWaiters) {
 			m_state.store(TRIVIAL_SYNC_MUTEX_PARKED_BIT, std::memory_order_release);
 		} else {

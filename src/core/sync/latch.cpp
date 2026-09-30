@@ -2,26 +2,16 @@
 
 #include <atomic>
 #include <cstddef>
-#include <cstdint>
 
 #include <trivial/core/assert.h>
 
 #include "core/sync/parking_lot.h"
 
-namespace {
-
-[[nodiscard]] std::uintptr_t keyFor(const trivial::sync::Latch* latch) noexcept {
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-	return reinterpret_cast<std::uintptr_t>(latch);
-}
-
-} // namespace
-
 namespace trivial::sync {
 
 void Latch::wait() noexcept {
 	while (remaining() > 0) {
-		(void)activeParkingLot().park(keyFor(this), [this] {
+		(void)activeParkingLot().park(parkingKey(*this), [this] {
 			return remaining() > 0;
 		});
 	}
@@ -32,7 +22,7 @@ void Latch::countDown() noexcept {
 	TRIVIAL_ASSERT(kPrevious > 0);
 
 	if (kPrevious == 1) {
-		activeParkingLot().unparkAll(keyFor(this));
+		activeParkingLot().unparkAll(parkingKey(*this));
 	}
 }
 

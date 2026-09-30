@@ -2,24 +2,14 @@
 
 #include <atomic>
 #include <chrono>
-#include <cstdint>
 
 #include "core/sync/parking_lot.h"
-
-namespace {
-
-[[nodiscard]] std::uintptr_t keyFor(const trivial::sync::Event* event) noexcept {
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-	return reinterpret_cast<std::uintptr_t>(event);
-}
-
-} // namespace
 
 namespace trivial::sync {
 
 void Event::wait() noexcept {
 	while (!isTriggered()) {
-		(void)activeParkingLot().park(keyFor(this), [this] {
+		(void)activeParkingLot().park(parkingKey(*this), [this] {
 			return !isTriggered();
 		});
 	}
@@ -34,7 +24,7 @@ void Event::wait() noexcept {
 			return isTriggered();
 		}
 
-		const ParkingLot::ParkResult kResult = activeParkingLot().parkFor(keyFor(this), kExpiry - kNow, [this] {
+		const ParkingLot::ParkResult kResult = activeParkingLot().parkFor(parkingKey(*this), kExpiry - kNow, [this] {
 			return !isTriggered();
 		});
 
@@ -48,7 +38,7 @@ void Event::wait() noexcept {
 
 void Event::trigger() noexcept {
 	m_isTriggered.store(true, std::memory_order_release);
-	activeParkingLot().unparkAll(keyFor(this));
+	activeParkingLot().unparkAll(parkingKey(*this));
 }
 
 } // namespace trivial::sync

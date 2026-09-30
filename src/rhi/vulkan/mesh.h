@@ -22,7 +22,7 @@ struct MeshData {
 MeshData createMeshData(VmaAllocator allocator,
                         std::span<const Vertex2> vertices,
                         std::span<const std::uint16_t> indices) noexcept;
-void destroyMeshData(VmaAllocator allocator, MeshData* mesh) noexcept;
+void destroyMeshData(VmaAllocator allocator, MeshData& mesh) noexcept;
 
 } // namespace trivial::rhi::vulkan
 

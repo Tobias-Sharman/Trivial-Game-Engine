@@ -14,7 +14,7 @@ struct CommandState {
 };
 
 CommandState createCommandState(VkDevice device, std::uint32_t graphicsFamily, std::uint32_t bufferCount) noexcept;
-void destroyCommandState(VkDevice device, CommandState* state) noexcept;
+void destroyCommandState(VkDevice device, CommandState& state) noexcept;
 
 } // namespace trivial::rhi::vulkan
 

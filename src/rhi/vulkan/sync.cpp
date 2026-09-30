@@ -65,24 +65,23 @@ FrameSyncState createFrameSyncState(VkDevice device, std::uint32_t imageCount) n
 	return state;
 }
 
-void destroyFrameSyncState(VkDevice device, FrameSyncState* state) noexcept {
+void destroyFrameSyncState(VkDevice device, FrameSyncState& state) noexcept {
 	TRIVIAL_ASSERT(device != VK_NULL_HANDLE);
-	TRIVIAL_ASSERT(state != nullptr);
 
-	for (VkFence fence : state->inFlightFences) {
+	for (VkFence fence : state.inFlightFences) {
 		vkDestroyFence(device, fence, nullptr);
 	}
-	state->inFlightFences.clear();
+	state.inFlightFences.clear();
 
-	for (VkSemaphore semaphore : state->renderFinishedSemaphores) {
+	for (VkSemaphore semaphore : state.renderFinishedSemaphores) {
 		vkDestroySemaphore(device, semaphore, nullptr);
 	}
-	state->renderFinishedSemaphores.clear();
+	state.renderFinishedSemaphores.clear();
 
-	for (VkSemaphore semaphore : state->imageAvailableSemaphores) {
+	for (VkSemaphore semaphore : state.imageAvailableSemaphores) {
 		vkDestroySemaphore(device, semaphore, nullptr);
 	}
-	state->imageAvailableSemaphores.clear();
+	state.imageAvailableSemaphores.clear();
 }
 
 } // namespace trivial::rhi::vulkan

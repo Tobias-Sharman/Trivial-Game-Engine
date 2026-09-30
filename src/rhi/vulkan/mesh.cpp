@@ -74,18 +74,17 @@ MeshData createMeshData(VmaAllocator allocator,
 	return mesh;
 }
 
-void destroyMeshData(VmaAllocator allocator, MeshData* mesh) noexcept {
+void destroyMeshData(VmaAllocator allocator, MeshData& mesh) noexcept {
 	TRIVIAL_ASSERT(allocator != VK_NULL_HANDLE);
-	TRIVIAL_ASSERT(mesh != nullptr);
 
-	if (mesh->buffer != VK_NULL_HANDLE) {
-		vmaDestroyBuffer(allocator, mesh->buffer, mesh->allocation);
-		mesh->buffer = VK_NULL_HANDLE;
-		mesh->allocation = VK_NULL_HANDLE;
+	if (mesh.buffer != VK_NULL_HANDLE) {
+		vmaDestroyBuffer(allocator, mesh.buffer, mesh.allocation);
+		mesh.buffer = VK_NULL_HANDLE;
+		mesh.allocation = VK_NULL_HANDLE;
 	}
 
-	mesh->indexOffset = 0;
-	mesh->indexCount = 0;
+	mesh.indexOffset = 0;
+	mesh.indexCount = 0;
 }
 
 } // namespace trivial::rhi::vulkan

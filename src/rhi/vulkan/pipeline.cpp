@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <fstream>
 #include <ios>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -92,7 +93,7 @@ std::array<VkDynamicState, 2> makeDynamicStates() noexcept {
 	return {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
 }
 
-VkPipelineDynamicStateCreateInfo makeDynamicState(const std::array<VkDynamicState, 2>& states) noexcept {
+VkPipelineDynamicStateCreateInfo makeDynamicState(std::span<const VkDynamicState> states) noexcept {
 	return {
 	    .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
 	    .pNext = nullptr,

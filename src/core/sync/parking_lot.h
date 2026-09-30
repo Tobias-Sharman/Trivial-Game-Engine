@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <utility>
 
 #include <trivial/core/assert.h>
@@ -531,6 +532,12 @@ inline void setActiveParkingLot(ParkingLot* const kParkingLot) noexcept {
 [[nodiscard]] inline ParkingLot& activeParkingLot() noexcept {
 	TRIVIAL_ASSERT(detail::g_activeParkingLot != nullptr);
 	return *detail::g_activeParkingLot;
+}
+
+template <typename Object>
+[[nodiscard]] TRIVIAL_FORCE_INLINE std::uintptr_t parkingKey(Object& object) noexcept {
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+	return reinterpret_cast<std::uintptr_t>(std::addressof(object));
 }
 
 } // namespace trivial::sync
