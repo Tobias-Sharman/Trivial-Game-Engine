@@ -14,10 +14,10 @@ check on support for mobile platforms may also be taken as an extension to the
 engine.
 
 Licensed under the [Apache License, Version 2.0](LICENSE). Games and other
-software built with the engine can use any license, but must keep the
+software built with the engine can use any licence, but must keep the
 [NOTICE.md](NOTICE.md) file's attribution somewhere a user could reasonably
 find it (e.g. a credits screen, documentation, or an in-app NOTICE display).
-NOTICE.md also lists the engine's third-party dependencies and their license
+NOTICE.md also lists the engine's third-party dependencies and their licence
 terms, and credits design references where deemed appropriate. A note on this
 is it need not be a title screen as that can often interfere with the feel of a
 game, and as such implementation of accreditation is deferred to the user.
@@ -30,9 +30,7 @@ neglected prior to a proper version 1.0.0.
 
 ## Current plan of action
 
-- Windows and linux basic testing
-- Reduce auto usage, move from pointer to references as preference in fn args,
-and compiler attributes where appropriate
+- Windows basic testing
 - Custom Chrono with suitable types
 - Documentation update and create new documentation
 - Allocator
@@ -50,6 +48,23 @@ and compiler attributes where appropriate
 - First party parallel running tasks
 - Proper automatic handle release, mark a flag on destruction (i.e. not some
 reference counted form)
+  - `lifetimebound` on `Task<T>::getResult()`, the result then dies with the
+  handle so `launch(work).getResult()` held past the statement dangles
+  - `[[clang::trivial_abi]]` on `Task<T>` so the destructor does not force it
+  out of registers, keep it move-only with a moved-from handle invalid so only
+  one owner sets the flag
+- Clang thread safety analysis (`-Wthread-safety`), macros expand to nothing on
+other compilers
+  - `capability` on Mutex/SpinLock/EscalatingLock, `scoped_lockable` on
+  LockGuard
+  - `acquire_capability`/`release_capability`/`try_acquire_capability` on the
+  lock and unlock functions
+  - `guarded_by`/`pt_guarded_by` on shared members, `requires_capability` and
+  `excludes` on functions that expect a lock to be held or not held
+  - Limitations: no tracking of locks taken in one function and released in
+  another, locking via callbacks (ParkingLot buckets), lock ordering across
+  objects, or atomics, such spots need `no_thread_safety_analysis` -> see if
+  some functions want adjustment to employ this effectively
 - Fibre backing to task system with context switching
   - Context switching from defined points and not called from outside of the
   running thread to keep the register handling simple, clean, and consistent
