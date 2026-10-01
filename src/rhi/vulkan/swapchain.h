@@ -28,7 +28,7 @@ struct SwapchainCreateParams {
 	VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE;
 };
 
-SwapchainState createSwapchain(const SwapchainCreateParams& params) noexcept;
+[[nodiscard]] SwapchainState createSwapchain(const SwapchainCreateParams& params) noexcept;
 void destroySwapchain(VkDevice device, SwapchainState& state) noexcept;
 
 } // namespace trivial::rhi::vulkan

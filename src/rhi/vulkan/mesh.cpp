@@ -35,7 +35,7 @@ MeshData createMeshData(VmaAllocator allocator,
 	    .pQueueFamilyIndices = nullptr,
 	};
 
-	const VmaAllocationCreateInfo kAllocationCreateInfo = {
+	constexpr VmaAllocationCreateInfo kAllocationCreateInfo = {
 	    .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
 	    .usage = VMA_MEMORY_USAGE_AUTO,
 	    .requiredFlags = 0,

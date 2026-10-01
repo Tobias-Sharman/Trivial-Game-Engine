@@ -9,7 +9,7 @@
 
 namespace {
 
-constexpr VmaVulkanFunctions makeVulkanFunctions() noexcept {
+[[nodiscard]] constexpr VmaVulkanFunctions makeVulkanFunctions() noexcept {
 	VmaVulkanFunctions functions = {};
 	functions.vkGetInstanceProcAddr = vkGetInstanceProcAddr;
 	functions.vkGetDeviceProcAddr = vkGetDeviceProcAddr;

@@ -10,7 +10,7 @@ namespace trivial::core {
 
 namespace {
 
-const char* logLevelName(LogLevel logLevel) noexcept {
+[[nodiscard]] constexpr const char* logLevelName(LogLevel logLevel) noexcept {
 	switch (logLevel) {
 		case LogLevel::Debug:
 			return "debug";

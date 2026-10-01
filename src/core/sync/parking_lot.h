@@ -466,7 +466,7 @@ private:
 		return kCurrent->index();
 	}
 
-	[[nodiscard]] TRIVIAL_FORCE_INLINE Bucket& bucketFor(std::uintptr_t address) noexcept {
+	[[nodiscard]] TRIVIAL_FORCE_INLINE Bucket& bucketFor(std::uintptr_t address) noexcept TRIVIAL_LIFETIMEBOUND {
 		return m_buckets[hash::fibonacciHash(address, m_bucketBits)];
 	}
 
@@ -486,7 +486,7 @@ private:
 		bucket.queueTail = slotIndex;
 	}
 
-	bool removeFromQueue(Bucket& bucket, std::size_t slotIndex) noexcept {
+	[[nodiscard]] bool removeFromQueue(Bucket& bucket, std::size_t slotIndex) noexcept {
 		std::size_t* link = &bucket.queueHead;
 		std::size_t previousIndex = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
 		std::size_t currentIndex = bucket.queueHead;
@@ -521,7 +521,7 @@ private:
 namespace detail {
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-inline ParkingLot* g_activeParkingLot = nullptr;
+inline constinit ParkingLot* g_activeParkingLot = nullptr;
 
 } // namespace detail
 

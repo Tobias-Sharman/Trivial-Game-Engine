@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <trivial/core/assert.h>
+#include <trivial/core/compiler.h>
 #include <trivial/core/config.h>
 #include <trivial/core/log.h>
 #include <trivial/task/task_system_config.h>
@@ -81,7 +82,7 @@ public:
 		m_operations = m_operations->invoke(m_storage.data());
 	}
 
-	[[nodiscard]] void* getResultPointer() noexcept {
+	[[nodiscard]] void* getResultPointer() noexcept TRIVIAL_LIFETIMEBOUND {
 		TRIVIAL_ASSERT(m_operations != nullptr);
 		TRIVIAL_ASSERT(m_operations->get != nullptr);
 
@@ -92,7 +93,7 @@ public:
 		return m_operations->get(m_storage.data());
 	}
 
-	[[nodiscard]] const void* getResultPointer() const noexcept {
+	[[nodiscard]] const void* getResultPointer() const noexcept TRIVIAL_LIFETIMEBOUND {
 		TRIVIAL_ASSERT(m_operations != nullptr);
 		TRIVIAL_ASSERT(m_operations->getConst != nullptr);
 
@@ -131,7 +132,7 @@ private:
 	}
 
 	template <typename Object>
-	static const Object* rawStoragePointer(const std::byte* storage) noexcept {
+	[[nodiscard]] static const Object* rawStoragePointer(const std::byte* storage) noexcept {
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
 		return std::launder(reinterpret_cast<const Object*>(storage));
 	}
@@ -157,17 +158,17 @@ private:
 		return getStoredObject<Callable*>(storage);
 	}
 
-	[[nodiscard]] void* getStoredObject() noexcept {
+	[[nodiscard]] void* getStoredObject() noexcept TRIVIAL_LIFETIMEBOUND {
 		TRIVIAL_ASSERT(m_operations != nullptr);
 		return m_operations->get(m_storage.data());
 	}
 
-	[[nodiscard]] const void* getStoredObject() const noexcept {
+	[[nodiscard]] const void* getStoredObject() const noexcept TRIVIAL_LIFETIMEBOUND {
 		TRIVIAL_ASSERT(m_operations != nullptr);
 		return m_operations->getConst(m_storage.data());
 	}
 
-	static const Operations& getEmptyOperations() noexcept {
+	[[nodiscard]] TRIVIAL_FORCE_INLINE static const Operations& getEmptyOperations() noexcept {
 		static constexpr Operations s_kOperations{
 #if TRIVIAL_CONFIG_DEBUG
 		    .kind = OperationsKind::Empty,
@@ -195,7 +196,7 @@ private:
 	}
 
 	template <typename Callable>
-	static const Operations& getInlineOperations() noexcept {
+	[[nodiscard]] TRIVIAL_FORCE_INLINE static const Operations& getInlineOperations() noexcept {
 		static constexpr Operations s_kOperations{
 #if TRIVIAL_CONFIG_DEBUG
 		    .kind = OperationsKind::Callable,
@@ -259,7 +260,7 @@ private:
 	}
 
 	template <typename Callable>
-	static const Operations& getHeapOperations() noexcept {
+	[[nodiscard]] TRIVIAL_FORCE_INLINE static const Operations& getHeapOperations() noexcept {
 		static constexpr Operations s_kOperations{
 #if TRIVIAL_CONFIG_DEBUG
 		    .kind = OperationsKind::Callable,
@@ -333,7 +334,7 @@ private:
 	}
 
 	template <typename Result>
-	static const Operations& getInlineResultOperations() noexcept {
+	[[nodiscard]] TRIVIAL_FORCE_INLINE static const Operations& getInlineResultOperations() noexcept {
 		static constexpr Operations s_kOperations{
 #if TRIVIAL_CONFIG_DEBUG
 		    .kind = OperationsKind::Result,
@@ -368,7 +369,7 @@ private:
 	}
 
 	template <typename Result>
-	static const Operations& getHeapResultOperations() noexcept {
+	[[nodiscard]] TRIVIAL_FORCE_INLINE static const Operations& getHeapResultOperations() noexcept {
 		static constexpr Operations s_kOperations{
 #if TRIVIAL_CONFIG_DEBUG
 		    .kind = OperationsKind::Result,
@@ -408,7 +409,7 @@ private:
 		return s_kOperations;
 	}
 
-	void reset() noexcept {
+	TRIVIAL_REINITIALISES void reset() noexcept {
 		if (m_operations == nullptr) {
 			return;
 		}

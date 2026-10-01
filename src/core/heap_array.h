@@ -5,13 +5,14 @@
 #include <memory>
 
 #include <trivial/core/assert.h>
+#include <trivial/core/compiler.h>
 
 namespace trivial::core {
 
 template <typename T>
 class HeapArray {
 public:
-	explicit HeapArray(std::size_t size) noexcept
+	explicit constexpr HeapArray(std::size_t size) noexcept
 	    // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
 	    : m_elements(std::make_unique<T[]>(size))
 	    , m_size(size) {}
@@ -24,17 +25,17 @@ public:
 	HeapArray(HeapArray&&) = delete;
 	HeapArray& operator=(HeapArray&&) = delete;
 
-	[[nodiscard]] T& operator[](std::size_t index) noexcept {
+	[[nodiscard]] constexpr T& operator[](std::size_t index) noexcept TRIVIAL_LIFETIMEBOUND {
 		TRIVIAL_ASSERT(index < m_size);
 		return m_elements[index];
 	}
 
-	[[nodiscard]] const T& operator[](std::size_t index) const noexcept {
+	[[nodiscard]] constexpr const T& operator[](std::size_t index) const noexcept TRIVIAL_LIFETIMEBOUND {
 		TRIVIAL_ASSERT(index < m_size);
 		return m_elements[index];
 	}
 
-	[[nodiscard]] std::size_t size() const noexcept { return m_size; }
+	[[nodiscard]] constexpr std::size_t size() const noexcept { return m_size; }
 
 private:
 	// TODO: Custom allocator

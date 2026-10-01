@@ -50,7 +50,7 @@ namespace {
 std::atomic<std::uint32_t> g_nextThreadIndex{0};
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-thread_local trivial::thread::Thread* g_currentThread = nullptr; // Better linkage than member variable
+constinit thread_local trivial::thread::Thread* g_currentThread = nullptr; // Better linkage than member variable
 
 void copyName(const char* name, std::array<char, TRIVIAL_THREAD_MAX_NAME_LENGTH>& outName) noexcept {
 	if (name == nullptr) {

@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include <trivial/core/compiler.h>
 #include <trivial/core/platform.h>
 #include <trivial/core/thread/thread_config.h>
 
@@ -122,7 +123,7 @@ public:
 		return kState == ThreadState::Running || kState == ThreadState::Suspended;
 	}
 	[[nodiscard]] std::uint32_t index() const noexcept { return m_index; }
-	[[nodiscard]] const char* name() const noexcept { return m_name.data(); }
+	[[nodiscard]] const char* name() const noexcept TRIVIAL_LIFETIMEBOUND { return m_name.data(); }
 	[[nodiscard]] ThreadType type() const noexcept { return m_type; }
 	[[nodiscard]] ThreadState state() const noexcept { return m_state.load(std::memory_order_acquire); }
 	[[nodiscard]] static Thread* current() noexcept;

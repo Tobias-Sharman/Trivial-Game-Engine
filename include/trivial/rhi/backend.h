@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <span>
 
+#include <trivial/core/compiler.h>
 #include <trivial/core/graphics_api.h>
 #include <trivial/core/math/affine2.h>
 #include <trivial/core/math/vec4.h>
@@ -12,7 +13,7 @@
 
 namespace trivial::rhi {
 
-class Backend {
+class TRIVIAL_NOVTABLE Backend {
 public:
 	Backend() noexcept = default;
 
@@ -27,8 +28,8 @@ public:
 	[[nodiscard]] virtual bool beginFrame(std::uint64_t frameIndex) noexcept = 0;
 	virtual void endFrame() noexcept = 0;
 
-	virtual MeshHandle createMesh(std::span<const Vertex2> vertices, std::span<const std::uint16_t> indices) noexcept
-	    = 0;
+	[[nodiscard]] virtual MeshHandle createMesh(std::span<const Vertex2> vertices,
+	                                            std::span<const std::uint16_t> indices) noexcept = 0;
 	virtual void drawMesh(MeshHandle handle, const math::Affine2f& transform, const math::Vec4f& tint) noexcept = 0;
 	virtual void destroyMesh(MeshHandle handle) noexcept = 0;
 

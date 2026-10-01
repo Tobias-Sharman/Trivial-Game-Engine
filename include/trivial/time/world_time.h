@@ -19,7 +19,7 @@ public:
 		m_gameElapsedSeconds += m_gameDeltaSeconds;
 	}
 
-	void reset() noexcept {
+	constexpr void reset() noexcept {
 		m_realDeltaSeconds = 0.0;
 		m_realElapsedSeconds = 0.0;
 
@@ -30,20 +30,20 @@ public:
 		m_gameElapsedSeconds = 0.0;
 	}
 
-	[[nodiscard]] double pauseMultiplier() const noexcept { return m_pauseMultiplier; }
-	void setPauseMultiplier(double pauseMultiplier) noexcept { m_pauseMultiplier = pauseMultiplier; }
+	[[nodiscard]] constexpr double pauseMultiplier() const noexcept { return m_pauseMultiplier; }
+	constexpr void setPauseMultiplier(double pauseMultiplier) noexcept { m_pauseMultiplier = pauseMultiplier; }
 
-	[[nodiscard]] double timeScale() const noexcept { return m_timeScale; }
-	void setTimeScale(double scale) noexcept { m_timeScale = std::max(scale, 0.0); }
+	[[nodiscard]] constexpr double timeScale() const noexcept { return m_timeScale; }
+	constexpr void setTimeScale(double scale) noexcept { m_timeScale = std::max(scale, 0.0); }
 
-	[[nodiscard]] double realDeltaSeconds() const noexcept { return m_realDeltaSeconds; }
-	[[nodiscard]] double realElapsedSeconds() const noexcept { return m_realElapsedSeconds; }
+	[[nodiscard]] constexpr double realDeltaSeconds() const noexcept { return m_realDeltaSeconds; }
+	[[nodiscard]] constexpr double realElapsedSeconds() const noexcept { return m_realElapsedSeconds; }
 
-	[[nodiscard]] double unpausedDeltaSeconds() const noexcept { return m_unpausedDeltaSeconds; }
-	[[nodiscard]] double unpausedElapsedSeconds() const noexcept { return m_unpausedElapsedSeconds; }
+	[[nodiscard]] constexpr double unpausedDeltaSeconds() const noexcept { return m_unpausedDeltaSeconds; }
+	[[nodiscard]] constexpr double unpausedElapsedSeconds() const noexcept { return m_unpausedElapsedSeconds; }
 
-	[[nodiscard]] double gameDeltaSeconds() const noexcept { return m_gameDeltaSeconds; }
-	[[nodiscard]] double gameElapsedSeconds() const noexcept { return m_gameElapsedSeconds; }
+	[[nodiscard]] constexpr double gameDeltaSeconds() const noexcept { return m_gameDeltaSeconds; }
+	[[nodiscard]] constexpr double gameElapsedSeconds() const noexcept { return m_gameElapsedSeconds; }
 
 private:
 	double m_realDeltaSeconds = 0.0;

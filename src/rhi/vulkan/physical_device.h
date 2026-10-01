@@ -31,13 +31,14 @@ struct DeviceFeatures {
 	VkPhysicalDeviceVulkan13Features vulkan13 = {};
 };
 
-PhysicalDeviceSelection selectPhysicalDevice(std::span<const VkPhysicalDevice> physicalDevices,
-                                             VkSurfaceKHR surface) noexcept;
+[[nodiscard]] PhysicalDeviceSelection selectPhysicalDevice(std::span<const VkPhysicalDevice> physicalDevices,
+                                                           VkSurfaceKHR surface) noexcept;
 
-bool hasDeviceExtension(std::span<const VkExtensionProperties> availableExtensions, const char* extensionName) noexcept;
-std::vector<VkExtensionProperties> enumerateDeviceExtensions(VkPhysicalDevice physicalDevice) noexcept;
-std::vector<VkPhysicalDevice> enumeratePhysicalDevices(VkInstance instance) noexcept;
-DeviceFeatures makeRequiredDeviceFeatures() noexcept;
+[[nodiscard]] bool hasDeviceExtension(std::span<const VkExtensionProperties> availableExtensions,
+                                      const char* extensionName) noexcept;
+[[nodiscard]] std::vector<VkExtensionProperties> enumerateDeviceExtensions(VkPhysicalDevice physicalDevice) noexcept;
+[[nodiscard]] std::vector<VkPhysicalDevice> enumeratePhysicalDevices(VkInstance instance) noexcept;
+[[nodiscard]] DeviceFeatures makeRequiredDeviceFeatures() noexcept;
 
 } // namespace trivial::rhi::vulkan
 

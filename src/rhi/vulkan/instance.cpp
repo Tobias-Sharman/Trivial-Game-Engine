@@ -27,8 +27,8 @@ struct InstanceSelection {
 	VkInstanceCreateFlags flags = 0;
 };
 
-bool hasInstanceExtension(std::span<const VkExtensionProperties> availableExtensions,
-                          const char* extensionName) noexcept {
+[[nodiscard]] bool hasInstanceExtension(std::span<const VkExtensionProperties> availableExtensions,
+                                        const char* extensionName) noexcept {
 	TRIVIAL_ASSERT(extensionName != nullptr);
 
 	for (const VkExtensionProperties& availableExtension : availableExtensions) {
@@ -40,7 +40,7 @@ bool hasInstanceExtension(std::span<const VkExtensionProperties> availableExtens
 	return false;
 }
 
-std::vector<VkExtensionProperties> enumerateInstanceExtensions() noexcept {
+[[nodiscard]] std::vector<VkExtensionProperties> enumerateInstanceExtensions() noexcept {
 	std::uint32_t extensionCount = 0;
 
 	VkResult result = vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
@@ -77,9 +77,9 @@ void requireInstanceExtension(InstanceSelection& selection,
 	selection.extensions.push_back(extensionName);
 }
 
-bool enableOptionalInstanceExtension(InstanceSelection& selection,
-                                     std::span<const VkExtensionProperties> availableExtensions,
-                                     const char* extensionName) noexcept {
+[[nodiscard]] bool enableOptionalInstanceExtension(InstanceSelection& selection,
+                                                   std::span<const VkExtensionProperties> availableExtensions,
+                                                   const char* extensionName) noexcept {
 	TRIVIAL_ASSERT(extensionName != nullptr);
 
 	if (!hasInstanceExtension(availableExtensions, extensionName)) {
@@ -112,7 +112,8 @@ void enableOptionalPortability(InstanceSelection& selection,
 
 #if TRIVIAL_ENABLE_VULKAN_VALIDATION
 
-bool hasInstanceLayer(std::span<const VkLayerProperties> availableLayers, const char* layerName) noexcept {
+[[nodiscard]] bool hasInstanceLayer(std::span<const VkLayerProperties> availableLayers,
+                                    const char* layerName) noexcept {
 	TRIVIAL_ASSERT(layerName != nullptr);
 
 	for (const VkLayerProperties& availableLayer : availableLayers) {
@@ -124,7 +125,7 @@ bool hasInstanceLayer(std::span<const VkLayerProperties> availableLayers, const 
 	return false;
 }
 
-std::vector<VkLayerProperties> enumerateInstanceLayers() noexcept {
+[[nodiscard]] std::vector<VkLayerProperties> enumerateInstanceLayers() noexcept {
 	std::uint32_t layerCount = 0;
 
 	VkResult result = vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
@@ -144,9 +145,9 @@ std::vector<VkLayerProperties> enumerateInstanceLayers() noexcept {
 	return layers;
 }
 
-bool enableOptionalInstanceLayer(InstanceSelection& selection,
-                                 std::span<const VkLayerProperties> availableLayers,
-                                 const char* layerName) noexcept {
+[[nodiscard]] bool enableOptionalInstanceLayer(InstanceSelection& selection,
+                                               std::span<const VkLayerProperties> availableLayers,
+                                               const char* layerName) noexcept {
 	TRIVIAL_ASSERT(layerName != nullptr);
 
 	if (!hasInstanceLayer(availableLayers, layerName)) {
@@ -178,8 +179,9 @@ void enableOptionalValidation(InstanceSelection& selection,
 
 #endif // TRIVIAL_ENABLE_VULKAN_VALIDATION
 
-InstanceSelection makeInstanceSelection(std::span<const char* const> requiredExtensions,
-                                        std::span<const VkExtensionProperties> availableExtensions) noexcept {
+[[nodiscard]] InstanceSelection makeInstanceSelection(
+    std::span<const char* const> requiredExtensions,
+    std::span<const VkExtensionProperties> availableExtensions) noexcept {
 	TRIVIAL_ASSERT(!requiredExtensions.empty());
 
 	InstanceSelection selection = {};
@@ -194,11 +196,11 @@ InstanceSelection makeInstanceSelection(std::span<const char* const> requiredExt
 	return selection;
 }
 
-std::uint32_t makeVulkanVersion(trivial::Version version) noexcept {
+[[nodiscard]] constexpr std::uint32_t makeVulkanVersion(trivial::Version version) noexcept {
 	return VK_MAKE_VERSION(version.major, version.minor, version.patch);
 }
 
-VkApplicationInfo makeApplicationInfo(const trivial::ApplicationInfo& info) noexcept {
+[[nodiscard]] constexpr VkApplicationInfo makeApplicationInfo(const trivial::ApplicationInfo& info) noexcept {
 	TRIVIAL_ASSERT(!info.name.empty());
 
 	VkApplicationInfo applicationInfo = {
@@ -215,8 +217,8 @@ VkApplicationInfo makeApplicationInfo(const trivial::ApplicationInfo& info) noex
 	return applicationInfo;
 }
 
-VkInstanceCreateInfo makeInstanceCreateInfo(const VkApplicationInfo* applicationInfo,
-                                            const InstanceSelection* selection) noexcept {
+[[nodiscard]] constexpr VkInstanceCreateInfo makeInstanceCreateInfo(const VkApplicationInfo* applicationInfo,
+                                                                    const InstanceSelection* selection) noexcept {
 	TRIVIAL_ASSERT(applicationInfo != nullptr);
 	TRIVIAL_ASSERT(selection != nullptr);
 	TRIVIAL_ASSERT(!selection->extensions.empty());

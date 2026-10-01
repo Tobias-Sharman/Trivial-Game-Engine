@@ -6,6 +6,7 @@
 #include <type_traits>
 
 #include <trivial/core/assert.h>
+#include <trivial/core/compiler.h>
 #include <trivial/core/math/concepts.h>
 
 namespace trivial::math {
@@ -17,11 +18,10 @@ struct Vec4 {
 	T z{};
 	T w{};
 
-	[[nodiscard]] constexpr T& operator[](std::size_t index) noexcept {
-		TRIVIAL_ASSERT(index < 4);
+	[[nodiscard]] constexpr T& operator[](std::size_t index) noexcept TRIVIAL_LIFETIMEBOUND {
+		TRIVIAL_ASSUME(index < 4);
 
 		switch (index) {
-			default:
 			case 0:
 				return x;
 			case 1:
@@ -30,14 +30,15 @@ struct Vec4 {
 				return z;
 			case 3:
 				return w;
+			default:
+				TRIVIAL_UNREACHABLE();
 		}
 	}
 
-	[[nodiscard]] constexpr const T& operator[](std::size_t index) const noexcept {
-		TRIVIAL_ASSERT(index < 4);
+	[[nodiscard]] constexpr const T& operator[](std::size_t index) const noexcept TRIVIAL_LIFETIMEBOUND {
+		TRIVIAL_ASSUME(index < 4);
 
 		switch (index) {
-			default:
 			case 0:
 				return x;
 			case 1:
@@ -46,6 +47,8 @@ struct Vec4 {
 				return z;
 			case 3:
 				return w;
+			default:
+				TRIVIAL_UNREACHABLE();
 		}
 	}
 

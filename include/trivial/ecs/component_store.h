@@ -4,6 +4,7 @@
 #include <utility>
 #include <vector>
 
+#include <trivial/core/compiler.h>
 #include <trivial/ecs/entity.h>
 
 // NOTE: Remeber not all cache lines are 64 bytes, will want some special handling for 128 byte for m series chips
@@ -25,7 +26,7 @@ public:
 	ComponentStore(ComponentStore&&) = delete;
 	ComponentStore& operator=(ComponentStore&&) = delete;
 
-	void add(Entity entity, const T& component) noexcept {
+	constexpr void add(Entity entity, const T& component) noexcept {
 		const Entity::ValType kIndex = entity.index();
 
 		ensureCapacity(kIndex);
@@ -34,7 +35,7 @@ public:
 		m_active[kIndex] = true;
 	}
 
-	void add(Entity entity, const T&& component) noexcept {
+	constexpr void add(Entity entity, const T&& component) noexcept {
 		const Entity::ValType kIndex = entity.index();
 
 		ensureCapacity(kIndex);
@@ -43,7 +44,7 @@ public:
 		m_active[kIndex] = true;
 	}
 
-	void remove(Entity entity) noexcept {
+	constexpr void remove(Entity entity) noexcept {
 		const Entity::ValType kIndex = entity.index();
 
 		// NOTE: Would make a point of removing this in release but by the time release matters then the store style
@@ -55,7 +56,7 @@ public:
 		m_active[kIndex] = false;
 	}
 
-	[[nodiscard]] bool has(Entity entity) const noexcept {
+	[[nodiscard]] constexpr bool has(Entity entity) const noexcept {
 		const Entity::ValType kIndex = entity.index();
 
 		if (kIndex > m_components.size()) {
@@ -66,17 +67,21 @@ public:
 	}
 
 	// NOTE: No safety check since safety will be enforced when making better storage style
-	[[nodiscard]] T& get(Entity entity) noexcept { return m_components[entity.index()]; }
-	[[nodiscard]] const T& get(Entity entity) const noexcept { return m_components[entity.index()]; }
+	[[nodiscard]] constexpr T& get(Entity entity) noexcept TRIVIAL_LIFETIMEBOUND {
+		return m_components[entity.index()];
+	}
+	[[nodiscard]] constexpr const T& get(Entity entity) const noexcept TRIVIAL_LIFETIMEBOUND {
+		return m_components[entity.index()];
+	}
 
 	// TODO: wrap debug helper in macro, not doing now because need to decide if keeping
-	[[nodiscard]] Entity::ValType capacity() const noexcept {
+	[[nodiscard]] constexpr Entity::ValType capacity() const noexcept {
 		return static_cast<Entity::ValType>(m_components.size());
 	}
 
 private:
 	// NOTE: This will be dropped in better implementation
-	void ensureCapacity(Entity::ValType index) noexcept {
+	constexpr void ensureCapacity(Entity::ValType index) noexcept {
 		if (index < m_components.size()) {
 			return;
 		}
@@ -91,7 +96,7 @@ private:
 	std::vector<bool> m_active;
 };
 
-class IComponentStore {
+class TRIVIAL_NOVTABLE IComponentStore {
 public:
 	IComponentStore() = default;
 
@@ -107,7 +112,7 @@ public:
 };
 
 template <typename T>
-class ErasedComponentStore : public IComponentStore {
+class ErasedComponentStore final : public IComponentStore {
 public:
 	ErasedComponentStore() = default;
 	~ErasedComponentStore() override = default;
@@ -118,7 +123,7 @@ public:
 	ErasedComponentStore(ErasedComponentStore&&) = delete;
 	ErasedComponentStore& operator=(ErasedComponentStore&&) = delete;
 
-	void remove(Entity entity) noexcept override { store.remove(entity); }
+	constexpr void remove(Entity entity) noexcept override { store.remove(entity); }
 
 	ComponentStore<T> store;
 };

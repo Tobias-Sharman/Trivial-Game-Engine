@@ -15,7 +15,8 @@
 
 namespace {
 
-VkSurfaceCapabilitiesKHR querySurfaceCapabilities(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface) noexcept {
+[[nodiscard]] VkSurfaceCapabilitiesKHR querySurfaceCapabilities(VkPhysicalDevice physicalDevice,
+                                                                VkSurfaceKHR surface) noexcept {
 	TRIVIAL_ASSERT(physicalDevice != VK_NULL_HANDLE);
 	TRIVIAL_ASSERT(surface != VK_NULL_HANDLE);
 
@@ -28,8 +29,8 @@ VkSurfaceCapabilitiesKHR querySurfaceCapabilities(VkPhysicalDevice physicalDevic
 	return capabilities;
 }
 
-std::vector<VkSurfaceFormatKHR> enumerateSurfaceFormats(VkPhysicalDevice physicalDevice,
-                                                        VkSurfaceKHR surface) noexcept {
+[[nodiscard]] std::vector<VkSurfaceFormatKHR> enumerateSurfaceFormats(VkPhysicalDevice physicalDevice,
+                                                                      VkSurfaceKHR surface) noexcept {
 	TRIVIAL_ASSERT(physicalDevice != VK_NULL_HANDLE);
 	TRIVIAL_ASSERT(surface != VK_NULL_HANDLE);
 
@@ -49,7 +50,8 @@ std::vector<VkSurfaceFormatKHR> enumerateSurfaceFormats(VkPhysicalDevice physica
 	return formats;
 }
 
-VkSurfaceFormatKHR selectSurfaceFormat(std::span<const VkSurfaceFormatKHR> availableFormats) noexcept {
+[[nodiscard]] constexpr VkSurfaceFormatKHR selectSurfaceFormat(
+    std::span<const VkSurfaceFormatKHR> availableFormats) noexcept {
 	TRIVIAL_ASSERT(!availableFormats.empty());
 
 	for (const VkSurfaceFormatKHR& availableFormat : availableFormats) {
@@ -64,7 +66,8 @@ VkSurfaceFormatKHR selectSurfaceFormat(std::span<const VkSurfaceFormatKHR> avail
 	return availableFormats[0];
 }
 
-std::vector<VkPresentModeKHR> enumeratePresentModes(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface) noexcept {
+[[nodiscard]] std::vector<VkPresentModeKHR> enumeratePresentModes(VkPhysicalDevice physicalDevice,
+                                                                  VkSurfaceKHR surface) noexcept {
 	TRIVIAL_ASSERT(physicalDevice != VK_NULL_HANDLE);
 	TRIVIAL_ASSERT(surface != VK_NULL_HANDLE);
 
@@ -84,15 +87,16 @@ std::vector<VkPresentModeKHR> enumeratePresentModes(VkPhysicalDevice physicalDev
 	return presentModes;
 }
 
-VkPresentModeKHR selectPresentMode(std::span<const VkPresentModeKHR> availablePresentModes) noexcept {
+[[nodiscard]] constexpr VkPresentModeKHR selectPresentMode(
+    std::span<const VkPresentModeKHR> availablePresentModes) noexcept {
 	TRIVIAL_ASSERT(!availablePresentModes.empty());
 
 	(void)availablePresentModes;
 	return VK_PRESENT_MODE_FIFO_KHR;
 }
 
-VkExtent2D selectSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities,
-                            trivial::platform::WindowSize requestedSize) noexcept {
+[[nodiscard]] constexpr VkExtent2D selectSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities,
+                                                    trivial::platform::WindowSize requestedSize) noexcept {
 	constexpr std::uint32_t kSpecialExtentValue = 0xFFFFFFFFU;
 
 	// For non-sentinal value use the given size, for stuff like Wayland use the requested size within the limits of the
@@ -109,7 +113,7 @@ VkExtent2D selectSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities,
 	return extent;
 }
 
-std::uint32_t selectImageCount(const VkSurfaceCapabilitiesKHR& capabilities) noexcept {
+[[nodiscard]] constexpr std::uint32_t selectImageCount(const VkSurfaceCapabilitiesKHR& capabilities) noexcept {
 	std::uint32_t imageCount = capabilities.minImageCount + 1;
 
 	// maxImageCount == 0 means no upper limit
@@ -120,7 +124,7 @@ std::uint32_t selectImageCount(const VkSurfaceCapabilitiesKHR& capabilities) noe
 	return imageCount;
 }
 
-std::vector<VkImage> retrieveSwapchainImages(VkDevice device, VkSwapchainKHR swapchain) noexcept {
+[[nodiscard]] std::vector<VkImage> retrieveSwapchainImages(VkDevice device, VkSwapchainKHR swapchain) noexcept {
 	TRIVIAL_ASSERT(device != VK_NULL_HANDLE);
 	TRIVIAL_ASSERT(swapchain != VK_NULL_HANDLE);
 
@@ -140,7 +144,7 @@ std::vector<VkImage> retrieveSwapchainImages(VkDevice device, VkSwapchainKHR swa
 	return images;
 }
 
-VkImageView createSwapchainImageView(VkDevice device, VkImage image, VkFormat format) noexcept {
+[[nodiscard]] VkImageView createSwapchainImageView(VkDevice device, VkImage image, VkFormat format) noexcept {
 	TRIVIAL_ASSERT(device != VK_NULL_HANDLE);
 	TRIVIAL_ASSERT(image != VK_NULL_HANDLE);
 

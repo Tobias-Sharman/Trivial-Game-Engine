@@ -40,14 +40,14 @@ static_assert(std::is_empty_v<DetectedCapabilities>,
 namespace detail {
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-inline DetectedCapabilities g_detectedCapabilities;
+inline constinit DetectedCapabilities g_detectedCapabilities;
 
 } // namespace detail
 #endif // TRIVIAL_MEMORY_HAS_DETECTED_CAPABILITIES
 
 void initCapabilities() noexcept;
 
-[[nodiscard]] TRIVIAL_FORCE_INLINE std::size_t pageSize() noexcept {
+[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr std::size_t pageSize() noexcept {
 #if TRIVIAL_PLATFORM_PAGE_SIZE_KNOWN
 	return TRIVIAL_PLATFORM_PAGE_SIZE;
 #else
@@ -56,7 +56,7 @@ void initCapabilities() noexcept;
 #endif // TRIVIAL_PLATFORM_PAGE_SIZE_KNOWN
 }
 
-[[nodiscard]] TRIVIAL_FORCE_INLINE std::size_t allocationGranularity() noexcept {
+[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr std::size_t allocationGranularity() noexcept {
 #if TRIVIAL_PLATFORM_PAGE_SIZE_KNOWN
 	return TRIVIAL_PLATFORM_ALLOCATION_GRANULARITY;
 #else

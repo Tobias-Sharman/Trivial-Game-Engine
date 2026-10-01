@@ -7,6 +7,7 @@
 #include <type_traits>
 
 #include <trivial/core/assert.h>
+#include <trivial/core/compiler.h>
 #include <trivial/core/math/angle.h>
 #include <trivial/core/math/concepts.h>
 #include <trivial/core/math/vec3.h>
@@ -21,11 +22,10 @@ struct Mat4 {
 	Vec4<T> col2{};
 	Vec4<T> col3{};
 
-	[[nodiscard]] constexpr Vec4<T>& operator[](std::size_t index) noexcept {
-		TRIVIAL_ASSERT(index < 4);
+	[[nodiscard]] constexpr Vec4<T>& operator[](std::size_t index) noexcept TRIVIAL_LIFETIMEBOUND {
+		TRIVIAL_ASSUME(index < 4);
 
 		switch (index) {
-			default:
 			case 0:
 				return col0;
 			case 1:
@@ -34,14 +34,15 @@ struct Mat4 {
 				return col2;
 			case 3:
 				return col3;
+			default:
+				TRIVIAL_UNREACHABLE();
 		}
 	}
 
-	[[nodiscard]] constexpr const Vec4<T>& operator[](std::size_t index) const noexcept {
-		TRIVIAL_ASSERT(index < 4);
+	[[nodiscard]] constexpr const Vec4<T>& operator[](std::size_t index) const noexcept TRIVIAL_LIFETIMEBOUND {
+		TRIVIAL_ASSUME(index < 4);
 
 		switch (index) {
-			default:
 			case 0:
 				return col0;
 			case 1:
@@ -50,6 +51,8 @@ struct Mat4 {
 				return col2;
 			case 3:
 				return col3;
+			default:
+				TRIVIAL_UNREACHABLE();
 		}
 	}
 

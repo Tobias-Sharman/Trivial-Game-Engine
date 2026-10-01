@@ -7,7 +7,7 @@ namespace trivial::platform {
 
 namespace {
 
-WindowConfig readWindowConfig(const WindowConfig& config) noexcept {
+[[nodiscard]] constexpr WindowConfig readWindowConfig(const WindowConfig& config) noexcept {
 	TRIVIAL_ASSERT(config.size.width > 0);
 	TRIVIAL_ASSERT(config.size.height > 0);
 	TRIVIAL_ASSERT(!config.title.empty());

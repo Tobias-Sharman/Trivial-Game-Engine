@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <trivial/core/assert.h>
+#include <trivial/core/compiler.h>
 #include <trivial/core/sync/mutex.h>
 #include <trivial/task/task_handle.h>
 #include <trivial/task/task_launch_options.h>
@@ -38,7 +39,7 @@ public:
 	TaskSlot(TaskSlot&&) = delete;
 	TaskSlot& operator=(TaskSlot&&) = delete;
 
-	[[nodiscard]] sync::Mutex& mutex() const noexcept { return m_mutex; }
+	[[nodiscard]] sync::Mutex& mutex() const noexcept TRIVIAL_LIFETIMEBOUND { return m_mutex; }
 
 	[[nodiscard]] bool isOccupied() const noexcept { return m_state == TaskSlotState::Occupied; }
 
@@ -48,18 +49,19 @@ public:
 		return isOccupied() && taskHandle.generation == m_generation;
 	}
 
-	[[nodiscard]] TaskState& state() noexcept {
+	[[nodiscard]] TaskState& state() noexcept TRIVIAL_LIFETIMEBOUND {
 		TRIVIAL_ASSERT(isOccupied());
 
 		return *statePointer();
 	}
-	[[nodiscard]] const TaskState& state() const noexcept {
+	[[nodiscard]] const TaskState& state() const noexcept TRIVIAL_LIFETIMEBOUND {
 		TRIVIAL_ASSERT(isOccupied());
 
 		return *statePointer();
 	}
 
-	TaskState& construct(TaskPayload payload, const TaskLaunchOptions& options) noexcept {
+	[[nodiscard]] TaskState& construct(TaskPayload payload,
+	                                   const TaskLaunchOptions& options) noexcept TRIVIAL_LIFETIMEBOUND {
 		TRIVIAL_ASSERT(!isOccupied());
 		TRIVIAL_ASSERT(options.priority < TaskPriority::Count);
 
@@ -88,15 +90,19 @@ public:
 	}
 
 private:
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-	[[nodiscard]] TaskState* rawStatePointer() noexcept { return reinterpret_cast<TaskState*>(m_storage.data()); }
-	[[nodiscard]] const TaskState* rawStatePointer() const noexcept {
+	[[nodiscard]] TaskState* rawStatePointer() noexcept TRIVIAL_LIFETIMEBOUND {
+		// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+		return reinterpret_cast<TaskState*>(m_storage.data());
+	}
+	[[nodiscard]] const TaskState* rawStatePointer() const noexcept TRIVIAL_LIFETIMEBOUND {
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
 		return reinterpret_cast<const TaskState*>(m_storage.data());
 	}
 
-	[[nodiscard]] TaskState* statePointer() noexcept { return std::launder(rawStatePointer()); }
-	[[nodiscard]] const TaskState* statePointer() const noexcept { return std::launder(rawStatePointer()); }
+	[[nodiscard]] TaskState* statePointer() noexcept TRIVIAL_LIFETIMEBOUND { return std::launder(rawStatePointer()); }
+	[[nodiscard]] const TaskState* statePointer() const noexcept TRIVIAL_LIFETIMEBOUND {
+		return std::launder(rawStatePointer());
+	}
 
 	mutable sync::Mutex m_mutex;
 

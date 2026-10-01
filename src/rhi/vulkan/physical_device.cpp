@@ -13,7 +13,7 @@
 
 namespace {
 
-std::vector<VkQueueFamilyProperties> enumerateQueueFamilies(VkPhysicalDevice physicalDevice) noexcept {
+[[nodiscard]] std::vector<VkQueueFamilyProperties> enumerateQueueFamilies(VkPhysicalDevice physicalDevice) noexcept {
 	TRIVIAL_ASSERT(physicalDevice != VK_NULL_HANDLE);
 
 	std::uint32_t queueFamilyCount = 0;
@@ -29,9 +29,9 @@ std::vector<VkQueueFamilyProperties> enumerateQueueFamilies(VkPhysicalDevice phy
 	return queueFamilies;
 }
 
-bool hasQueueFamilyPresentSupport(VkPhysicalDevice physicalDevice,
-                                  std::uint32_t queueFamily,
-                                  VkSurfaceKHR surface) noexcept {
+[[nodiscard]] bool hasQueueFamilyPresentSupport(VkPhysicalDevice physicalDevice,
+                                                std::uint32_t queueFamily,
+                                                VkSurfaceKHR surface) noexcept {
 	TRIVIAL_ASSERT(physicalDevice != VK_NULL_HANDLE);
 	TRIVIAL_ASSERT(surface != VK_NULL_HANDLE);
 
@@ -45,13 +45,15 @@ bool hasQueueFamilyPresentSupport(VkPhysicalDevice physicalDevice,
 	return supportsPresent == VK_TRUE;
 }
 
-bool supportsRequiredDeviceExtensions(std::span<const VkExtensionProperties> availableExtensions) noexcept {
+[[nodiscard]] bool supportsRequiredDeviceExtensions(
+    std::span<const VkExtensionProperties> availableExtensions) noexcept {
 	return trivial::rhi::vulkan::hasDeviceExtension(availableExtensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 }
 
-trivial::rhi::vulkan::QueueFamilySelection selectQueueFamilies(VkPhysicalDevice physicalDevice,
-                                                               std::span<const VkQueueFamilyProperties> queueFamilies,
-                                                               VkSurfaceKHR surface) noexcept {
+[[nodiscard]] trivial::rhi::vulkan::QueueFamilySelection selectQueueFamilies(
+    VkPhysicalDevice physicalDevice,
+    std::span<const VkQueueFamilyProperties> queueFamilies,
+    VkSurfaceKHR surface) noexcept {
 	trivial::rhi::vulkan::QueueFamilySelection selection = {};
 
 	for (std::uint32_t index = 0; index < queueFamilies.size(); ++index) {
@@ -90,7 +92,7 @@ trivial::rhi::vulkan::QueueFamilySelection selectQueueFamilies(VkPhysicalDevice 
 	return selection;
 }
 
-void initialiseDeviceFeatures(trivial::rhi::vulkan::DeviceFeatures& features) noexcept {
+constexpr void initialiseDeviceFeatures(trivial::rhi::vulkan::DeviceFeatures& features) noexcept {
 
 	features = {};
 
@@ -98,7 +100,7 @@ void initialiseDeviceFeatures(trivial::rhi::vulkan::DeviceFeatures& features) no
 	features.vulkan13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
 }
 
-trivial::rhi::vulkan::DeviceFeatures queryDeviceFeatures(VkPhysicalDevice physicalDevice) noexcept {
+[[nodiscard]] trivial::rhi::vulkan::DeviceFeatures queryDeviceFeatures(VkPhysicalDevice physicalDevice) noexcept {
 	TRIVIAL_ASSERT(physicalDevice != VK_NULL_HANDLE);
 
 	trivial::rhi::vulkan::DeviceFeatures features = {};
@@ -111,8 +113,9 @@ trivial::rhi::vulkan::DeviceFeatures queryDeviceFeatures(VkPhysicalDevice physic
 	return features;
 }
 
-bool supportsRequiredVulkan13Features(const VkPhysicalDeviceVulkan13Features& supportedFeatures,
-                                      const VkPhysicalDeviceVulkan13Features& requiredFeatures) noexcept {
+[[nodiscard]] constexpr bool supportsRequiredVulkan13Features(
+    const VkPhysicalDeviceVulkan13Features& supportedFeatures,
+    const VkPhysicalDeviceVulkan13Features& requiredFeatures) noexcept {
 
 	// NOTE: Expand for all options as needed later when caring about more support to save complexity
 	if (requiredFeatures.synchronization2 == VK_TRUE && supportedFeatures.synchronization2 != VK_TRUE) {
@@ -125,8 +128,9 @@ bool supportsRequiredVulkan13Features(const VkPhysicalDeviceVulkan13Features& su
 	return true;
 }
 
-bool supportsRequiredDeviceFeatures(const trivial::rhi::vulkan::DeviceFeatures& supportedFeatures,
-                                    const trivial::rhi::vulkan::DeviceFeatures& requiredFeatures) noexcept {
+[[nodiscard]] constexpr bool supportsRequiredDeviceFeatures(
+    const trivial::rhi::vulkan::DeviceFeatures& supportedFeatures,
+    const trivial::rhi::vulkan::DeviceFeatures& requiredFeatures) noexcept {
 
 	return supportsRequiredVulkan13Features(supportedFeatures.vulkan13, requiredFeatures.vulkan13);
 }

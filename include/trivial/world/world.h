@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include <trivial/core/compiler.h>
 #include <trivial/ecs/component_store.h>
 #include <trivial/ecs/components.h>
 #include <trivial/ecs/entity.h>
@@ -94,7 +95,7 @@ public:
 	}
 
 	template <typename T>
-	[[nodiscard]] T& get(Entity entity) noexcept {
+	[[nodiscard]] T& get(Entity entity) noexcept TRIVIAL_LIFETIMEBOUND {
 		if constexpr (isStandardComponent<T>()) {
 			return standardStore<T>().get(entity);
 		} else {
@@ -105,7 +106,7 @@ public:
 	}
 
 	template <typename T>
-	[[nodiscard]] const T& get(Entity entity) const noexcept {
+	[[nodiscard]] const T& get(Entity entity) const noexcept TRIVIAL_LIFETIMEBOUND {
 		if constexpr (isStandardComponent<T>()) {
 			return standardStore<T>().get(entity);
 		} else {
@@ -131,7 +132,7 @@ private:
 	// TODO: Can probably make this cleaner and more scaleable for more types, do when adding them
 
 	template <typename T>
-	[[nodiscard]] ComponentStore<T>& standardStore() noexcept {
+	[[nodiscard]] ComponentStore<T>& standardStore() noexcept TRIVIAL_LIFETIMEBOUND {
 		if constexpr (std::is_same_v<T, Position2D>) {
 			return m_positions2D;
 		} else if constexpr (std::is_same_v<T, Velocity2D>) {
@@ -140,7 +141,7 @@ private:
 	}
 
 	template <typename T>
-	[[nodiscard]] const ComponentStore<T>& standardStore() const noexcept {
+	[[nodiscard]] const ComponentStore<T>& standardStore() const noexcept TRIVIAL_LIFETIMEBOUND {
 		if constexpr (std::is_same_v<T, Position2D>) {
 			return m_positions2D;
 		} else if constexpr (std::is_same_v<T, Velocity2D>) {
@@ -149,7 +150,7 @@ private:
 	}
 
 	template <typename T>
-	[[nodiscard]] ComponentStore<T>* findDynamicStore() noexcept {
+	[[nodiscard]] ComponentStore<T>* findDynamicStore() noexcept TRIVIAL_LIFETIMEBOUND {
 		const ComponentStoreMap::iterator kIt = m_componentStores.find(std::type_index(typeid(T)));
 
 		if (kIt == m_componentStores.end()) {
@@ -165,7 +166,7 @@ private:
 	}
 
 	template <typename T>
-	[[nodiscard]] const ComponentStore<T>* findDynamicStore() const noexcept {
+	[[nodiscard]] const ComponentStore<T>* findDynamicStore() const noexcept TRIVIAL_LIFETIMEBOUND {
 		const ComponentStoreMap::const_iterator kIt = m_componentStores.find(std::type_index(typeid(T)));
 
 		if (kIt == m_componentStores.end()) {
@@ -181,7 +182,7 @@ private:
 	}
 
 	template <typename T>
-	[[nodiscard]] ComponentStore<T>& getOrCreateDynamicStore() noexcept {
+	[[nodiscard]] ComponentStore<T>& getOrCreateDynamicStore() noexcept TRIVIAL_LIFETIMEBOUND {
 		ComponentStore<T>* existingStore = findDynamicStore<T>();
 
 		if (existingStore != nullptr) {

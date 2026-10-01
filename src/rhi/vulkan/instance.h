@@ -7,7 +7,7 @@
 
 namespace trivial::rhi::vulkan {
 
-VkInstance createInstance(const ApplicationInfo& applicationInfo) noexcept;
+[[nodiscard]] VkInstance createInstance(const ApplicationInfo& applicationInfo) noexcept;
 
 }
 

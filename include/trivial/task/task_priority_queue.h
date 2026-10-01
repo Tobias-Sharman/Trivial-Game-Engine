@@ -59,7 +59,7 @@ public:
 		return false;
 	}
 
-	std::size_t tryPopWeightedBatchInto(TaskPriorityQueue& destination) noexcept {
+	[[nodiscard]] std::size_t tryPopWeightedBatchInto(TaskPriorityQueue& destination) noexcept {
 		static constexpr std::array<std::size_t, static_cast<std::size_t>(TaskPriority::Count)> s_kShares{
 		    TRIVIAL_TASK_PRIORITY_SHARE_BACKGROUND,
 		    TRIVIAL_TASK_PRIORITY_SHARE_NORMAL,

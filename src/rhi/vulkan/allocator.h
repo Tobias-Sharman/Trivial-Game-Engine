@@ -7,7 +7,9 @@
 
 namespace trivial::rhi::vulkan {
 
-VmaAllocator createAllocator(VkInstance instance, VkPhysicalDevice physicalDevice, VkDevice device) noexcept;
+[[nodiscard]] VmaAllocator createAllocator(VkInstance instance,
+                                           VkPhysicalDevice physicalDevice,
+                                           VkDevice device) noexcept;
 void destroyAllocator(VmaAllocator allocator) noexcept;
 
 } // namespace trivial::rhi::vulkan

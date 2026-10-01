@@ -3,13 +3,14 @@
 
 #include <vector>
 
+#include <trivial/core/compiler.h>
 #include <trivial/frame/frame_context.h>
 #include <trivial/gpu/context.h>
 #include <trivial/render/renderer.h>
 
 namespace trivial {
 
-class Layer {
+class TRIVIAL_NOVTABLE Layer {
 public:
 	Layer() = default;
 

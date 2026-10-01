@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include <trivial/core/compiler.h>
 #include <trivial/core/memory/memory_config.h>
 #include <trivial/core/memory/oom_handler.h>
 #include <trivial/core/platform.h>
@@ -175,7 +176,7 @@ public:
 #endif // TRIVIAL_ENABLE_MEMORY_DEBUG_STATS
 
 private:
-	void handleOom(std::size_t requestedSize, const char* context, int osErrorCode) const noexcept;
+	TRIVIAL_COLD void handleOom(std::size_t requestedSize, const char* context, int osErrorCode) const noexcept;
 
 #if TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
 	[[nodiscard]] bool claimCommitBudget(std::size_t bytes) const noexcept;

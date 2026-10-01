@@ -40,11 +40,11 @@ namespace {
 // gain would only be memory related
 //
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-thread_local trivial::task::Worker* g_currentWorker = nullptr;
+constinit thread_local trivial::task::Worker* g_currentWorker = nullptr;
 
 #if TRIVIAL_ENABLE_ASSERTS
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-thread_local trivial::task::TaskSystem* g_currentWorkerSystem = nullptr;
+constinit thread_local trivial::task::TaskSystem* g_currentWorkerSystem = nullptr;
 #endif // TRIVIAL_ENABLE_ASSERTS
 
 } // namespace
@@ -146,7 +146,7 @@ TaskSystem::~TaskSystem() noexcept {
 TaskHandle TaskSystem::launch(TaskPayload payload, const TaskLaunchOptions& options) noexcept {
 	const TaskCreateDispatchOutcome kOutcome = m_graph.createDispatched(std::move(payload), {}, options);
 
-	if (kOutcome.createResult != TaskCreateResult::Success) {
+	if (kOutcome.createResult != TaskCreateResult::Success) [[unlikely]] {
 		return {};
 	}
 
@@ -163,7 +163,7 @@ TaskHandle TaskSystem::launch(TaskPayload payload, TaskHandle prerequisite, cons
 	const TaskCreateDispatchOutcome kOutcome
 	    = m_graph.createDispatched(std::move(payload), std::span<const TaskHandle>{kPrerequisites}, options);
 
-	if (kOutcome.createResult != TaskCreateResult::Success) {
+	if (kOutcome.createResult != TaskCreateResult::Success) [[unlikely]] {
 		return {};
 	}
 
@@ -179,7 +179,7 @@ TaskHandle TaskSystem::launch(TaskPayload payload,
                               const TaskLaunchOptions& options) noexcept {
 	const TaskCreateDispatchOutcome kOutcome = m_graph.createDispatched(std::move(payload), prerequisites, options);
 
-	if (kOutcome.createResult != TaskCreateResult::Success) {
+	if (kOutcome.createResult != TaskCreateResult::Success) [[unlikely]] {
 		return {};
 	}
 

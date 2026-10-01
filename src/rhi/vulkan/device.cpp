@@ -37,9 +37,9 @@ void requireDeviceExtension(DeviceSelection& selection,
 	selection.extensions.push_back(extensionName);
 }
 
-bool enableOptionalDeviceExtension(DeviceSelection& selection,
-                                   std::span<const VkExtensionProperties> availableExtensions,
-                                   const char* extensionName) noexcept {
+[[nodiscard]] bool enableOptionalDeviceExtension(DeviceSelection& selection,
+                                                 std::span<const VkExtensionProperties> availableExtensions,
+                                                 const char* extensionName) noexcept {
 	TRIVIAL_ASSERT(extensionName != nullptr);
 
 	if (!trivial::rhi::vulkan::hasDeviceExtension(availableExtensions, extensionName)) {
@@ -50,7 +50,7 @@ bool enableOptionalDeviceExtension(DeviceSelection& selection,
 	return true;
 }
 
-DeviceSelection makeDeviceSelection(std::span<const VkExtensionProperties> availableExtensions) noexcept {
+[[nodiscard]] DeviceSelection makeDeviceSelection(std::span<const VkExtensionProperties> availableExtensions) noexcept {
 	DeviceSelection selection = {};
 
 	requireDeviceExtension(selection, availableExtensions, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
@@ -62,7 +62,8 @@ DeviceSelection makeDeviceSelection(std::span<const VkExtensionProperties> avail
 	return selection;
 }
 
-VkDeviceQueueCreateInfo makeDeviceQueueCreateInfo(std::uint32_t queueFamily, const float* priority) noexcept {
+[[nodiscard]] constexpr VkDeviceQueueCreateInfo makeDeviceQueueCreateInfo(std::uint32_t queueFamily,
+                                                                          const float* priority) noexcept {
 	TRIVIAL_ASSERT(priority != nullptr);
 
 	VkDeviceQueueCreateInfo createInfo = {
@@ -77,7 +78,7 @@ VkDeviceQueueCreateInfo makeDeviceQueueCreateInfo(std::uint32_t queueFamily, con
 	return createInfo;
 }
 
-std::vector<VkDeviceQueueCreateInfo> makeDeviceQueueCreateInfos(
+[[nodiscard]] constexpr std::vector<VkDeviceQueueCreateInfo> makeDeviceQueueCreateInfos(
     const trivial::rhi::vulkan::QueueFamilySelection& queueFamilies,
     const float* priority) noexcept {
 	TRIVIAL_ASSERT(priority != nullptr);
@@ -95,9 +96,10 @@ std::vector<VkDeviceQueueCreateInfo> makeDeviceQueueCreateInfos(
 	return queueCreateInfos;
 }
 
-VkDeviceCreateInfo makeDeviceCreateInfo(std::span<const VkDeviceQueueCreateInfo> queueCreateInfos,
-                                        const trivial::rhi::vulkan::DeviceFeatures* requiredFeatures,
-                                        const DeviceSelection* selection) noexcept {
+[[nodiscard]] constexpr VkDeviceCreateInfo makeDeviceCreateInfo(
+    std::span<const VkDeviceQueueCreateInfo> queueCreateInfos,
+    const trivial::rhi::vulkan::DeviceFeatures* requiredFeatures,
+    const DeviceSelection* selection) noexcept {
 	TRIVIAL_ASSERT(!queueCreateInfos.empty());
 	TRIVIAL_ASSERT(requiredFeatures != nullptr);
 	TRIVIAL_ASSERT(selection != nullptr);

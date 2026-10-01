@@ -17,7 +17,7 @@
 
 namespace {
 
-const char* debugMessageTypePrefix(VkDebugUtilsMessageTypeFlagsEXT messageType) noexcept {
+[[nodiscard]] constexpr const char* debugMessageTypePrefix(VkDebugUtilsMessageTypeFlagsEXT messageType) noexcept {
 	// NOTE: Address binding needs toggling on if wanting to use, apparently VK_EXT_device_address_binding_report
 	static constexpr std::array<const char*, 16> s_kPrefixes = {
 	    "[unknown] ",
@@ -74,7 +74,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBits
 	return VK_FALSE;
 }
 
-VkDebugUtilsMessengerCreateInfoEXT makeDebugMessengerCreateInfo() noexcept {
+[[nodiscard]] constexpr VkDebugUtilsMessengerCreateInfoEXT makeDebugMessengerCreateInfo() noexcept {
 	constexpr VkDebugUtilsMessengerCreateInfoEXT kCreateInfo = {
 	    .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
 	    .pNext = nullptr,
@@ -110,7 +110,7 @@ VkDebugUtilsMessengerEXT createDebugMessenger(VkInstance instance) noexcept {
 
 	TRIVIAL_ASSERT(kCreateDebugUtilsMessenger != nullptr);
 
-	const VkDebugUtilsMessengerCreateInfoEXT kCreateInfo = makeDebugMessengerCreateInfo();
+	constexpr VkDebugUtilsMessengerCreateInfoEXT kCreateInfo = makeDebugMessengerCreateInfo();
 
 	VkDebugUtilsMessengerEXT debugMessenger = VK_NULL_HANDLE;
 

@@ -50,13 +50,13 @@ TaskCreateDispatchOutcome TaskGraph::createDispatched(TaskPayload payload,
                                                       const TaskLaunchOptions& options) noexcept {
 	std::uint32_t taskIndex = 0;
 
-	if (!allocateTaskIndex(taskIndex)) {
+	if (!allocateTaskIndex(taskIndex)) [[unlikely]] {
 		return {.createResult = TaskCreateResult::CapacityExhausted};
 	}
 
 	TaskPage* page = ensurePage(pageIndexFor(taskIndex));
 
-	if (page == nullptr) {
+	if (page == nullptr) [[unlikely]] {
 		releaseTaskIndex(taskIndex);
 		return {.createResult = TaskCreateResult::AllocationFailure};
 	}
@@ -100,13 +100,13 @@ TaskCreateDispatchOutcome TaskGraph::createDispatched(TaskPayload payload,
 }
 
 TaskClaimResult TaskGraph::tryClaim(TaskHandle handle) noexcept {
-	if (!handle.isValid()) {
+	if (!handle.isValid()) [[unlikely]] {
 		return TaskClaimResult::InvalidHandle;
 	}
 
 	TaskSlot* slot = slotAt(handle.index);
 
-	if (slot == nullptr) {
+	if (slot == nullptr) [[unlikely]] {
 		return TaskClaimResult::InvalidHandle;
 	}
 
@@ -360,7 +360,7 @@ void* TaskGraph::getResultPointer(TaskHandle handle) noexcept {
 }
 
 TaskGraph::TaskPage* TaskGraph::pageAt(std::uint32_t pageIndex) noexcept {
-	if (pageIndex >= TRIVIAL_TASK_GRAPH_MAX_PAGE_COUNT) {
+	if (pageIndex >= TRIVIAL_TASK_GRAPH_MAX_PAGE_COUNT) [[unlikely]] {
 		return nullptr;
 	}
 
@@ -368,7 +368,7 @@ TaskGraph::TaskPage* TaskGraph::pageAt(std::uint32_t pageIndex) noexcept {
 }
 
 const TaskGraph::TaskPage* TaskGraph::pageAt(std::uint32_t pageIndex) const noexcept {
-	if (pageIndex >= TRIVIAL_TASK_GRAPH_MAX_PAGE_COUNT) {
+	if (pageIndex >= TRIVIAL_TASK_GRAPH_MAX_PAGE_COUNT) [[unlikely]] {
 		return nullptr;
 	}
 
@@ -376,13 +376,13 @@ const TaskGraph::TaskPage* TaskGraph::pageAt(std::uint32_t pageIndex) const noex
 }
 
 TaskGraph::TaskPage* TaskGraph::ensurePage(std::uint32_t pageIndex) noexcept {
-	if (pageIndex >= TRIVIAL_TASK_GRAPH_MAX_PAGE_COUNT) {
+	if (pageIndex >= TRIVIAL_TASK_GRAPH_MAX_PAGE_COUNT) [[unlikely]] {
 		return nullptr;
 	}
 
 	TaskPage* page = pageAt(pageIndex);
 
-	if (page != nullptr) {
+	if (page != nullptr) [[likely]] {
 		return page;
 	}
 
@@ -396,7 +396,7 @@ TaskGraph::TaskPage* TaskGraph::ensurePage(std::uint32_t pageIndex) noexcept {
 
 	TaskPage* newPage = new (std::nothrow) TaskPage;
 
-	if (newPage == nullptr) {
+	if (newPage == nullptr) [[unlikely]] {
 		TRIVIAL_LOG_ERROR("TaskGraph failed to allocate task page");
 		return nullptr;
 	}
@@ -407,7 +407,7 @@ TaskGraph::TaskPage* TaskGraph::ensurePage(std::uint32_t pageIndex) noexcept {
 }
 
 TaskSlot* TaskGraph::slotAt(std::uint32_t taskIndex) noexcept {
-	if (taskIndex >= TRIVIAL_TASK_GRAPH_MAX_TASK_COUNT) {
+	if (taskIndex >= TRIVIAL_TASK_GRAPH_MAX_TASK_COUNT) [[unlikely]] {
 		return nullptr;
 	}
 
@@ -421,7 +421,7 @@ TaskSlot* TaskGraph::slotAt(std::uint32_t taskIndex) noexcept {
 }
 
 const TaskSlot* TaskGraph::slotAt(std::uint32_t taskIndex) const noexcept {
-	if (taskIndex >= TRIVIAL_TASK_GRAPH_MAX_TASK_COUNT) {
+	if (taskIndex >= TRIVIAL_TASK_GRAPH_MAX_TASK_COUNT) [[unlikely]] {
 		return nullptr;
 	}
 
@@ -451,7 +451,7 @@ bool TaskGraph::allocateTaskIndex(std::uint32_t& taskIndex) noexcept {
 		return true;
 	}
 
-	if (m_nextUnusedTaskIndex >= TRIVIAL_TASK_GRAPH_MAX_TASK_COUNT) {
+	if (m_nextUnusedTaskIndex >= TRIVIAL_TASK_GRAPH_MAX_TASK_COUNT) [[unlikely]] {
 		TRIVIAL_LOG_WARNING("TaskGraph capacity exhausted you should increase the max task count");
 		return false;
 	}

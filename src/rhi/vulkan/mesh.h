@@ -19,9 +19,9 @@ struct MeshData {
 	VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 };
 
-MeshData createMeshData(VmaAllocator allocator,
-                        std::span<const Vertex2> vertices,
-                        std::span<const std::uint16_t> indices) noexcept;
+[[nodiscard]] MeshData createMeshData(VmaAllocator allocator,
+                                      std::span<const Vertex2> vertices,
+                                      std::span<const std::uint16_t> indices) noexcept;
 void destroyMeshData(VmaAllocator allocator, MeshData& mesh) noexcept;
 
 } // namespace trivial::rhi::vulkan

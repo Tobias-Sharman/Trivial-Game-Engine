@@ -10,7 +10,7 @@
 
 namespace {
 
-VkSemaphore createSemaphore(VkDevice device) noexcept {
+[[nodiscard]] VkSemaphore createSemaphore(VkDevice device) noexcept {
 	TRIVIAL_ASSERT(device != VK_NULL_HANDLE);
 
 	constexpr VkSemaphoreCreateInfo kCreateInfo
@@ -26,7 +26,7 @@ VkSemaphore createSemaphore(VkDevice device) noexcept {
 	return semaphore;
 }
 
-VkFence createFence(VkDevice device) noexcept {
+[[nodiscard]] VkFence createFence(VkDevice device) noexcept {
 	TRIVIAL_ASSERT(device != VK_NULL_HANDLE);
 
 	constexpr VkFenceCreateInfo kCreateInfo

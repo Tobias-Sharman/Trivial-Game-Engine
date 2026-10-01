@@ -8,7 +8,7 @@ namespace trivial::sync {
 
 class Latch {
 public:
-	explicit Latch(std::size_t count) noexcept
+	explicit constexpr Latch(std::size_t count) noexcept
 	    : m_remaining(count) {}
 
 	~Latch() noexcept = default;

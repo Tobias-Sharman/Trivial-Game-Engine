@@ -9,6 +9,7 @@
 #include <span>
 #include <vector>
 
+#include <trivial/core/compiler.h>
 #include <trivial/core/platform.h>
 #include <trivial/core/sync/mutex.h>
 #include <trivial/core/sync/semaphore.h>
@@ -53,22 +54,22 @@ public:
 	TaskSystem(TaskSystem&&) = delete;
 	TaskSystem& operator=(TaskSystem&&) = delete;
 
-	[[nodiscard]] TaskHandle launch(TaskPayload payload, const TaskLaunchOptions& options = {}) noexcept;
+	[[nodiscard]] TRIVIAL_HOT TaskHandle launch(TaskPayload payload, const TaskLaunchOptions& options = {}) noexcept;
 
-	[[nodiscard]] TaskHandle launch(TaskPayload payload,
-	                                TaskHandle prerequisite,
-	                                const TaskLaunchOptions& options = {}) noexcept;
+	[[nodiscard]] TRIVIAL_HOT TaskHandle launch(TaskPayload payload,
+	                                            TaskHandle prerequisite,
+	                                            const TaskLaunchOptions& options = {}) noexcept;
 
 	// TODO: Add more non general paths
 
-	[[nodiscard]] TaskHandle launch(TaskPayload payload,
-	                                std::span<const TaskHandle> prerequisites,
-	                                const TaskLaunchOptions& options = {}) noexcept;
+	[[nodiscard]] TRIVIAL_HOT TaskHandle launch(TaskPayload payload,
+	                                            std::span<const TaskHandle> prerequisites,
+	                                            const TaskLaunchOptions& options = {}) noexcept;
 
 	void wait(TaskHandle task) noexcept;
 	void wait(std::span<const TaskHandle> tasks) noexcept;
 
-	[[nodiscard]] void* getResultPointer(TaskHandle handle) noexcept;
+	[[nodiscard]] void* getResultPointer(TaskHandle handle) noexcept TRIVIAL_LIFETIMEBOUND;
 
 	[[nodiscard]] bool isComplete(TaskHandle task) const noexcept;
 
@@ -81,7 +82,7 @@ private:
 
 	static void workerThreadEntry(void* arg) noexcept;
 
-	void runWorkerLoop(std::size_t workerIndex) noexcept;
+	TRIVIAL_HOT void runWorkerLoop(std::size_t workerIndex) noexcept;
 
 	[[nodiscard]] bool parkWorker(std::size_t workerIndex) noexcept;
 
@@ -89,17 +90,17 @@ private:
 
 	[[nodiscard]] bool tryRemoveParkedIndex(std::size_t workerIndex) noexcept;
 
-	[[nodiscard]] bool tryClaimSharedTask(std::size_t workerIndex, TaskHandle& handle) noexcept;
+	[[nodiscard]] TRIVIAL_HOT bool tryClaimSharedTask(std::size_t workerIndex, TaskHandle& handle) noexcept;
 
-	[[nodiscard]] bool tryStealTask(std::size_t workerIndex, TaskHandle& handle) noexcept;
+	[[nodiscard]] TRIVIAL_HOT bool tryStealTask(std::size_t workerIndex, TaskHandle& handle) noexcept;
 
-	void enqueueReadyTask(TaskHandle handle, TaskAffinity affinity, TaskPriority priority) noexcept;
+	TRIVIAL_HOT void enqueueReadyTask(TaskHandle handle, TaskAffinity affinity, TaskPriority priority) noexcept;
 
-	void completeTask(TaskHandle handle) noexcept;
+	TRIVIAL_HOT void completeTask(TaskHandle handle) noexcept;
 
 	[[nodiscard]] bool tryPopAndRunOneAnyWorkerTask() noexcept;
 
-	void runAndCompleteClaimedTask(TaskHandle handle) noexcept;
+	TRIVIAL_HOT void runAndCompleteClaimedTask(TaskHandle handle) noexcept;
 
 	[[nodiscard]] bool tryHelpComplete(TaskHandle target, TaskAffinity callerAffinity, std::uint32_t maxDepth) noexcept;
 

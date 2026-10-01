@@ -16,17 +16,17 @@ struct PushConstants {
 	math::Affine2f transform;
 };
 
-VkShaderModule createShaderModule(VkDevice device, const std::string& spirvPath) noexcept;
+[[nodiscard]] VkShaderModule createShaderModule(VkDevice device, const std::string& spirvPath) noexcept;
 void destroyShaderModule(VkDevice device, VkShaderModule module) noexcept;
 
-VkPipelineLayout createPipelineLayout(VkDevice device) noexcept;
+[[nodiscard]] VkPipelineLayout createPipelineLayout(VkDevice device) noexcept;
 void destroyPipelineLayout(VkDevice device, VkPipelineLayout layout) noexcept;
 
-VkPipeline createGraphicsPipeline(VkDevice device,
-                                  VkPipelineLayout layout,
-                                  VkFormat colourFormat,
-                                  VkShaderModule vertexModule,
-                                  VkShaderModule fragmentModule) noexcept;
+[[nodiscard]] VkPipeline createGraphicsPipeline(VkDevice device,
+                                                VkPipelineLayout layout,
+                                                VkFormat colourFormat,
+                                                VkShaderModule vertexModule,
+                                                VkShaderModule fragmentModule) noexcept;
 void destroyGraphicsPipeline(VkDevice device, VkPipeline pipeline) noexcept;
 
 static_assert(sizeof(PushConstants) == 40); // NOLINT(readability-magic-numbers)

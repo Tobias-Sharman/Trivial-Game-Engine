@@ -14,7 +14,7 @@ struct FrameSyncState {
 	std::vector<VkFence> inFlightFences;
 };
 
-FrameSyncState createFrameSyncState(VkDevice device, std::uint32_t imageCount) noexcept;
+[[nodiscard]] FrameSyncState createFrameSyncState(VkDevice device, std::uint32_t imageCount) noexcept;
 void destroyFrameSyncState(VkDevice device, FrameSyncState& state) noexcept;
 
 } // namespace trivial::rhi::vulkan

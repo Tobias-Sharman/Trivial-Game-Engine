@@ -85,7 +85,7 @@ inline bool adjustLockMemoryPrivilege(bool enable) noexcept {
 }
 #endif // TRIVIAL_MEMORY_ENABLE_LARGE_PAGES && TRIVIAL_PLATFORM_WINDOWS
 
-inline SystemInfo probeSystemInfo() noexcept {
+[[nodiscard]] inline SystemInfo probeSystemInfo() noexcept {
 	SystemInfo info;
 
 #if TRIVIAL_PLATFORM_WINDOWS
@@ -132,7 +132,7 @@ inline bool probeMadvFree(std::size_t pageSize) noexcept {
 }
 #endif // TRIVIAL_PLATFORM_LINUX
 
-inline std::size_t alignmentOffset(const void* base, std::size_t alignment) noexcept {
+[[nodiscard]] inline std::size_t alignmentOffset(const void* base, std::size_t alignment) noexcept {
 	TRIVIAL_ASSERT(alignment > 0);
 	TRIVIAL_ASSERT((alignment & (alignment - 1)) == 0);
 
@@ -193,7 +193,7 @@ inline void* reserveAligned(std::size_t bytes,
 }
 
 #elif TRIVIAL_PLATFORM_POSIX
-inline void* reserveAligned(std::size_t bytes, std::size_t alignment, int& outOsErrorCode) noexcept {
+[[nodiscard]] inline void* reserveAligned(std::size_t bytes, std::size_t alignment, int& outOsErrorCode) noexcept {
 	TRIVIAL_ASSERT(alignment > 0);
 	TRIVIAL_ASSERT((alignment & (alignment - 1)) == 0);
 	TRIVIAL_ASSERT(alignment % pageSize() == 0);
@@ -247,7 +247,10 @@ inline void releaseReservation(void* base, std::size_t bytes) noexcept {
 #endif // Platform check
 }
 
-inline bool commitPages(void* addr, std::size_t bytes, std::size_t pageSize, int& outOsErrorCode) noexcept {
+[[nodiscard]] inline bool commitPages(void* addr,
+                                      std::size_t bytes,
+                                      std::size_t pageSize,
+                                      int& outOsErrorCode) noexcept {
 	TRIVIAL_ASSERT(addr != nullptr);
 	TRIVIAL_ASSERT(bytes > 0);
 	TRIVIAL_ASSERT(bytes % pageSize == 0);

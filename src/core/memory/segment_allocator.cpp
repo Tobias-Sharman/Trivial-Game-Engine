@@ -49,7 +49,10 @@
 
 namespace {
 
-void* mapMetadata(std::size_t bytes, std::size_t pageSize, std::size_t& outMappingBytes, int& outOsErrorCode) noexcept {
+[[nodiscard]] void* mapMetadata(std::size_t bytes,
+                                std::size_t pageSize,
+                                std::size_t& outMappingBytes,
+                                int& outOsErrorCode) noexcept {
 	const std::size_t kPayload = (bytes + pageSize - 1) & ~(pageSize - 1);
 
 	if (kPayload == 0 || kPayload > SIZE_MAX - (2 * pageSize)) {
@@ -120,20 +123,20 @@ void unmapMetadata(void* payloadBase, std::size_t mappingBytes, std::size_t page
 #endif // Platform check
 }
 
-bool isBitSet(const std::uint64_t* bits, std::size_t index) noexcept {
+[[nodiscard]] constexpr bool isBitSet(const std::uint64_t* bits, std::size_t index) noexcept {
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 	return (bits[index >> TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_WORD_SHIFT]
 	        & (std::uint64_t{1} << (index & TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BIT_INDEX_MASK)))
 	       != 0;
 }
 
-void setBit(std::uint64_t* bits, std::size_t index) noexcept {
+constexpr void setBit(std::uint64_t* bits, std::size_t index) noexcept {
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 	bits[index >> TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_WORD_SHIFT]
 	    |= std::uint64_t{1} << (index & TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BIT_INDEX_MASK);
 }
 
-void clearBit(std::uint64_t* bits, std::size_t index) noexcept {
+constexpr void clearBit(std::uint64_t* bits, std::size_t index) noexcept {
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 	bits[index >> TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_WORD_SHIFT]
 	    &= ~(std::uint64_t{1} << (index & TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BIT_INDEX_MASK));
@@ -142,7 +145,9 @@ void clearBit(std::uint64_t* bits, std::size_t index) noexcept {
 // NOTE: Can for sure SIMD this, but only worth bothering once the rutime
 // dispatch is in place and there is a workload that requires enough RAM for
 // this to become a bottleneck
-std::size_t findCachedRun(const std::uint64_t* cached, std::size_t capacity, std::size_t count) noexcept {
+[[nodiscard]] constexpr std::size_t findCachedRun(const std::uint64_t* cached,
+                                                  std::size_t capacity,
+                                                  std::size_t count) noexcept {
 	if (count == 0 || count > capacity) {
 		return TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_INVALID_INDEX;
 	}
@@ -174,7 +179,9 @@ std::size_t findCachedRun(const std::uint64_t* cached, std::size_t capacity, std
 	return TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_INVALID_INDEX;
 }
 
-std::size_t findFreeRun(const std::uint64_t* allocated, std::size_t capacity, std::size_t count) noexcept {
+[[nodiscard]] constexpr std::size_t findFreeRun(const std::uint64_t* allocated,
+                                                std::size_t capacity,
+                                                std::size_t count) noexcept {
 	if (count == 0 || count > capacity) {
 		return TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_INVALID_INDEX;
 	}
@@ -306,7 +313,7 @@ namespace trivial::memory {
 		}
 	}
 
-	if (needsOomReport) {
+	if (needsOomReport) [[unlikely]] {
 		handleOom(oomRequestedSize, oomContext, oomErrorCode);
 	}
 
@@ -354,7 +361,7 @@ void SegmentAllocator::shutdown() noexcept {
 
 [[nodiscard]] void* SegmentAllocator::allocSegments(std::size_t count, SegmentKind kind) noexcept {
 	TRIVIAL_PROFILE_FUNCTION();
-	TRIVIAL_ASSERT(count > 0);
+	TRIVIAL_ASSUME(count > 0);
 	TRIVIAL_ASSERT(m_base != nullptr);
 
 	bool needsOomReport = false;
@@ -409,7 +416,7 @@ void SegmentAllocator::shutdown() noexcept {
 
 	(void)kind;
 
-	if (needsOomReport) {
+	if (needsOomReport) [[unlikely]] {
 		handleOom(count << TRIVIAL_MEMORY_SEGMENT_SHIFT, "SegmentAllocator::allocSegments exhausted reservation", 0);
 	}
 
@@ -419,7 +426,7 @@ void SegmentAllocator::shutdown() noexcept {
 void SegmentAllocator::freeSegments(void* segments, std::size_t count) noexcept {
 	TRIVIAL_PROFILE_FUNCTION();
 	TRIVIAL_ASSERT(segments != nullptr);
-	TRIVIAL_ASSERT(count > 0);
+	TRIVIAL_ASSUME(count > 0);
 	TRIVIAL_ASSERT(owns(segments));
 
 	TRIVIAL_PROFILE_FREE("segments", segments);
@@ -537,14 +544,14 @@ void SegmentAllocator::disableLargePages() noexcept {
 	}
 
 #if TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
-	if (!claimCommitBudget(bytes)) {
+	if (!claimCommitBudget(bytes)) [[unlikely]] {
 		outOsErrorCode = 0;
 		handleOom(bytes, "SegmentAllocator::ensureCommittedLargePages exceeds commit budget", 0);
 		return false;
 	}
 #endif // TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
 
-	if (!commitLargePages(target, bytes, largePageSize(), outOsErrorCode)) {
+	if (!commitLargePages(target, bytes, largePageSize(), outOsErrorCode)) [[unlikely]] {
 #if TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
 		releaseCommitBudget(bytes);
 #endif // TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
@@ -605,14 +612,14 @@ void SegmentAllocator::disableLargePages() noexcept {
 	}
 
 #if TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
-	if (!claimCommitBudget(bytes)) {
+	if (!claimCommitBudget(bytes)) [[unlikely]] {
 		outOsErrorCode = 0;
 		handleOom(bytes, "SegmentAllocator::ensureCommittedPages exceeds commit budget", 0);
 		return false;
 	}
 #endif // TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
 
-	if (!commitPages(target, bytes, kPageSize, outOsErrorCode)) {
+	if (!commitPages(target, bytes, kPageSize, outOsErrorCode)) [[unlikely]] {
 #if TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
 		releaseCommitBudget(bytes);
 #endif // TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES

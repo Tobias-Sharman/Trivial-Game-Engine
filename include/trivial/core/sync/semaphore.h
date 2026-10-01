@@ -11,7 +11,7 @@ namespace trivial::sync {
 
 class Semaphore {
 public:
-	explicit Semaphore(std::size_t initialCount) noexcept
+	explicit constexpr Semaphore(std::size_t initialCount) noexcept
 	    : m_count(initialCount) {}
 
 	~Semaphore() noexcept = default;

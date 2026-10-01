@@ -6,6 +6,10 @@
 
 #include <trivial/core/config.h>
 
+#if TRIVIAL_ENABLE_LOGGING
+#include <trivial/core/compiler.h>
+#endif // TRIVIAL_ENABLE_LOGGING
+
 namespace trivial::core {
 
 enum class LogLevel : uint8_t {
@@ -20,7 +24,10 @@ enum class LogLevel : uint8_t {
 
 void logMessage(LogLevel level, const char* message) noexcept;
 void logMessageWithPrefix(LogLevel level, const char* prefix, const char* message) noexcept;
-void logOomFailure(const char* prefix, const char* context, std::size_t requestedSize, int osErrorCode) noexcept;
+TRIVIAL_COLD void logOomFailure(const char* prefix,
+                                const char* context,
+                                std::size_t requestedSize,
+                                int osErrorCode) noexcept;
 
 #endif // TRIVIAL_ENABLE_LOGGING
 

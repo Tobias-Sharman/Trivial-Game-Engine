@@ -5,6 +5,7 @@
 
 #include <trivial/application.h>
 #include <trivial/core/application_info.h>
+#include <trivial/core/compiler.h>
 #include <trivial/core/graphics_api.h>
 #include <trivial/gpu/context.h>
 #include <trivial/platform/window.h>
@@ -43,8 +44,8 @@ public:
 	[[nodiscard]] GraphicsApi requestedGraphicsApi() const noexcept { return m_requestedGraphicsApi; }
 	[[nodiscard]] GraphicsApi activeGraphicsApi() const noexcept { return m_gpu.activeGraphicsApi(); }
 
-	[[nodiscard]] render::Renderer& renderer() noexcept { return m_renderer; }
-	[[nodiscard]] const render::Renderer& renderer() const noexcept { return m_renderer; }
+	[[nodiscard]] render::Renderer& renderer() noexcept TRIVIAL_LIFETIMEBOUND { return m_renderer; }
+	[[nodiscard]] const render::Renderer& renderer() const noexcept TRIVIAL_LIFETIMEBOUND { return m_renderer; }
 
 private:
 	// TODO: Once form of what objects engine actually owns is explicit then update this

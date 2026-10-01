@@ -11,7 +11,7 @@
 
 namespace trivial::rhi::vulkan {
 
-VkDebugUtilsMessengerEXT createDebugMessenger(VkInstance instance) noexcept;
+[[nodiscard]] VkDebugUtilsMessengerEXT createDebugMessenger(VkInstance instance) noexcept;
 void destroyDebugMessenger(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger) noexcept;
 
 } // namespace trivial::rhi::vulkan

@@ -7,7 +7,7 @@
 
 namespace trivial::rhi::vulkan {
 
-constexpr const char* resultName(VkResult result) noexcept {
+[[nodiscard]] constexpr const char* resultName(VkResult result) noexcept {
 	switch (result) {
 		case VK_SUCCESS:
 			return "VK_SUCCESS";

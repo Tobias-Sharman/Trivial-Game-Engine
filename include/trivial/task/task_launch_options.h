@@ -34,7 +34,7 @@ struct TaskScopeHandle {
 	std::uint32_t index = TRIVIAL_TASK_SCOPE_HANDLE_INVALID_INDEX;
 	std::uint32_t generation = 0;
 
-	[[nodiscard]] bool isValid() const noexcept { return index != TRIVIAL_TASK_SCOPE_HANDLE_INVALID_INDEX; }
+	[[nodiscard]] constexpr bool isValid() const noexcept { return index != TRIVIAL_TASK_SCOPE_HANDLE_INVALID_INDEX; }
 };
 
 struct TaskLaunchOptions {

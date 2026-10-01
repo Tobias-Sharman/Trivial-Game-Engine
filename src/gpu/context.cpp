@@ -13,7 +13,7 @@
 
 namespace {
 
-trivial::GraphicsApi resolveGraphicsApi(trivial::GraphicsApi requested) noexcept {
+[[nodiscard]] constexpr trivial::GraphicsApi resolveGraphicsApi(trivial::GraphicsApi requested) noexcept {
 	// TODO: Select based on system once there is support for multiple apis
 	if (requested == trivial::GraphicsApi::Auto) {
 		return trivial::GraphicsApi::Vulkan;
@@ -22,9 +22,9 @@ trivial::GraphicsApi resolveGraphicsApi(trivial::GraphicsApi requested) noexcept
 	return requested;
 }
 
-std::unique_ptr<trivial::rhi::Backend> createBackend(trivial::GraphicsApi graphicsApi,
-                                                     const trivial::ApplicationInfo& applicationInfo,
-                                                     const trivial::platform::Window& window) noexcept {
+[[nodiscard]] std::unique_ptr<trivial::rhi::Backend> createBackend(trivial::GraphicsApi graphicsApi,
+                                                                   const trivial::ApplicationInfo& applicationInfo,
+                                                                   const trivial::platform::Window& window) noexcept {
 	const trivial::GraphicsApi kGraphicsApi = resolveGraphicsApi(graphicsApi);
 
 	switch (kGraphicsApi) {
@@ -36,6 +36,8 @@ std::unique_ptr<trivial::rhi::Backend> createBackend(trivial::GraphicsApi graphi
 			TRIVIAL_ASSERT(kGraphicsApi != trivial::GraphicsApi::Auto);
 			return nullptr;
 	}
+
+	TRIVIAL_UNREACHABLE();
 }
 
 } // namespace

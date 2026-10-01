@@ -18,11 +18,11 @@
 
 namespace {
 
-VkVertexInputBindingDescription makeVertexBinding() noexcept {
+[[nodiscard]] constexpr VkVertexInputBindingDescription makeVertexBinding() noexcept {
 	return {.binding = 0, .stride = sizeof(trivial::rhi::Vertex2), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX};
 }
 
-std::array<VkVertexInputAttributeDescription, 2> makeVertexAttributes() noexcept {
+[[nodiscard]] constexpr std::array<VkVertexInputAttributeDescription, 2> makeVertexAttributes() noexcept {
 	return {
 	    {
 	        {
@@ -41,7 +41,7 @@ std::array<VkVertexInputAttributeDescription, 2> makeVertexAttributes() noexcept
 	};
 }
 
-VkPipelineInputAssemblyStateCreateInfo makeInputAssemblyState() noexcept {
+[[nodiscard]] constexpr VkPipelineInputAssemblyStateCreateInfo makeInputAssemblyState() noexcept {
 	return {
 	    .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
 	    .pNext = nullptr,
@@ -51,8 +51,9 @@ VkPipelineInputAssemblyStateCreateInfo makeInputAssemblyState() noexcept {
 	};
 }
 
-std::array<VkPipelineShaderStageCreateInfo, 2> makeShaderStages(VkShaderModule vertexModule,
-                                                                VkShaderModule fragmentModule) noexcept {
+[[nodiscard]] constexpr std::array<VkPipelineShaderStageCreateInfo, 2> makeShaderStages(
+    VkShaderModule vertexModule,
+    VkShaderModule fragmentModule) noexcept {
 	return {
 	    {
 	        {
@@ -77,7 +78,7 @@ std::array<VkPipelineShaderStageCreateInfo, 2> makeShaderStages(VkShaderModule v
 	};
 }
 
-VkPipelineViewportStateCreateInfo makeViewportState() noexcept {
+[[nodiscard]] constexpr VkPipelineViewportStateCreateInfo makeViewportState() noexcept {
 	return {
 	    .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
 	    .pNext = nullptr,
@@ -89,11 +90,12 @@ VkPipelineViewportStateCreateInfo makeViewportState() noexcept {
 	};
 }
 
-std::array<VkDynamicState, 2> makeDynamicStates() noexcept {
+[[nodiscard]] constexpr std::array<VkDynamicState, 2> makeDynamicStates() noexcept {
 	return {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
 }
 
-VkPipelineDynamicStateCreateInfo makeDynamicState(std::span<const VkDynamicState> states) noexcept {
+[[nodiscard]] constexpr VkPipelineDynamicStateCreateInfo makeDynamicState(
+    std::span<const VkDynamicState> states) noexcept {
 	return {
 	    .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
 	    .pNext = nullptr,
@@ -103,7 +105,7 @@ VkPipelineDynamicStateCreateInfo makeDynamicState(std::span<const VkDynamicState
 	};
 }
 
-VkPipelineRenderingCreateInfo makeRenderingCreateInfo(const VkFormat& colourFormat) noexcept {
+[[nodiscard]] constexpr VkPipelineRenderingCreateInfo makeRenderingCreateInfo(const VkFormat& colourFormat) noexcept {
 	return {
 	    .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
 	    .pNext = nullptr,
@@ -115,7 +117,7 @@ VkPipelineRenderingCreateInfo makeRenderingCreateInfo(const VkFormat& colourForm
 	};
 }
 
-VkPipelineColorBlendAttachmentState makeColourBlendAttachment() noexcept {
+[[nodiscard]] constexpr VkPipelineColorBlendAttachmentState makeColourBlendAttachment() noexcept {
 	return {
 	    .blendEnable = VK_FALSE,
 	    .srcColorBlendFactor = VK_BLEND_FACTOR_ONE,
@@ -129,7 +131,7 @@ VkPipelineColorBlendAttachmentState makeColourBlendAttachment() noexcept {
 	};
 }
 
-VkPipelineColorBlendStateCreateInfo makeColourBlendState(
+[[nodiscard]] constexpr VkPipelineColorBlendStateCreateInfo makeColourBlendState(
     const VkPipelineColorBlendAttachmentState& attachment) noexcept {
 	return {
 	    .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
@@ -143,7 +145,7 @@ VkPipelineColorBlendStateCreateInfo makeColourBlendState(
 	};
 }
 
-VkPipelineRasterizationStateCreateInfo makeRasterisationState() noexcept {
+[[nodiscard]] constexpr VkPipelineRasterizationStateCreateInfo makeRasterisationState() noexcept {
 	return {
 	    .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
 	    .pNext = nullptr,
@@ -161,7 +163,7 @@ VkPipelineRasterizationStateCreateInfo makeRasterisationState() noexcept {
 	};
 }
 
-VkPipelineMultisampleStateCreateInfo makeMultisampleState() noexcept {
+[[nodiscard]] constexpr VkPipelineMultisampleStateCreateInfo makeMultisampleState() noexcept {
 	return {
 	    .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
 	    .pNext = nullptr,
@@ -270,8 +272,8 @@ VkPipeline createGraphicsPipeline(VkDevice device,
 	TRIVIAL_ASSERT(vertexModule != VK_NULL_HANDLE);
 	TRIVIAL_ASSERT(fragmentModule != VK_NULL_HANDLE);
 
-	const VkVertexInputBindingDescription kVertexBinding = makeVertexBinding();
-	const std::array<VkVertexInputAttributeDescription, 2> kVertexAttributes = makeVertexAttributes();
+	constexpr VkVertexInputBindingDescription kVertexBinding = makeVertexBinding();
+	constexpr std::array<VkVertexInputAttributeDescription, 2> kVertexAttributes = makeVertexAttributes();
 
 	const VkPipelineVertexInputStateCreateInfo kVertexInputState = {
 	    .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
@@ -283,22 +285,22 @@ VkPipeline createGraphicsPipeline(VkDevice device,
 	    .pVertexAttributeDescriptions = kVertexAttributes.data(),
 	};
 
-	const VkPipelineInputAssemblyStateCreateInfo kInputAssemblyState = makeInputAssemblyState();
+	constexpr VkPipelineInputAssemblyStateCreateInfo kInputAssemblyState = makeInputAssemblyState();
 
 	const std::array<VkPipelineShaderStageCreateInfo, 2> kShaderStages = makeShaderStages(vertexModule, fragmentModule);
 
-	const VkPipelineViewportStateCreateInfo kViewportState = makeViewportState();
+	constexpr VkPipelineViewportStateCreateInfo kViewportState = makeViewportState();
 
-	const std::array<VkDynamicState, 2> kDynamicStates = makeDynamicStates();
+	constexpr std::array<VkDynamicState, 2> kDynamicStates = makeDynamicStates();
 	const VkPipelineDynamicStateCreateInfo kDynamicState = makeDynamicState(kDynamicStates);
 
 	const VkPipelineRenderingCreateInfo kRenderingCreateInfo = makeRenderingCreateInfo(colourFormat);
 
-	const VkPipelineColorBlendAttachmentState kColourBlendAttachment = makeColourBlendAttachment();
+	constexpr VkPipelineColorBlendAttachmentState kColourBlendAttachment = makeColourBlendAttachment();
 	const VkPipelineColorBlendStateCreateInfo kColourBlendState = makeColourBlendState(kColourBlendAttachment);
 
-	const VkPipelineRasterizationStateCreateInfo kRasterisationState = makeRasterisationState();
-	const VkPipelineMultisampleStateCreateInfo kMultisampleState = makeMultisampleState();
+	constexpr VkPipelineRasterizationStateCreateInfo kRasterisationState = makeRasterisationState();
+	constexpr VkPipelineMultisampleStateCreateInfo kMultisampleState = makeMultisampleState();
 
 	const VkGraphicsPipelineCreateInfo kPipelineCreateInfo = {
 	    .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
