@@ -50,13 +50,18 @@ TEST(LatchMultiThreadTest, WaitUnblocksAfterCountDown) {
 
 	trivial::core::HeapArray<trivial::thread::Thread> threads(g_kWorkerThreads);
 	for (std::size_t i = 0; i < g_kWorkerThreads; ++i) {
-		trivial::thread::ThreadConfig config;
 #if TRIVIAL_PLATFORM_POSIX
+		trivial::thread::ThreadConfig config;
 		trivial::tests::attachStackAllocator(config);
-#endif // TRIVIAL_PLATFORM_POSIX
 
 		const trivial::thread::ThreadCreateResult kResult = threads[i].create(config, &countDownWorker, &context);
 		ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
+#else
+		const trivial::thread::ThreadConfig kConfig{};
+
+		const trivial::thread::ThreadCreateResult kResult = threads[i].create(kConfig, &countDownWorker, &context);
+		ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
+#endif // TRIVIAL_PLATFORM_POSIX
 	}
 
 	latch.wait();

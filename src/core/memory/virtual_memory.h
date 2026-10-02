@@ -14,8 +14,13 @@
 #endif // TRIVIAL_ENABLE_ASSERTS
 
 #if TRIVIAL_PLATFORM_WINDOWS
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h> // IWYU pragma: keep
 
 #elif TRIVIAL_PLATFORM_POSIX
 #include <cerrno>
@@ -55,8 +60,8 @@ inline VirtualAlloc2Fn resolveVirtualAlloc2() noexcept {
 }
 
 inline VirtualAlloc2Fn virtualAlloc2() noexcept {
-	static VirtualAlloc2Fn function = resolveVirtualAlloc2();
-	return function;
+	static VirtualAlloc2Fn s_function = resolveVirtualAlloc2();
+	return s_function;
 }
 #endif // TRIVIAL_PLATFORM_WINDOWS
 
@@ -161,12 +166,9 @@ inline void* reserveAligned(std::size_t bytes,
 	VirtualAlloc2Fn alloc2 = virtualAlloc2();
 
 	if (alloc2 != nullptr) {
-		MEM_ADDRESS_REQUIREMENTS requirements{};
-		requirements.Alignment = alignment;
+		MEM_ADDRESS_REQUIREMENTS requirements{.Alignment = alignment};
 
-		MEM_EXTENDED_PARAMETER parameter{};
-		parameter.Type = MemExtendedParameterAddressRequirements;
-		parameter.Pointer = &requirements;
+		MEM_EXTENDED_PARAMETER parameter{.Type = MemExtendedParameterAddressRequirements, .Pointer = &requirements};
 
 		void* result = alloc2(GetCurrentProcess(), nullptr, bytes, MEM_RESERVE, PAGE_NOACCESS, &parameter, 1);
 

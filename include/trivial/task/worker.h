@@ -30,13 +30,12 @@ struct alignas(TRIVIAL_PLATFORM_FALSE_SHARING_ALIGNMENT) Worker {
 	Worker& operator=(Worker&&) = delete;
 
 	std::size_t index = 0;
+	std::atomic<bool> stopping{false};
+	std::atomic<WorkerState> state{WorkerState::Parked};
 
 	thread::Thread thread;
-	std::atomic<bool> stopping{false};
 
-	TaskPriorityQueue localQueue;
-
-	std::atomic<WorkerState> state{WorkerState::Parked};
+	alignas(TRIVIAL_PLATFORM_CACHE_LINE_SIZE) TaskPriorityQueue localQueue;
 };
 
 } // namespace trivial::task

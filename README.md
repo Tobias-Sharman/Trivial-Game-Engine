@@ -6,12 +6,12 @@ the engine is to allow for complete freedom in the development of the game.
 
 Build tooling (including grabbing dependencies) is handled via CMake, but built
 on top is a python script that is recommended for usage for building and
-especially for testing.
+especially for testing since some tests require running in isolated processes,
+due to global state. The build script also ties in clang toolings for static
+analysis and formatting to help keep the codebase consistent and clean.
 
-Tested on MacOS with Apple Silicon and remains needing testing on other
-platforms - all architectures for Windows and Linux, and older x86 Mac. A later
-check on support for mobile platforms may also be taken as an extension to the
-engine.
+Early testing has shown full functionality across Windows, Linux, and MacOS,
+along with ARM64 and x86_64 architectures, but please report any issues found.
 
 Licensed under the [Apache License, Version 2.0](LICENSE). Games and other
 software built with the engine can use any licence, but must keep the
@@ -30,7 +30,6 @@ neglected prior to a proper version 1.0.0.
 
 ## Current plan of action
 
-- Windows basic testing
 - Custom Chrono with suitable types
 - Documentation update and create new documentation
 - Allocator

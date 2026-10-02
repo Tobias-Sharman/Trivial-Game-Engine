@@ -25,7 +25,8 @@ Entity World::create() noexcept {
 		return Entity::make(kIndex, m_entities[kIndex].generation);
 	}
 
-	// TODO: Profile this in release when testing game to see if worth dropping check
+	// TODO: Profile this in release when testing game to see if worth dropping
+	//       check or just handle it properly
 	if (m_entities.size() >= TRIVIAL_ECS_ENTITY_INVALID_INDEX) {
 		TRIVIAL_LOG_ERROR("Maximum entity count reached");
 
@@ -59,7 +60,7 @@ void World::destroy(Entity entity) noexcept {
 	m_positions2D.remove(entity);
 	m_velocities2D.remove(entity);
 
-	for (ComponentStoreMap::value_type& entry : m_componentStores) {
+	for (const ComponentStoreMap::value_type& entry : m_componentStores) {
 		entry.second->remove(entity);
 	}
 

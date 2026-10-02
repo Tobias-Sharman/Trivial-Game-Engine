@@ -45,9 +45,6 @@ private:
 
 } // namespace trivial::thread
 
-#else
-#error "ThreadStackAllocator is POSIX only"
-
 #endif // TRIVIAL_PLATFORM_POSIX
 
 #endif // TRIVIAL_CORE_THREAD_THREAD_STACK_ALLOCATOR_H

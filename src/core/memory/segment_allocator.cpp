@@ -22,8 +22,13 @@
 #endif // TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
 
 #if TRIVIAL_PLATFORM_WINDOWS
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h> // IWYU pragma: keep
 
 #elif TRIVIAL_PLATFORM_POSIX
 #include <cerrno>
@@ -63,7 +68,7 @@ namespace {
 	const std::size_t kMappingBytes = kPayload + (2 * pageSize);
 
 #if TRIVIAL_PLATFORM_WINDOWS
-	void* raw = VirtualAlloc(nullptr, mappingBytes, MEM_RESERVE, PAGE_NOACCESS);
+	void* raw = VirtualAlloc(nullptr, kMappingBytes, MEM_RESERVE, PAGE_NOACCESS);
 	if (raw == nullptr) {
 		outOsErrorCode = static_cast<int>(GetLastError());
 		return nullptr;
@@ -72,7 +77,7 @@ namespace {
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 	void* payloadBase = static_cast<char*>(raw) + pageSize;
 
-	if (VirtualAlloc(payloadBase, payload, MEM_COMMIT, PAGE_READWRITE) == nullptr) {
+	if (VirtualAlloc(payloadBase, kPayload, MEM_COMMIT, PAGE_READWRITE) == nullptr) {
 		outOsErrorCode = static_cast<int>(GetLastError());
 		(void)VirtualFree(raw, 0, MEM_RELEASE);
 		return nullptr;

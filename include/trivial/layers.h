@@ -22,8 +22,8 @@ public:
 	Layer(Layer&&) = delete;
 	Layer& operator=(Layer&&) = delete;
 
-	virtual void onStart(gpu::Context* gpu) noexcept {};
-	virtual void onUpdate(const FrameContext& frameContext) noexcept {};
+	virtual void onStart([[maybe_unused]] gpu::Context* gpu) noexcept {};
+	virtual void onUpdate([[maybe_unused]] const FrameContext& frameContext) noexcept {};
 	virtual void onEnd() noexcept {};
 
 	[[nodiscard]] virtual std::vector<render::Drawable> collectDrawables() const noexcept = 0;

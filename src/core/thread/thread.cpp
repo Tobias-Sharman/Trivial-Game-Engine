@@ -15,8 +15,13 @@
 #include <trivial/core/platform.h>
 
 #if TRIVIAL_PLATFORM_WINDOWS
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h> // IWYU pragma: keep
 
 #elif TRIVIAL_PLATFORM_MACOS
 #include <mach/mach_traps.h>
@@ -289,7 +294,7 @@ void Thread::adoptCurrentThread(const ThreadConfig& config) noexcept {
 #endif // Platform-specific naming/priority/affinity
 
 #elif TRIVIAL_PLATFORM_WINDOWS
-	const HANDLE kHandle = GetCurrentThread();
+	const HANDLE kHandle = GetCurrentThread(); // NOLINT(misc-misplaced-const)
 	m_nativeHandleStorage = std::bit_cast<NativeHandleStorage>(kHandle);
 
 	applyThreadDescription(kHandle, m_name);
@@ -353,7 +358,7 @@ void Thread::join() noexcept {
 	m_stackAllocator = nullptr;
 	m_stackAllocation = ThreadStackAllocation{};
 #elif TRIVIAL_PLATFORM_WINDOWS
-	const HANDLE kHandle = std::bit_cast<HANDLE>(m_nativeHandleStorage);
+	const HANDLE kHandle = std::bit_cast<HANDLE>(m_nativeHandleStorage); // NOLINT(misc-misplaced-const)
 
 	WaitForSingleObject(kHandle, INFINITE);
 	CloseHandle(kHandle);

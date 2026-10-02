@@ -4,6 +4,7 @@
 *.swo
 *~
 .cache/
+.vs/
 
 # Python tooling
 .venv/

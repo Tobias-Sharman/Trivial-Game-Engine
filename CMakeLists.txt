@@ -122,12 +122,9 @@ target_compile_definitions(trivial
 # -----------------------------------------------------------------------------
 
 if(WIN32)
-	target_compile_definitions(trivial
-		PUBLIC
-			_WIN32_WINNT=0x0A00
-			WIN32_LEAN_AND_MEAN
-			NOMINMAX
-	)
+	target_compile_definitions(trivial PUBLIC _WIN32_WINNT=0x0A00)
+
+	target_link_libraries(trivial PRIVATE Synchronization)
 endif()
 
 # -----------------------------------------------------------------------------
@@ -284,7 +281,12 @@ if(MSVC)
 		$<$<COMPILE_LANGUAGE:CXX>:/permissive->
 		$<$<COMPILE_LANGUAGE:CXX>:/Zc:__cplusplus>
 		$<$<COMPILE_LANGUAGE:CXX>:/EHs-c->
+		/wd4324
 	)
+
+	target_compile_definitions(trivial PRIVATE _HAS_EXCEPTIONS=0)
+
+	string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 else()
 	target_compile_options(trivial PRIVATE
 		-Wall

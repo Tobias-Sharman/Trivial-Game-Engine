@@ -33,13 +33,18 @@ TEST(EventMultiThreadTest, TriggerUnblocksWaiter) {
 	EventWaitContext context{.event = &event, .wokeCount = &wokeCount};
 
 	trivial::thread::Thread waiter;
-	trivial::thread::ThreadConfig config;
 #if TRIVIAL_PLATFORM_POSIX
+	trivial::thread::ThreadConfig config;
 	trivial::tests::attachStackAllocator(config);
-#endif // TRIVIAL_PLATFORM_POSIX
 
 	const trivial::thread::ThreadCreateResult kResult = waiter.create(config, &waitWorker, &context);
 	ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
+#else
+	const trivial::thread::ThreadConfig kConfig{};
+
+	const trivial::thread::ThreadCreateResult kResult = waiter.create(kConfig, &waitWorker, &context);
+	ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
+#endif // TRIVIAL_PLATFORM_POSIX
 
 	event.trigger();
 
@@ -58,13 +63,18 @@ TEST(EventMultiThreadTest, TriggerUnblocksAllWaiters) {
 
 	trivial::core::HeapArray<trivial::thread::Thread> waiters(g_kWaiterThreads);
 	for (std::size_t i = 0; i < g_kWaiterThreads; ++i) {
-		trivial::thread::ThreadConfig config;
 #if TRIVIAL_PLATFORM_POSIX
+		trivial::thread::ThreadConfig config;
 		trivial::tests::attachStackAllocator(config);
-#endif // TRIVIAL_PLATFORM_POSIX
 
 		const trivial::thread::ThreadCreateResult kResult = waiters[i].create(config, &waitWorker, &context);
 		ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
+#else
+		const trivial::thread::ThreadConfig kConfig{};
+
+		const trivial::thread::ThreadCreateResult kResult = waiters[i].create(kConfig, &waitWorker, &context);
+		ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
+#endif // TRIVIAL_PLATFORM_POSIX
 	}
 
 	event.trigger();

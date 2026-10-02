@@ -63,9 +63,9 @@ namespace {
 			continue;
 		}
 
-		const bool kSupportsGraphics = (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0;
-		const bool kSupportsCompute = (queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT) != 0;
-		const bool kSupportsTransfer = (queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT) != 0;
+		const bool kSupportsGraphics = (queueFamily.queueFlags & VkFlags{VK_QUEUE_GRAPHICS_BIT}) != 0;
+		const bool kSupportsCompute = (queueFamily.queueFlags & VkFlags{VK_QUEUE_COMPUTE_BIT}) != 0;
+		const bool kSupportsTransfer = (queueFamily.queueFlags & VkFlags{VK_QUEUE_TRANSFER_BIT}) != 0;
 		const bool kSupportsPresent = hasQueueFamilyPresentSupport(physicalDevice, index, surface);
 
 		if (kSupportsGraphics && !selection.hasGraphicsFamily) {

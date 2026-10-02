@@ -11,9 +11,13 @@
 #include <atomic>
 #include <cstdint>
 
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
-#include <synchapi.h>
-#include <windows.h>
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h> // IWYU pragma: keep
 
 #elif TRIVIAL_PLATFORM_LINUX
 #include <atomic>
@@ -64,6 +68,32 @@ void futexWake(const std::atomic<std::uint32_t>& state) noexcept {
 } // namespace
 
 #endif // TRIVIAL_PLATFORM_LINUX
+
+#if TRIVIAL_PLATFORM_WINDOWS
+
+namespace {
+
+[[nodiscard]] DWORD timeoutMilliseconds(std::chrono::nanoseconds::rep remainingNs) noexcept {
+	if (remainingNs
+	    > std::numeric_limits<std::chrono::nanoseconds::rep>::max() - TRIVIAL_TIME_MILLISECOND_ROUNDING_NS) {
+		return INFINITE;
+	}
+
+	const std::chrono::nanoseconds::rep kRemainingMs
+	    = (remainingNs + TRIVIAL_TIME_MILLISECOND_ROUNDING_NS) / TRIVIAL_TIME_NANOSECONDS_PER_MILLISECOND;
+
+	constexpr std::chrono::nanoseconds::rep kMaxTimeoutMs{std::numeric_limits<DWORD>::max()};
+
+	if (kRemainingMs > kMaxTimeoutMs) {
+		return INFINITE;
+	}
+
+	return static_cast<DWORD>(kRemainingMs);
+}
+
+} // namespace
+
+#endif // TRIVIAL_PLATFORM_WINDOWS
 
 namespace trivial::sync {
 
@@ -167,16 +197,7 @@ void Parker::park() noexcept {
 
 		const std::chrono::nanoseconds::rep kRemainingNs
 		    = std::chrono::duration_cast<std::chrono::nanoseconds>(kExpiry - kNow).count();
-		DWORD kTimeoutMs;
-		if (kRemainingNs > std::numeric_limits<decltype(kRemainingNs)>::max() - TRIVIAL_TIME_MILLISECOND_ROUNDING_NS) {
-			kTimeoutMs = INFINITE;
-		} else {
-			const std::chrono::nanoseconds::rep kRemainingMs
-			    = (kRemainingNs + TRIVIAL_TIME_MILLISECOND_ROUNDING_NS) / TRIVIAL_TIME_NANOSECONDS_PER_MILLISECOND;
-			kTimeoutMs = kRemainingMs > static_cast<decltype(kRemainingNs)>((std::numeric_limits<DWORD>::max)())
-			                 ? INFINITE
-			                 : static_cast<DWORD>(kRemainingMs);
-		}
+		const DWORD kTimeoutMs = timeoutMilliseconds(kRemainingNs);
 
 		if (WaitOnAddress(&m_state.state, &compare, sizeof(compare), kTimeoutMs) == 0) {
 			TRIVIAL_ASSERT(GetLastError() == ERROR_TIMEOUT);

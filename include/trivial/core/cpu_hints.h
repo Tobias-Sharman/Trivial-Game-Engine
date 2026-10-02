@@ -1,7 +1,6 @@
 #ifndef TRIVIAL_CORE_CPU_HINTS_H
 #define TRIVIAL_CORE_CPU_HINTS_H
 
-#include <trivial/core/compiler.h>
 #include <trivial/core/platform.h>
 
 #if TRIVIAL_ARCH_X86_64
@@ -9,6 +8,8 @@
 #define TRIVIAL_CPU_PAUSE() _mm_pause()
 
 #elif TRIVIAL_ARCH_ARM64
+#include <trivial/core/compiler.h>
+
 #if TRIVIAL_COMPILER_MSVC
 #include <intrin.h>
 #define TRIVIAL_CPU_PAUSE() __yield()

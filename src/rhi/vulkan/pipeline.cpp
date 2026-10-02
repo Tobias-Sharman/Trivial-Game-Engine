@@ -126,8 +126,8 @@ namespace {
 	    .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
 	    .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
 	    .alphaBlendOp = VK_BLEND_OP_ADD,
-	    .colorWriteMask = static_cast<VkColorComponentFlags>(VK_COLOR_COMPONENT_R_BIT) | VK_COLOR_COMPONENT_G_BIT
-	                      | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+	    .colorWriteMask = VkFlags{VK_COLOR_COMPONENT_R_BIT} | VkFlags{VK_COLOR_COMPONENT_G_BIT}
+	                      | VkFlags{VK_COLOR_COMPONENT_B_BIT} | VkFlags{VK_COLOR_COMPONENT_A_BIT},
 	};
 }
 
@@ -181,10 +181,11 @@ namespace {
 
 namespace trivial::rhi::vulkan {
 
+// TODO: Adjust when async is in place, and maybe move spv into compiled binary
 VkShaderModule createShaderModule(VkDevice device, const std::string& spirvPath) noexcept {
 	TRIVIAL_ASSERT(device != VK_NULL_HANDLE);
 
-	std::ifstream file(spirvPath, std::ios::ate | std::ios::binary);
+	std::ifstream file(spirvPath, std::ios::ate | std::ios::binary); // NOLINT(bugprone-signed-bitwise)
 
 	TRIVIAL_ASSERT(file.is_open());
 
@@ -229,7 +230,7 @@ VkPipelineLayout createPipelineLayout(VkDevice device) noexcept {
 	TRIVIAL_ASSERT(device != VK_NULL_HANDLE);
 
 	constexpr VkPushConstantRange kPushConstantRange = {
-	    .stageFlags = static_cast<VkShaderStageFlags>(VK_SHADER_STAGE_VERTEX_BIT) | VK_SHADER_STAGE_FRAGMENT_BIT,
+	    .stageFlags = VkFlags{VK_SHADER_STAGE_VERTEX_BIT} | VkFlags{VK_SHADER_STAGE_FRAGMENT_BIT},
 	    .offset = 0,
 	    .size = sizeof(PushConstants),
 	};

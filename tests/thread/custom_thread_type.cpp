@@ -195,27 +195,27 @@ TEST(ThreadTest, ConcurrencyDefaultsToHardware) {
 	}
 }
 
+void destroyJoinableThreadTest() {
+	trivial::thread::Thread thread;
+	trivial::thread::ThreadConfig config;
+	config.name = "leaky";
+#if TRIVIAL_PLATFORM_POSIX
+	trivial::tests::attachStackAllocator(config);
+#endif // TRIVIAL_PLATFORM_POSIX
+
+	const trivial::thread::ThreadCreateResult kResult = thread.create(
+	    config,
+	    [](void*) noexcept {
+		    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+	    }, // NOLINT(readability-magic-numbers)
+	    nullptr);
+	(void)kResult;
+}
+
 TEST(ThreadTest, DestructorAbortsIfJoinable) {
 	GTEST_FLAG_SET(death_test_style, "threadsafe");
 
-	EXPECT_DEATH(
-	    {
-		    trivial::thread::Thread thread;
-		    trivial::thread::ThreadConfig config;
-		    config.name = "leaky";
-#if TRIVIAL_PLATFORM_POSIX
-		    trivial::tests::attachStackAllocator(config);
-#endif // TRIVIAL_PLATFORM_POSIX
-
-		    const trivial::thread::ThreadCreateResult kResult = thread.create(
-		        config,
-		        [](void*) noexcept {
-			        std::this_thread::sleep_for(std::chrono::milliseconds(200));
-		        }, // NOLINT(readability-magic-numbers)
-		        nullptr);
-		    (void)kResult;
-	    },
-	    TRIVIAL_ENABLE_LOGGING ? "destroyed while still joinable" : "");
+	EXPECT_DEATH(destroyJoinableThreadTest(), TRIVIAL_ENABLE_LOGGING ? "destroyed while still joinable" : "");
 }
 
 } // namespace

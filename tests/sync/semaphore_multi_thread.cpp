@@ -61,13 +61,18 @@ TEST(SemaphoreMultiThreadTest, AcquireUnblocksAfterRelease) {
 	SemaphoreReleaseContext context{.semaphore = &semaphore, .released = &released};
 
 	trivial::thread::Thread releaser;
-	trivial::thread::ThreadConfig config;
 #if TRIVIAL_PLATFORM_POSIX
+	trivial::thread::ThreadConfig config;
 	trivial::tests::attachStackAllocator(config);
-#endif // TRIVIAL_PLATFORM_POSIX
 
 	const trivial::thread::ThreadCreateResult kResult = releaser.create(config, &releaseWorker, &context);
 	ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
+#else
+	const trivial::thread::ThreadConfig kConfig{};
+
+	const trivial::thread::ThreadCreateResult kResult = releaser.create(kConfig, &releaseWorker, &context);
+	ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
+#endif // TRIVIAL_PLATFORM_POSIX
 
 	semaphore.acquire();
 

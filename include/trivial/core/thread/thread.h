@@ -79,6 +79,7 @@ struct ThreadConfig {
 	std::uint16_t affinityGroup = 0;
 #endif // TRIVIAL_PLATFORM_HAS_CPU_AFFINITY
 
+	// TODO: Drop this for some sort of global
 #if TRIVIAL_PLATFORM_POSIX
 	ThreadStackAllocator* stackAllocator = nullptr;
 #endif // TRIVIAL_PLATFORM_POSIX

@@ -21,6 +21,8 @@ HEADER_SUFFIXES: tuple[str, ...] = (".h", ".hpp")
 TIDY_DIAGNOSTIC = re.compile(
     r"^(?P<path>.+?):(?P<line>\d+):(?P<column>\d+): (?P<level>warning|error): .* \[(?P<check>[^\]]+)\]$"
 )
+# Anchored on line:column so Windows drive letters (C:\...) stay in the path
+FORMAT_DIAGNOSTIC = re.compile(r"^(?P<path>.+?):\d+:\d+: error: ")
 
 SANDBOX_SMOKE_SECONDS = 5.0
 
@@ -181,7 +183,9 @@ def run_format(check_only: bool) -> bool:
         capture_output=True,
         text=True,
     )
-    unformatted = sorted({line.split(":", 1)[0] for line in result.stderr.splitlines() if ": error: " in line})
+    unformatted = sorted(
+        {match["path"] for line in result.stderr.splitlines() if (match := FORMAT_DIAGNOSTIC.match(line)) is not None}
+    )
     for path in unformatted:
         print(f"    {Path(path).relative_to(ROOT_DIR)}")
     print(f"    [{'PASS' if not unformatted else 'FAIL'}] {len(unformatted)} file(s) need formatting")
@@ -252,9 +256,14 @@ def run_tidy(build_dir: Path, jobs: int, verbose: bool = True) -> bool:
     for result in results:
         for line in result.stdout.splitlines():
             match = TIDY_DIAGNOSTIC.match(line)
-            if match is None or not is_project_path(Path(match["path"]).resolve()):
+            if match is None:
                 continue
-            key = (match["path"], int(match["line"]), int(match["column"]), match["check"])
+            # Resolved so one header reached by different spellings (mixed separators
+            # on Windows) is keyed once
+            path = Path(match["path"]).resolve()
+            if not is_project_path(path):
+                continue
+            key = (str(path), int(match["line"]), int(match["column"]), match["check"])
             diagnostics[key] = line
 
     report = build_dir / "clang-tidy.txt"

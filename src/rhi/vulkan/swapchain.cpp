@@ -244,8 +244,6 @@ SwapchainState createSwapchain(const SwapchainCreateParams& params) noexcept {
 	}
 
 	return state;
-
-	return state;
 }
 
 void destroySwapchain(VkDevice device, SwapchainState& state) noexcept {

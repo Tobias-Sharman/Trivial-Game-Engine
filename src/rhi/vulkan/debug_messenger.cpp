@@ -79,12 +79,11 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBits
 	    .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
 	    .pNext = nullptr,
 	    .flags = 0,
-	    .messageSeverity
-	    = static_cast<VkDebugUtilsMessageSeverityFlagsEXT>(VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-	      | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
-	    .messageType = static_cast<VkDebugUtilsMessageTypeFlagsEXT>(VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT)
-	                   | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
-	                   | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+	    .messageSeverity = VkFlags{VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT}
+	                       | VkFlags{VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT},
+	    .messageType = VkFlags{VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT}
+	                   | VkFlags{VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT}
+	                   | VkFlags{VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT},
 	    .pfnUserCallback = debugCallback,
 	    .pUserData = nullptr,
 	};
@@ -99,7 +98,7 @@ namespace trivial::rhi::vulkan {
 VkDebugUtilsMessengerEXT createDebugMessenger(VkInstance instance) noexcept {
 	TRIVIAL_ASSERT(instance != VK_NULL_HANDLE);
 
-	const PFN_vkCreateDebugUtilsMessengerEXT kCreateDebugUtilsMessenger
+	const PFN_vkCreateDebugUtilsMessengerEXT kCreateDebugUtilsMessenger // NOLINT(misc-misplaced-const)
 	    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
 	    = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
 	        vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"));
@@ -130,7 +129,7 @@ void destroyDebugMessenger(VkInstance instance, VkDebugUtilsMessengerEXT debugMe
 		return;
 	}
 
-	const PFN_vkDestroyDebugUtilsMessengerEXT kDestroyDebugUtilsMessenger
+	const PFN_vkDestroyDebugUtilsMessengerEXT kDestroyDebugUtilsMessenger // NOLINT(misc-misplaced-const)
 	    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
 	    = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
 	        vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));

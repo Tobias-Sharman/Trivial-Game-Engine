@@ -29,14 +29,15 @@ MeshData createMeshData(VmaAllocator allocator,
 	    .pNext = nullptr,
 	    .flags = 0,
 	    .size = kTotalBytes,
-	    .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+	    .usage = VkFlags{VK_BUFFER_USAGE_VERTEX_BUFFER_BIT} | VkFlags{VK_BUFFER_USAGE_INDEX_BUFFER_BIT},
 	    .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
 	    .queueFamilyIndexCount = 0,
 	    .pQueueFamilyIndices = nullptr,
 	};
 
 	constexpr VmaAllocationCreateInfo kAllocationCreateInfo = {
-	    .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT,
+	    .flags
+	    = VkFlags{VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT} | VkFlags{VMA_ALLOCATION_CREATE_MAPPED_BIT},
 	    .usage = VMA_MEMORY_USAGE_AUTO,
 	    .requiredFlags = 0,
 	    .preferredFlags = 0,

@@ -1,7 +1,6 @@
 #include "rhi/vulkan/backend.h"
 
 #include <cstdint>
-#include <cstring>
 #include <span>
 #include <string>
 #include <vector>
@@ -348,7 +347,7 @@ void Backend::drawMesh(MeshHandle handle, const math::Affine2f& transform, const
 	const PushConstants kPushConstants = {.tint = tint, .transform = transform};
 	vkCmdPushConstants(commandBuffer,
 	                   m_pipelineLayout,
-	                   VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+	                   VkFlags{VK_SHADER_STAGE_VERTEX_BIT} | VkFlags{VK_SHADER_STAGE_FRAGMENT_BIT},
 	                   0,
 	                   sizeof(PushConstants),
 	                   &kPushConstants);
