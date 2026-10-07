@@ -6,6 +6,8 @@ Diagnostics:
   Includes:
     IgnoreHeader:
       - '[/\]trivial_user_config\.h'
+      - /_time\.h
+      - /mach/(arm|i386)/kern_return\.h
       - /sys/_pthread/.*
       - /sys/_types/.*
       - /bits/.*

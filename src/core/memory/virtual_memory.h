@@ -2,12 +2,15 @@
 #define TRIVIAL_SRC_CORE_MEMORY_VIRTUAL_MEMORY_H
 
 #include <cstddef>
-#include <cstdint>
 
 #include <trivial/core/assert.h>
 #include <trivial/core/log.h>
 #include <trivial/core/memory/memory_config.h>
 #include <trivial/core/platform.h>
+
+#if TRIVIAL_ENABLE_ASSERTS || TRIVIAL_PLATFORM_POSIX
+#include <cstdint>
+#endif // TRIVIAL_ENABLE_ASSERTS || TRIVIAL_PLATFORM_POSIX
 
 #if TRIVIAL_ENABLE_ASSERTS
 #include "core/memory/memory_capabilities.h"
@@ -16,10 +19,11 @@
 #if TRIVIAL_PLATFORM_WINDOWS
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
-#endif
+#endif // WIN32_LEAN_AND_MEAN
 #ifndef NOMINMAX
 #define NOMINMAX
-#endif
+#endif // NOMINMAX
+
 #include <windows.h> // IWYU pragma: keep
 
 #elif TRIVIAL_PLATFORM_POSIX
@@ -41,29 +45,6 @@ struct SystemInfo {
 	std::size_t largePageSize = 0;
 #endif // TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
 };
-
-#if TRIVIAL_PLATFORM_WINDOWS
-using VirtualAlloc2Fn = PVOID(WINAPI*)(HANDLE, PVOID, SIZE_T, ULONG, ULONG, MEM_EXTENDED_PARAMETER*, ULONG);
-
-inline VirtualAlloc2Fn resolveVirtualAlloc2() noexcept {
-#if TRIVIAL_PLATFORM_SDK_HAS_VIRTUAL_ALLOC2
-	HMODULE module = GetModuleHandleW(L"kernelbase.dll");
-	if (module == nullptr) {
-		return nullptr;
-	}
-
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-	return reinterpret_cast<VirtualAlloc2Fn>(GetProcAddress(module, "VirtualAlloc2"));
-#else
-	return nullptr;
-#endif // TRIVIAL_PLATFORM_SDK_HAS_VIRTUAL_ALLOC2
-}
-
-inline VirtualAlloc2Fn virtualAlloc2() noexcept {
-	static VirtualAlloc2Fn s_function = resolveVirtualAlloc2();
-	return s_function;
-}
-#endif // TRIVIAL_PLATFORM_WINDOWS
 
 #if TRIVIAL_MEMORY_ENABLE_LARGE_PAGES && TRIVIAL_PLATFORM_WINDOWS
 inline bool adjustLockMemoryPrivilege(bool enable) noexcept {
@@ -137,6 +118,7 @@ inline bool probeMadvFree(std::size_t pageSize) noexcept {
 }
 #endif // TRIVIAL_PLATFORM_LINUX
 
+#if TRIVIAL_PLATFORM_POSIX
 [[nodiscard]] inline std::size_t alignmentOffset(const void* base, std::size_t alignment) noexcept {
 	TRIVIAL_ASSERT(alignment > 0);
 	TRIVIAL_ASSERT((alignment & (alignment - 1)) == 0);
@@ -145,56 +127,8 @@ inline bool probeMadvFree(std::size_t pageSize) noexcept {
 	std::uintptr_t misalignment = reinterpret_cast<std::uintptr_t>(base) & (alignment - 1);
 	return misalignment == 0 ? 0 : alignment - static_cast<std::size_t>(misalignment);
 }
+#endif // TRIVIAL_PLATFORM_POSIX
 
-#if TRIVIAL_PLATFORM_WINDOWS
-inline void* reserveAligned(std::size_t bytes,
-                            std::size_t alignment,
-                            void*& outRawBase,
-                            std::size_t& outRawBytes,
-                            int& outOsErrorCode) noexcept {
-	TRIVIAL_ASSERT(alignment > 0);
-	TRIVIAL_ASSERT((alignment & (alignment - 1)) == 0);
-	TRIVIAL_ASSERT(alignment % pageSize() == 0);
-	TRIVIAL_ASSERT(alignment % allocationGranularity() == 0);
-	TRIVIAL_ASSERT(bytes % alignment == 0);
-
-	if (bytes == 0 || bytes > SIZE_MAX - alignment) {
-		outOsErrorCode = 0;
-		return nullptr;
-	}
-
-	VirtualAlloc2Fn alloc2 = virtualAlloc2();
-
-	if (alloc2 != nullptr) {
-		MEM_ADDRESS_REQUIREMENTS requirements{.Alignment = alignment};
-
-		MEM_EXTENDED_PARAMETER parameter{.Type = MemExtendedParameterAddressRequirements, .Pointer = &requirements};
-
-		void* result = alloc2(GetCurrentProcess(), nullptr, bytes, MEM_RESERVE, PAGE_NOACCESS, &parameter, 1);
-
-		if (result != nullptr) {
-			outRawBase = result;
-			outRawBytes = bytes;
-			return result;
-		}
-	}
-
-	std::size_t rawBytes = bytes + alignment;
-	void* raw = VirtualAlloc(nullptr, rawBytes, MEM_RESERVE, PAGE_NOACCESS);
-
-	if (raw == nullptr) {
-		outOsErrorCode = static_cast<int>(GetLastError());
-		return nullptr;
-	}
-
-	outRawBase = raw;
-	outRawBytes = rawBytes;
-
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-	return static_cast<char*>(raw) + alignmentOffset(raw, alignment);
-}
-
-#elif TRIVIAL_PLATFORM_POSIX
 [[nodiscard]] inline void* reserveAligned(std::size_t bytes, std::size_t alignment, int& outOsErrorCode) noexcept {
 	TRIVIAL_ASSERT(alignment > 0);
 	TRIVIAL_ASSERT((alignment & (alignment - 1)) == 0);
@@ -202,6 +136,25 @@ inline void* reserveAligned(std::size_t bytes,
 	TRIVIAL_ASSERT(alignment % allocationGranularity() == 0);
 	TRIVIAL_ASSERT(bytes % alignment == 0);
 
+#if TRIVIAL_PLATFORM_WINDOWS
+	if (bytes == 0) {
+		outOsErrorCode = 0;
+		return nullptr;
+	}
+
+	MEM_ADDRESS_REQUIREMENTS requirements{.Alignment = alignment};
+
+	MEM_EXTENDED_PARAMETER parameter{.Type = MemExtendedParameterAddressRequirements, .Pointer = &requirements};
+
+	void* result = VirtualAlloc2(GetCurrentProcess(), nullptr, bytes, MEM_RESERVE, PAGE_NOACCESS, &parameter, 1);
+
+	if (result == nullptr) {
+		outOsErrorCode = static_cast<int>(GetLastError());
+	}
+
+	return result;
+
+#elif TRIVIAL_PLATFORM_POSIX
 	if (bytes == 0 || bytes > SIZE_MAX - alignment) {
 		outOsErrorCode = 0;
 		return nullptr;
@@ -230,8 +183,9 @@ inline void* reserveAligned(std::size_t bytes,
 	}
 
 	return aligned;
-}
+
 #endif // Platform check
+}
 
 inline void releaseReservation(void* base, std::size_t bytes) noexcept {
 #if TRIVIAL_PLATFORM_WINDOWS

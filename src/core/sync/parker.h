@@ -1,36 +1,16 @@
 #ifndef TRIVIAL_SRC_CORE_SYNC_PARKER_H
 #define TRIVIAL_SRC_CORE_SYNC_PARKER_H
 
-#include <chrono>
-
-#include <trivial/core/platform.h>
-
-#if TRIVIAL_PLATFORM_WINDOWS || TRIVIAL_PLATFORM_LINUX
 #include <atomic>
 #include <cstdint>
 
-#elif TRIVIAL_PLATFORM_MACOS
-#include <pthread.h> // IWYU pragma: keep
-
-#endif // Platform-specific headers
+#include <trivial/core/time/duration.h>
 
 namespace trivial::sync {
-
-#if TRIVIAL_PLATFORM_WINDOWS || TRIVIAL_PLATFORM_LINUX
 
 struct ParkState {
 	std::atomic<std::uint32_t> state{0};
 };
-
-#elif TRIVIAL_PLATFORM_MACOS
-
-struct ParkState {
-	pthread_mutex_t mutex{};
-	pthread_cond_t condvar{};
-	bool notified = false;
-};
-
-#endif // Platform-specific ParkState
 
 class UnparkHandle {
 public:
@@ -45,17 +25,9 @@ private:
 
 class Parker {
 public:
-#if TRIVIAL_PLATFORM_WINDOWS || TRIVIAL_PLATFORM_LINUX
 	Parker() noexcept = default;
 
 	~Parker() noexcept = default;
-
-#elif TRIVIAL_PLATFORM_MACOS
-	Parker() noexcept;
-
-	~Parker() noexcept;
-
-#endif // Platform-specific construction
 
 	Parker(const Parker&) = delete;
 	Parker& operator=(const Parker&) = delete;
@@ -67,7 +39,7 @@ public:
 
 	void park() noexcept;
 
-	[[nodiscard]] bool parkFor(std::chrono::nanoseconds lifetime) noexcept;
+	[[nodiscard]] bool parkFor(time::Duration timeout) noexcept;
 
 	[[nodiscard]] UnparkHandle beginUnpark() noexcept;
 

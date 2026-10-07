@@ -2,11 +2,9 @@
 
 #include <array>
 #include <atomic>
-#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <span>
-#include <thread>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -17,6 +15,8 @@
 #include <trivial/core/sync/lock_guard.h>
 #include <trivial/core/sync/mutex.h>
 #include <trivial/core/thread/thread.h>
+#include <trivial/core/time/duration.h>
+#include <trivial/core/time/time.h>
 #include <trivial/task/task.h>
 #include <trivial/task/task_graph.h>
 #include <trivial/task/task_handle.h>
@@ -456,11 +456,11 @@ TEST(TaskSystemMultiThreadTest, TasksDistributeAcrossWorkers) {
 				allStarted.trigger();
 			}
 
-			(void)allStarted.waitFor(std::chrono::seconds(5));
+			(void)allStarted.waitFor(time::seconds(5));
 		}});
 	}
 
-	EXPECT_TRUE(allStarted.waitFor(std::chrono::seconds(5)));
+	EXPECT_TRUE(allStarted.waitFor(time::seconds(5)));
 
 	wait(std::span<const TaskHandle>{handles});
 
@@ -636,7 +636,7 @@ TEST(TaskSystemMultiThreadTest, DestructorWaitsForSlowTask) {
 	const TaskSystemConfig kConfig = makeResolvedTestConfig();
 	const trivial::tests::ScopedParkingLot kParkingLotScope(kConfig.workers.count + kConfig.workers.maxStandbyWorkers);
 
-	constexpr std::chrono::milliseconds kTaskDuration = std::chrono::milliseconds{100};
+	constexpr time::Duration kTaskDuration = time::milliseconds(100);
 
 	std::atomic<bool> taskCompleted{false};
 
@@ -644,7 +644,7 @@ TEST(TaskSystemMultiThreadTest, DestructorWaitsForSlowTask) {
 		TaskSystem localSystem{kConfig};
 
 		const TaskHandle kTask = localSystem.launch(TaskPayload{[&taskCompleted, kTaskDuration]() noexcept {
-			std::this_thread::sleep_for(kTaskDuration);
+			time::sleepFor(kTaskDuration);
 			taskCompleted.store(true, std::memory_order_release);
 		}});
 

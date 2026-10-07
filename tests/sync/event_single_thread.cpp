@@ -1,9 +1,11 @@
-#include <chrono>
+#include <cstdint>
+#include <limits>
 
 #include <gtest/gtest.h>
 
 #include <trivial/core/sync/event.h>
 #include <trivial/core/thread/thread.h>
+#include <trivial/core/time/duration.h>
 
 #include "support/helpers.h"
 
@@ -20,6 +22,15 @@ TEST(EventSingleThreadTest, ResetIsSafeWhenNotTriggered) {
 	EXPECT_FALSE(event.isTriggered());
 }
 
+TEST(EventSingleThreadTest, WaitForMaximumTimeoutReturnsWhenTriggered) {
+	const trivial::tests::ScopedParkingLot kParkingLotScope(0);
+
+	trivial::sync::Event event;
+	event.trigger();
+
+	EXPECT_TRUE(event.waitFor(trivial::time::nanoseconds(std::numeric_limits<std::int64_t>::max())));
+}
+
 TEST(EventSingleThreadTest, WaitForTimesOutThenSucceedsAfterTrigger) {
 	const trivial::tests::ScopedParkingLot kParkingLotScope(0);
 
@@ -28,7 +39,7 @@ TEST(EventSingleThreadTest, WaitForTimesOutThenSucceedsAfterTrigger) {
 
 	trivial::sync::Event event;
 
-	const bool kTriggeredBeforeTimeout = event.waitFor(std::chrono::milliseconds(20));
+	const bool kTriggeredBeforeTimeout = event.waitFor(trivial::time::milliseconds(20));
 
 	EXPECT_FALSE(kTriggeredBeforeTimeout);
 	EXPECT_FALSE(event.isTriggered());
@@ -36,7 +47,7 @@ TEST(EventSingleThreadTest, WaitForTimesOutThenSucceedsAfterTrigger) {
 	event.trigger();
 
 	EXPECT_TRUE(event.isTriggered());
-	EXPECT_TRUE(event.waitFor(std::chrono::milliseconds(20)));
+	EXPECT_TRUE(event.waitFor(trivial::time::milliseconds(20)));
 }
 
 } // namespace

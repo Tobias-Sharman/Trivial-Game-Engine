@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.30)
 
+set(CMAKE_OSX_DEPLOYMENT_TARGET 14.4)
+# Linux minimum not set here, based around buld environment
+# Windows minimum stuff can be seen in the platform definitions of this file
+
 project(
 	Trivial
 	VERSION 0.1.0
@@ -51,6 +55,8 @@ set(TRIVIAL_PRIVATE_SOURCES
 	src/core/sync/semaphore.cpp
 	src/core/thread/thread.cpp
 	src/core/thread/thread_stack_allocator.cpp
+	src/core/time/time.cpp
+	src/core/time/time_capabilities.cpp
 	src/gpu/context.cpp
 	src/platform/window.cpp
 	src/platform/glfw/window.cpp
@@ -122,9 +128,9 @@ target_compile_definitions(trivial
 # -----------------------------------------------------------------------------
 
 if(WIN32)
-	target_compile_definitions(trivial PUBLIC _WIN32_WINNT=0x0A00)
+	target_compile_definitions(trivial PUBLIC _WIN32_WINNT=0x0A00 NTDDI_VERSION=0x0A000005)
 
-	target_link_libraries(trivial PRIVATE Synchronization)
+	target_link_libraries(trivial PRIVATE Synchronization onecore)
 endif()
 
 # -----------------------------------------------------------------------------
@@ -293,6 +299,7 @@ else()
 		-Wextra
 		-Wpedantic
 		-Wshadow
+		$<$<CXX_COMPILER_ID:Clang,AppleClang>:-Wshadow-all>
 		-Werror=undef
 		$<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
 	)

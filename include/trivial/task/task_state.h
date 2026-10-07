@@ -31,8 +31,8 @@ namespace trivial::task {
 //       semantic sense (decent for cache not optimised for size which is
 //       significant here)
 struct TaskState {
-	TaskState(TaskPayload payload, const TaskLaunchOptions& options) noexcept
-	    : payload(std::move(payload))
+	TaskState(TaskPayload initialPayload, const TaskLaunchOptions& options) noexcept
+	    : payload(std::move(initialPayload))
 	    , m_packed(pack(TaskStatus::Created, options.priority, options.affinity, options.lifetime)) {}
 
 	~TaskState() = default;

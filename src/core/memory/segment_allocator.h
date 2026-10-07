@@ -7,7 +7,6 @@
 #include <trivial/core/compiler.h>
 #include <trivial/core/memory/memory_config.h>
 #include <trivial/core/memory/oom_handler.h>
-#include <trivial/core/platform.h>
 #include <trivial/core/sync/mutex.h>
 
 #if TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
@@ -192,15 +191,6 @@ private:
 
 	mutable sync::Mutex m_stateMutex;
 	mutable sync::Mutex m_oomMutex;
-
-#if TRIVIAL_PLATFORM_WINDOWS
-	// For when windows does not allow for getting the base aligned, since it
-	// may not be able to trim (not relevant to any real likely consumer, but
-	// the cost is negligable makes the rare case of very old windows fail
-	// gracefully)
-	void* m_reservation = nullptr;
-	std::size_t m_reservationBytes = 0;
-#endif // TRIVIAL_PLATFORM_WINDOWS
 
 	void* m_base = nullptr;
 	std::size_t m_segmentCapacity = 0;

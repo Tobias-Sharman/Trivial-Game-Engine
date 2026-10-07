@@ -85,7 +85,7 @@ CheckOptions:
   - {key: readability-identifier-naming.StaticConstexprVariablePrefix, value: s_k}
   # Misc behaviour options
   - {key: bugprone-invalid-enum-default-initialization.IgnoredEnums, value: '::Vk.*FlagBits.*'}
-  - {key: misc-include-cleaner.IgnoreHeaders, value: '[/\]trivial_user_config\.h;/sys/_pthread/.*;/sys/_types/.*;/bits/.*;[/\]um[/\](synch|memory|processthreads|processtopology|errhandling|handle|sysinfo|libloader|securitybase)api\.h;[/\]um[/\](winnt|WinBase|minwinbase)\.h;[/\]shared[/\](minwindef|windef|winerror|basetsd)\.h'}
+  - {key: misc-include-cleaner.IgnoreHeaders, value: '[/\]trivial_user_config\.h;/_time\.h;/mach/(arm|i386)/kern_return\.h;/sys/_pthread/.*;/sys/_types/.*;/bits/.*;[/\]um[/\](synch|memory|processthreads|processtopology|errhandling|handle|sysinfo|libloader|securitybase|profile)api\.h;[/\]um[/\](winnt|WinBase|minwinbase)\.h;[/\]shared[/\](minwindef|windef|winerror|basetsd)\.h'}
   - {key: misc-use-internal-linkage.FixMode, value: None}
   - {key: readability-function-cognitive-complexity.IgnoreMacros, value: true}
   - {key: readability-operators-representation.BinaryOperators, value: '&&;&=;&;|;~;!;!=;||;|=;^;^='}

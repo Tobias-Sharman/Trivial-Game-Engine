@@ -24,10 +24,11 @@
 #if TRIVIAL_PLATFORM_WINDOWS
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
-#endif
+#endif // WIN32_LEAN_AND_MEAN
 #ifndef NOMINMAX
 #define NOMINMAX
-#endif
+#endif // NOMINMAX
+
 #include <windows.h> // IWYU pragma: keep
 
 #elif TRIVIAL_PLATFORM_POSIX
@@ -239,13 +240,7 @@ namespace trivial::memory {
 
 		const std::size_t kTotalBytes = (reserveBytes + TRIVIAL_MEMORY_SEGMENT_MASK) & ~TRIVIAL_MEMORY_SEGMENT_MASK;
 
-#if TRIVIAL_PLATFORM_WINDOWS
-		void* rawBase = nullptr;
-		std::size_t rawBytes = 0;
-		void* const kBase = reserveAligned(kTotalBytes, TRIVIAL_MEMORY_SEGMENT_SIZE, rawBase, rawBytes, oomErrorCode);
-#else
 		void* const kBase = reserveAligned(kTotalBytes, TRIVIAL_MEMORY_SEGMENT_SIZE, oomErrorCode);
-#endif // TRIVIAL_PLATFORM_WINDOWS
 
 		if (kBase == nullptr) {
 			needsOomReport = true;
@@ -254,11 +249,6 @@ namespace trivial::memory {
 		} else {
 			m_base = kBase;
 			m_segmentCapacity = kTotalBytes >> TRIVIAL_MEMORY_SEGMENT_SHIFT;
-
-#if TRIVIAL_PLATFORM_WINDOWS
-			m_reservation = rawBase;
-			m_reservationBytes = rawBytes;
-#endif // TRIVIAL_PLATFORM_WINDOWS
 
 			const std::size_t kBitmapWords = (m_segmentCapacity + TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BITS_PER_WORD - 1)
 			                                 >> TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_WORD_SHIFT;
@@ -272,14 +262,7 @@ namespace trivial::memory {
 			void* const kMetadata = mapMetadata(kMetadataBytes, kPageSize, m_metadataMappingBytes, metadataError);
 
 			if (kMetadata == nullptr) {
-#if TRIVIAL_PLATFORM_WINDOWS
-				releaseReservation(rawBase, rawBytes);
-
-				m_reservation = nullptr;
-				m_reservationBytes = 0;
-#else
 				releaseReservation(m_base, kTotalBytes);
-#endif // TRIVIAL_PLATFORM_WINDOWS
 
 				m_base = nullptr;
 				m_segmentCapacity = 0;
@@ -332,14 +315,7 @@ void SegmentAllocator::shutdown() noexcept {
 		return;
 	}
 
-#if TRIVIAL_PLATFORM_WINDOWS
-	releaseReservation(m_reservation, m_reservationBytes);
-
-	m_reservation = nullptr;
-	m_reservationBytes = 0;
-#else
 	releaseReservation(m_base, m_segmentCapacity << TRIVIAL_MEMORY_SEGMENT_SHIFT);
-#endif // TRIVIAL_PLATFORM_WINDOWS
 
 	unmapMetadata(m_metadata, m_metadataMappingBytes, pageSize());
 

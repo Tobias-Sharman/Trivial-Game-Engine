@@ -20,9 +20,6 @@
 
 namespace trivial::memory {
 
-// TODO: Add VirtualAlloc2 to the detected capabilities when doing simd runtime
-//       dispatch
-
 struct DetectedCapabilities {
 #if !TRIVIAL_PLATFORM_PAGE_SIZE_KNOWN
 	std::size_t pageSize = 0;

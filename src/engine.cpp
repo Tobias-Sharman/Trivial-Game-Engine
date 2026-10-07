@@ -17,6 +17,7 @@
 
 #include "core/memory/memory_capabilities.h"
 #include "core/sync/parking_lot.h"
+#include "core/time/time_capabilities.h"
 
 namespace trivial {
 
@@ -26,6 +27,7 @@ Engine::Engine(const EngineConfig& config) noexcept
     , m_gpu(config.graphicsApi, config.applicationInfo, m_window)
     , m_renderer(&m_gpu) {
 	memory::initCapabilities();
+	time::initCapabilities();
 
 	thread::Thread* mainThread = new (std::nothrow) thread::Thread(); // TODO: Custom allocator
 	if (mainThread == nullptr) {
@@ -66,8 +68,8 @@ Engine::~Engine() {
 
 void Engine::tick(Application& application) noexcept {
 	TRIVIAL_PROFILE_FRAME("Frame");
-	m_time.tick();
-	const FrameContext kFrameContext = {.deltaTime = m_time.deltaSeconds(), .frameIndex = m_frameIndex};
+	m_frameTimer.tick();
+	const FrameContext kFrameContext = {.deltaTime = m_frameTimer.deltaSeconds(), .frameIndex = m_frameIndex};
 
 	platform::Window::pollEvents(); // TODO: Ought to change the form of this
 
@@ -99,7 +101,7 @@ void Engine::tick(Application& application) noexcept {
 void Engine::run(Application& application) noexcept {
 	TRIVIAL_PROFILE_THREAD(thread::Thread::current()->name());
 
-	m_time.reset();
+	m_frameTimer.reset();
 
 	{
 		TRIVIAL_PROFILE_SCOPE("Application Start");

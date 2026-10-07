@@ -39,6 +39,7 @@ ISOLATED_TESTS: tuple[str, ...] = (
     "ConditionVariableSingleThreadTest.NotifyWithNoWaitersIsSafe",
     "ConditionVariableMultiThreadTest.WaitUnblocksOnNotifyOne",
     "ConditionVariableMultiThreadTest.NotifyAllWakesEveryWaiter",
+    "EventSingleThreadTest.WaitForMaximumTimeoutReturnsWhenTriggered",
     "EventSingleThreadTest.WaitForTimesOutThenSucceedsAfterTrigger",
     "EventMultiThreadTest.TriggerUnblocksWaiter",
     "EventMultiThreadTest.TriggerUnblocksAllWaiters",
@@ -78,7 +79,7 @@ ISOLATED_TESTS: tuple[str, ...] = (
 
 # Deliberately slow (wall-clock waits, not just heavier work) - skipped by
 # default. NOT FOR STRESS TESTS THEY SHOULD NOT BE SKIPPED
-LONG_TESTS: tuple[str, ...] = ()
+LONG_TESTS: tuple[str, ...] = ("TimeTest.MatchesSteadyClockOverLongInterval",)
 
 
 def default_jobs() -> int:
@@ -95,7 +96,10 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("-t", "--test", action="store_true", help="Run the test suite after building")
     parser.add_argument(
-        "-l", "--long-tests", action="store_true", help="Also run long-running tests (skipped by default)"
+        "-l",
+        "--long-tests",
+        action="store_true",
+        help="Also run long-running tests (skipped by default, always run by --all)",
     )
     parser.add_argument("-r", "--run-sandbox", action="store_true", help="Run the sandbox after building")
     parser.add_argument(
@@ -406,7 +410,7 @@ def run_sandbox_smoke(build_dir: Path, log: Path) -> bool:
     return code == 0
 
 
-def run_all(jobs: int, include_long: bool) -> bool:
+def run_all(jobs: int) -> bool:
     started = time.monotonic()
     log_dir = ROOT_DIR / "build" / "all-presets"
     shutil.rmtree(log_dir, ignore_errors=True)
@@ -432,7 +436,7 @@ def run_all(jobs: int, include_long: bool) -> bool:
             print(f"    [FAIL] build, see {log.relative_to(ROOT_DIR)}")
             continue
 
-        row["tests"] = "PASS" if run_tests(build_dir, include_long, indent="    ") else "FAIL"
+        row["tests"] = "PASS" if run_tests(build_dir, include_long=True, indent="    ") else "FAIL"
 
         print(f"    ==> Running sandbox for {SANDBOX_SMOKE_SECONDS:g}s", flush=True)
         sandbox_passed = run_sandbox_smoke(build_dir, log)
@@ -462,7 +466,7 @@ def main() -> None:
     checks_failed = False
 
     if args.all:
-        sys.exit(0 if run_all(args.jobs, args.long_tests) else 1)
+        sys.exit(0 if run_all(args.jobs) else 1)
 
     if (args.format or args.format_check) and not run_format(check_only=not args.format):
         checks_failed = True

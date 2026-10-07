@@ -4,9 +4,12 @@
 #include <trivial/core/config.h>
 
 #if TRIVIAL_MEMORY_HAS_DETECTED_CAPABILITIES || TRIVIAL_ENABLE_ASSERTS
-#include <trivial/core/assert.h>
 #include <trivial/core/memory/memory_config.h>
 #include <trivial/core/platform.h>
+
+#if TRIVIAL_PLATFORM_PAGE_SIZE_KNOWN || (TRIVIAL_MEMORY_LAZY_DECOMMIT && TRIVIAL_PLATFORM_LINUX)
+#include <trivial/core/assert.h>
+#endif // TRIVIAL_PLATFORM_PAGE_SIZE_KNOWN || (TRIVIAL_MEMORY_LAZY_DECOMMIT && TRIVIAL_PLATFORM_LINUX)
 
 #include "core/memory/virtual_memory.h"
 #endif // TRIVIAL_MEMORY_HAS_DETECTED_CAPABILITIES || TRIVIAL_ENABLE_ASSERTS

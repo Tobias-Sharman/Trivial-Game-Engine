@@ -6,24 +6,40 @@
 #define TRIVIAL_PLATFORM_LINUX 0
 #define TRIVIAL_PLATFORM_MACOS 0
 
-#define TRIVIAL_PLATFORM_WINDOWS_MIN_VERSION 0x0A00 // Windows 10
+#define TRIVIAL_PLATFORM_WINDOWS_MIN_VERSION 0x0A00           // Windows 10
+#define TRIVIAL_PLATFORM_WINDOWS_MIN_NTDDI_VERSION 0x0A000005 // Windows 10 1803
 
 #if !defined(_WIN32_WINNT) || _WIN32_WINNT < TRIVIAL_PLATFORM_WINDOWS_MIN_VERSION
 #error "Target Windows SDK version is below TRIVIAL_PLATFORM_WINDOWS_MIN_VERSION"
 #endif
 
-// Record of all minimums for reference for future changes:
-//     VirtualAlloc2 - 0x0A00 (Windows 10, 1803+)
-//     WaitOnAddress - 0x0602 (Windows 8)
-//     SetThreadDescription - 0x0A00 (Windows 10, 1607+)
+#if !defined(NTDDI_VERSION) || NTDDI_VERSION < TRIVIAL_PLATFORM_WINDOWS_MIN_NTDDI_VERSION
+#error "Target Windows SDK version is below TRIVIAL_PLATFORM_WINDOWS_MIN_NTDDI_VERSION"
+#endif
+
+// Record of all minimums (NTDDI_VERSION) for reference for future changes:
+//     VirtualAlloc2 - 0x0A000005 (Windows 10, 1803+)
+//     CREATE_WAITABLE_TIMER_HIGH_RESOLUTION - 0x0A000005 (Windows 10, 1803+)
+//     SetThreadDescription - 0x0A000002 (Windows 10, 1607+)
+//     WaitOnAddress - 0x06020000 (Windows 8)
 
 #elifdef __APPLE__
+#include <Availability.h>       // IWYU pragma: keep
 #include <TargetConditionals.h> // IWYU pragma: keep
 
 #if TARGET_OS_OSX
 #define TRIVIAL_PLATFORM_WINDOWS 0
 #define TRIVIAL_PLATFORM_LINUX 0
 #define TRIVIAL_PLATFORM_MACOS 1
+
+#define TRIVIAL_PLATFORM_MACOS_MIN_VERSION 140400 // macOS 14.4
+
+#if !defined(__MAC_OS_X_VERSION_MIN_REQUIRED) || __MAC_OS_X_VERSION_MIN_REQUIRED < TRIVIAL_PLATFORM_MACOS_MIN_VERSION
+#error "Target macOS deployment version is below TRIVIAL_PLATFORM_MACOS_MIN_VERSION"
+#endif
+
+// Record of all minimums for reference for future changes:
+//     os_sync_wait_on_address - 140400 (macOS 14.4)
 
 #else
 #error "Unsupported Apple platform"
@@ -97,14 +113,6 @@
 #endif // Cache line size
 
 #define TRIVIAL_PLATFORM_FALSE_SHARING_ALIGNMENT 128U
-
-#if TRIVIAL_PLATFORM_WINDOWS && (TRIVIAL_PLATFORM_WINDOWS_MIN_VERSION >= 0x0A00)
-#define TRIVIAL_PLATFORM_SDK_HAS_VIRTUAL_ALLOC2 1
-
-#else
-#define TRIVIAL_PLATFORM_SDK_HAS_VIRTUAL_ALLOC2 0
-
-#endif // TRIVIAL_PLATFORM_SDK_HAS_VIRTUAL_ALLOC2
 
 #if TRIVIAL_PLATFORM_LINUX || TRIVIAL_PLATFORM_MACOS
 #define TRIVIAL_PLATFORM_SDK_HAS_MADV_FREE 1

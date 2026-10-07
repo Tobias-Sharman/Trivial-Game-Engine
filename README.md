@@ -30,7 +30,19 @@ neglected prior to a proper version 1.0.0.
 
 ## Current plan of action
 
-- Custom Chrono with suitable types
+- Ensure struct class usage is properly held
+- Detail namespace usage
+- `TRIVIAL_ASSUME` a non-zero divisor in `Vec2`/`Vec3`/`Vec4` division (`/`
+and `/=`, scalar and component-wise) for integral element types only, as float
+division by zero is relied on (e.g. ray-box slab tests)
+- Rename `Angle`'s `other` parameters to `rhs` to match the other maths types,
+and make it a `struct` as it is a data type
+- Move type property `static_assert`s (layout and construction/conversion
+rules) from `tests/math` into the headers, leaving tests to only exercise the
+API: add `Vec3`, `Transform2` and `Angle` layout checks, `Angle` not
+convertible from its scalar and `Mat4` being an aggregate, then remove the
+duplicated `Vec2`, `Vec4`, `Mat4` and `Affine2` checks from the tests
+- Build script update for a pre push to main run
 - Documentation update and create new documentation
 - Allocator
   - Arenas allocator
@@ -44,6 +56,14 @@ neglected prior to a proper version 1.0.0.
   - Full testing of allocator (segment allocator is briefly yet importantly not
   fully tested)
 - Basic physics system to test and profile the task system
+  - Fixed timestep simulation with an integer nanosecond accumulator and the
+  layer phase hooks (fixed pre/post physics, frame, present with interpolation
+  alpha), with input buffering once an input system exists
+  - Precise sleep for frame pacing: sleep until a per-platform margin before the
+  deadline then spin with the CPU pause hint, fixed margins first and adaptive
+  from measured overshoot only if needed
+  - Optional system sleep detection to flag time jumps rather than relying on
+  the max delta clamp
 - First party parallel running tasks
 - Proper automatic handle release, mark a flag on destruction (i.e. not some
 reference counted form)
@@ -77,8 +97,26 @@ current placeholder mockup
   set with "archtypes" as the set types and well handle when different archtypes
   would want the same attribute with good cache locality for all the systems
   that benefit from it
+- Extend maths to give support for custom basic algorithms like min, max, clamp
+- Add some sorting functions, along with a general one (SIMD where appropriate)
 - More fleshed out physics system with parallel operation and SIMD backing
+- Custom versions of stl vector, string, maps, stack, queue, set, list, and
+other data structures like heaps, trees, graphs, and any others deemed relevant
+- Wall clock (`GetSystemTimePreciseAsFileTime`/`CLOCK_REALTIME`) for log
+timestamps and save dates, as its own `SystemTime` type that never mixes with
+`Instant`
+  - Store as `timespec`-style `int64` seconds plus nanoseconds so every time an
+  OS can be set to is representable (Windows allows 1601 to 30827), rather than
+  `int64` nanoseconds clamped to 1677 to 2262
+  - UTC calendar conversion with Joffe's fast 64-bit date algorithm
+  (benjoffe.com/fast-date-64, BSL-1.0 so keep its notice if code is taken),
+  which needs the high half of a 64x64 multiply (`__umulh` on MSVC is not
+  `constexpr`, so needs a constant evaluation path)
 - Extend graphics support
+  - Load Vulkan at runtime (volk or `vkGetInstanceProcAddr`) instead of linking
+  the loader, so a missing loader can fall back to another backend (e.g. Metal
+  under `GraphicsApi::Auto`) rather than failing to launch, and a bundled
+  loader/MoltenVK built for the macOS floor can ship in the app
 
 The engine architecture can be seen below:
 

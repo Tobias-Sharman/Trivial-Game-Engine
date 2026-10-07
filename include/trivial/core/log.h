@@ -1,18 +1,19 @@
 #ifndef TRIVIAL_CORE_LOG_H
 #define TRIVIAL_CORE_LOG_H
 
-#include <cstddef>
 #include <cstdint>
 
 #include <trivial/core/config.h>
 
 #if TRIVIAL_ENABLE_LOGGING
+#include <cstddef>
+
 #include <trivial/core/compiler.h>
 #endif // TRIVIAL_ENABLE_LOGGING
 
 namespace trivial::core {
 
-enum class LogLevel : uint8_t {
+enum class LogLevel : std::uint8_t {
 	Debug,
 	Info,
 	Warning,

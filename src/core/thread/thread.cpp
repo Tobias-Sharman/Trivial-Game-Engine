@@ -17,10 +17,11 @@
 #if TRIVIAL_PLATFORM_WINDOWS
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
-#endif
+#endif // WIN32_LEAN_AND_MEAN
 #ifndef NOMINMAX
 #define NOMINMAX
-#endif
+#endif // NOMINMAX
+
 #include <windows.h> // IWYU pragma: keep
 
 #elif TRIVIAL_PLATFORM_MACOS
@@ -31,6 +32,8 @@
 
 #elif TRIVIAL_PLATFORM_LINUX
 #include <sched.h>
+
+#define TRIVIAL_THREAD_AFFINITY_MASK_BITS 64U
 
 #endif // TRIVIAL_PLATFORM_CHECK
 
@@ -158,9 +161,9 @@ Thread::~Thread() noexcept {
 	if (config.affinityMask != 0) {
 		CPU_ZERO(&cpuSet);
 
-		for (unsigned int bit = 0; bit < 64; ++bit) {
+		for (unsigned int bit = 0; bit < TRIVIAL_THREAD_AFFINITY_MASK_BITS; ++bit) {
 			if ((config.affinityMask & (std::uint64_t{1} << bit)) != 0) {
-				CPU_SET((config.affinityGroup * 64) + bit, &cpuSet);
+				CPU_SET((config.affinityGroup * TRIVIAL_THREAD_AFFINITY_MASK_BITS) + bit, &cpuSet);
 			}
 		}
 
@@ -269,9 +272,9 @@ void Thread::adoptCurrentThread(const ThreadConfig& config) noexcept {
 		cpu_set_t cpuSet{};
 		CPU_ZERO(&cpuSet);
 
-		for (unsigned int bit = 0; bit < 64; ++bit) {
+		for (unsigned int bit = 0; bit < TRIVIAL_THREAD_AFFINITY_MASK_BITS; ++bit) {
 			if ((config.affinityMask & (std::uint64_t{1} << bit)) != 0) {
-				CPU_SET((config.affinityGroup * 64) + bit, &cpuSet);
+				CPU_SET((config.affinityGroup * TRIVIAL_THREAD_AFFINITY_MASK_BITS) + bit, &cpuSet);
 			}
 		}
 

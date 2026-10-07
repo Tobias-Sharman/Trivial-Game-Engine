@@ -3,7 +3,6 @@
 
 #include <atomic>
 #include <bit>
-#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -14,6 +13,7 @@
 #include <trivial/core/hash/hash.h>
 #include <trivial/core/sync/sync_config.h>
 #include <trivial/core/thread/thread.h>
+#include <trivial/core/time/duration.h>
 
 #include "core/heap_array.h"
 #include "core/sync/bucket.h"
@@ -112,7 +112,7 @@ public:
 
 	template <typename Validate>
 	[[nodiscard]] TRIVIAL_FORCE_INLINE ParkResult parkFor(std::uintptr_t address,
-	                                                      std::chrono::nanoseconds timeout,
+	                                                      time::Duration timeout,
 	                                                      Validate&& validate) noexcept {
 		const std::size_t kSlotIndex = currentSlotIndex();
 		ParkingLotSlot& slot = m_slots[kSlotIndex];
@@ -158,11 +158,13 @@ public:
 		}
 	}
 
+	// clang-format off
 	template <typename Validate, typename BeforeSleep>
 	[[nodiscard]] TRIVIAL_FORCE_INLINE ParkResult parkFor(std::uintptr_t address,
-	                                                      std::chrono::nanoseconds timeout,
+	                                                      time::Duration timeout,
 	                                                      Validate&& validate,
 	                                                      BeforeSleep&& beforeSleep) noexcept {
+		// clang-format on
 		const std::size_t kSlotIndex = currentSlotIndex();
 		ParkingLotSlot& slot = m_slots[kSlotIndex];
 		TRIVIAL_ASSERT(slot.key.load(std::memory_order_relaxed) == 0);

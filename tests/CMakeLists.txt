@@ -25,6 +25,7 @@ target_compile_features(gtest_main PUBLIC cxx_std_23)
 add_executable(trivial_tests
 	main.cpp
 	ecs/world_tests.cpp
+	frame/frame_timer.cpp
 	math/angle.cpp
 	math/vector.cpp
 	math/matrix.cpp
@@ -45,6 +46,10 @@ add_executable(trivial_tests
 	sync/spin_lock_multi_thread.cpp
 	task/task_system.cpp
 	thread/custom_thread_type.cpp
+	time/duration.cpp
+	time/instant.cpp
+	time/time.cpp
+	world/world_time.cpp
 )
 
 target_link_libraries(trivial_tests

@@ -1,7 +1,10 @@
 #include <trivial/core/sync/event.h>
 
 #include <atomic>
-#include <chrono>
+
+#include <trivial/core/time/duration.h>
+#include <trivial/core/time/instant.h>
+#include <trivial/core/time/time.h>
 
 #include "core/sync/parking_lot.h"
 
@@ -15,11 +18,11 @@ void Event::wait() noexcept {
 	}
 }
 
-[[nodiscard]] bool Event::waitFor(std::chrono::nanoseconds timeout) noexcept {
-	const std::chrono::steady_clock::time_point kExpiry = std::chrono::steady_clock::now() + timeout;
+[[nodiscard]] bool Event::waitFor(time::Duration timeout) noexcept {
+	const time::Instant kExpiry = time::now().clampedAdd(timeout);
 
 	while (!isTriggered()) {
-		const std::chrono::steady_clock::time_point kNow = std::chrono::steady_clock::now();
+		const time::Instant kNow = time::now();
 		if (kExpiry <= kNow) {
 			return isTriggered();
 		}

@@ -2,7 +2,8 @@
 #define TRIVIAL_CORE_SYNC_EVENT_H
 
 #include <atomic>
-#include <chrono>
+
+#include <trivial/core/time/duration.h>
 
 namespace trivial::sync {
 
@@ -21,7 +22,7 @@ public:
 	[[nodiscard]] bool isTriggered() const noexcept { return m_isTriggered.load(std::memory_order_acquire); }
 
 	void wait() noexcept;
-	[[nodiscard]] bool waitFor(std::chrono::nanoseconds timeout) noexcept;
+	[[nodiscard]] bool waitFor(time::Duration timeout) noexcept;
 
 	void trigger() noexcept;
 

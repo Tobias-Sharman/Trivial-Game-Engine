@@ -1,7 +1,6 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
-#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <thread>
@@ -12,6 +11,8 @@
 #include <trivial/core/config.h>
 #include <trivial/core/platform.h>
 #include <trivial/core/thread/thread.h>
+#include <trivial/core/time/duration.h>
+#include <trivial/core/time/time.h>
 
 #include "support/helpers.h"
 
@@ -63,7 +64,7 @@ TEST(ThreadTest, SuspendedWaitsForResume) {
 
 	EXPECT_EQ(thread.state(), trivial::thread::ThreadState::Suspended);
 
-	std::this_thread::sleep_for(std::chrono::milliseconds(50)); // NOLINT(readability-magic-numbers)
+	trivial::time::sleepFor(trivial::time::milliseconds(50)); // NOLINT(readability-magic-numbers)
 	EXPECT_FALSE(ran.load(std::memory_order_acquire));
 
 	thread.resume();
@@ -206,7 +207,7 @@ void destroyJoinableThreadTest() {
 	const trivial::thread::ThreadCreateResult kResult = thread.create(
 	    config,
 	    [](void*) noexcept {
-		    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+		    trivial::time::sleepFor(trivial::time::milliseconds(200));
 	    }, // NOLINT(readability-magic-numbers)
 	    nullptr);
 	(void)kResult;
