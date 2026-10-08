@@ -14,8 +14,7 @@
 namespace trivial::ecs {
 
 // NOTE: Need to add asserts in use as is unsafe - see make, index, and generation
-class Entity {
-public:
+struct Entity {
 	using ValType = std::uint32_t;
 
 	static_assert(TRIVIAL_ECS_ENTITY_INDEX_BITS + TRIVIAL_ECS_ENTITY_GENERATION_BITS
@@ -40,7 +39,7 @@ public:
 	}
 	[[nodiscard]] constexpr ValType value() const noexcept { return m_value; }
 
-	[[nodiscard]] constexpr bool operator==(const Entity&) const = default;
+	[[nodiscard]] constexpr bool operator==(const Entity&) const noexcept = default;
 
 private:
 	explicit constexpr Entity(ValType value) noexcept

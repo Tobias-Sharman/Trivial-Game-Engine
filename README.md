@@ -30,19 +30,6 @@ neglected prior to a proper version 1.0.0.
 
 ## Current plan of action
 
-- Ensure struct class usage is properly held
-- Detail namespace usage
-- `TRIVIAL_ASSUME` a non-zero divisor in `Vec2`/`Vec3`/`Vec4` division (`/`
-and `/=`, scalar and component-wise) for integral element types only, as float
-division by zero is relied on (e.g. ray-box slab tests)
-- Rename `Angle`'s `other` parameters to `rhs` to match the other maths types,
-and make it a `struct` as it is a data type
-- Move type property `static_assert`s (layout and construction/conversion
-rules) from `tests/math` into the headers, leaving tests to only exercise the
-API: add `Vec3`, `Transform2` and `Angle` layout checks, `Angle` not
-convertible from its scalar and `Mat4` being an aggregate, then remove the
-duplicated `Vec2`, `Vec4`, `Mat4` and `Affine2` checks from the tests
-- Build script update for a pre push to main run
 - Documentation update and create new documentation
 - Allocator
   - Arenas allocator
@@ -51,10 +38,32 @@ duplicated `Vec2`, `Vec4`, `Mat4` and `Affine2` checks from the tests
     - medium  <= 512 KiB TLSF over boundary tags, one pool per segment
     - large   > 512 KiB  page granular spans, multi segment runs above 2 MiB
   - Debug layer
+- Expanded assertion macros (e.g. `TRIVIAL_ASSERT_TRUE`/`FALSE`/`EQ`/`NE`/`LT`/
+`GT`, with matching `ASSUME` forms), then drop the
+`readability-simplify-boolean-expr` NOLINTs
 - Proper test and benchmarking framework
   - Benchmark allocator, probably against mimalloc and jemalloc
   - Full testing of allocator (segment allocator is briefly yet importantly not
   fully tested)
+  - Sanitiser presets alongside `debug-tsan`: UBSan (cheap, broadly useful) and
+  ASan (needs poisoning annotations in the engine allocators to see inside
+  them), weighed against the `--all` run time
+- Code generation flags, decided once benchmarks exist
+  - `-O2` vs `-O3` for release (`relwithdebinfo` currently uses `-O2`, so
+  profiled builds differ from shipped ones), LTO (ThinLTO on Clang, lets
+  `mat4.cpp`'s SIMD multiplies inline into callers) and PGO
+  - Target architecture: x86-64 level (`-march=x86-64-v2`/`v3`, `/arch:AVX2`)
+  as a hardware floor, and `-mcpu=apple-m1` for macOS (safe for the 14.4 floor)
+  - Floating point: `-ffp-contract=off` for identical results across ARM, x86
+  and compilers (ARM fuses `a*b+c` by default, baseline x86 does not), and
+  `-fno-math-errno` (Apple Clang default, GCC is not, so `sqrt` can become a
+  library call on Linux), never `-ffast-math`
+  - Standard library hardening (`_LIBCPP_HARDENING_MODE`,
+  `_GLIBCXX_ASSERTIONS`, `_MSVC_STL_HARDENING`), debug mode in debug builds and
+  possibly fast mode in release
+  - Stack and control flow protection (`-fstack-protector-strong`,
+  `-D_FORTIFY_SOURCE=3`, `-fcf-protection`/`-mbranch-protection=standard`,
+  `/guard:cf`, `/sdl`), mainly worthwhile with networking or mods
 - Basic physics system to test and profile the task system
   - Fixed timestep simulation with an integer nanosecond accumulator and the
   layer phase hooks (fixed pre/post physics, frame, present with interpolation
@@ -85,6 +94,11 @@ other compilers
   objects, or atomics, such spots need `no_thread_safety_analysis` -> see if
   some functions want adjustment to employ this effectively
 - Fibre backing to task system with context switching
+  - Split the task system's public and internal types: `TaskState`,
+  `TaskSlot`, `TaskGraph`, `TaskPriorityQueue` and `Worker` sit in public
+  headers only because `TaskSystem` holds them by value, so move them to
+  `src/` or a `detail` namespace, drop the unused `task_graph.h` include from
+  `task.h`, and decide on the direct `TaskPriorityQueue` test
   - Context switching from defined points and not called from outside of the
   running thread to keep the register handling simple, clean, and consistent
     - A need for context switching from outside would go in contrast to some of
@@ -97,11 +111,20 @@ current placeholder mockup
   set with "archtypes" as the set types and well handle when different archtypes
   would want the same attribute with good cache locality for all the systems
   that benefit from it
+  - Replace the `typeid`/`std::type_index` component store lookup with engine
+  type ids so RTTI can be turned off (`-fno-rtti`, `/GR-`), noting that games
+  deriving engine classes (e.g. `Layer`) would then need it off too
 - Extend maths to give support for custom basic algorithms like min, max, clamp
 - Add some sorting functions, along with a general one (SIMD where appropriate)
 - More fleshed out physics system with parallel operation and SIMD backing
 - Custom versions of stl vector, string, maps, stack, queue, set, list, and
 other data structures like heaps, trees, graphs, and any others deemed relevant
+  - Consider `-Wpadded` for a pass over struct layout (currently 37 sites,
+  informational only)
+  - Consider `-Wunsafe-buffer-usage` once spans and the custom containers cover
+  most indexing, with `#pragma clang unsafe_buffer_usage begin`/`end` around
+  the low level code that must use raw pointers (allocators, currently 56 sites
+  across 7 files)
 - Wall clock (`GetSystemTimePreciseAsFileTime`/`CLOCK_REALTIME`) for log
 timestamps and save dates, as its own `SystemTime` type that never mixes with
 `Instant`
@@ -117,6 +140,11 @@ timestamps and save dates, as its own `SystemTime` type that never mixes with
   the loader, so a missing loader can fall back to another backend (e.g. Metal
   under `GraphicsApi::Auto`) rather than failing to launch, and a bundled
   loader/MoltenVK built for the macOS floor can ship in the app
+  - Complete the `VkResult` name switch so `-Wswitch-enum` (C4061 on MSVC) can
+  check it, with values newer than the oldest supported SDK wrapped in
+  `#if VK_HEADER_VERSION >= N` guards (or a minimum version on
+  `find_package(Vulkan)`), then remove the `TRIVIAL_DIAGNOSTIC_*` suppression
+  around it
 
 The engine architecture can be seen below:
 

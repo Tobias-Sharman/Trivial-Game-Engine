@@ -54,8 +54,7 @@ namespace {
 
 // Non-atomic would be safe but cost is much less than the syscalls for thread
 // creation and makes it safer for future planned usage changes
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-std::atomic<std::uint32_t> g_nextThreadIndex{0};
+std::atomic<std::uint32_t> g_nextThreadIndex{0}; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 constinit thread_local trivial::thread::Thread* g_currentThread = nullptr; // Better linkage than member variable

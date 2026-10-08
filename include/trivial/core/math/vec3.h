@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <cstddef>
+#include <limits>
 #include <type_traits>
 
 #include <trivial/core/assert.h>
@@ -53,10 +54,36 @@ struct Vec3 {
 	[[nodiscard]] constexpr Vec3 operator+(Vec3 rhs) const noexcept { return {x + rhs.x, y + rhs.y, z + rhs.z}; }
 	[[nodiscard]] constexpr Vec3 operator-(Vec3 rhs) const noexcept { return {x - rhs.x, y - rhs.y, z - rhs.z}; }
 	[[nodiscard]] constexpr Vec3 operator*(Vec3 rhs) const noexcept { return {x * rhs.x, y * rhs.y, z * rhs.z}; }
-	[[nodiscard]] constexpr Vec3 operator/(Vec3 rhs) const noexcept { return {x / rhs.x, y / rhs.y, z / rhs.z}; }
+	[[nodiscard]] constexpr Vec3 operator/(Vec3 rhs) const noexcept {
+		TRIVIAL_ASSUME(rhs.x != T{});
+		TRIVIAL_ASSUME(rhs.y != T{});
+		TRIVIAL_ASSUME(rhs.z != T{});
+
+		if constexpr (SignedIntegral<T>) {
+			constexpr T kMin = std::numeric_limits<T>::min();
+
+			TRIVIAL_ASSUME(!(x == kMin && rhs.x == T{-1})); // NOLINT(readability-simplify-boolean-expr)
+			TRIVIAL_ASSUME(!(y == kMin && rhs.y == T{-1})); // NOLINT(readability-simplify-boolean-expr)
+			TRIVIAL_ASSUME(!(z == kMin && rhs.z == T{-1})); // NOLINT(readability-simplify-boolean-expr)
+		}
+
+		return {x / rhs.x, y / rhs.y, z / rhs.z};
+	}
 
 	[[nodiscard]] constexpr Vec3 operator*(T scalar) const noexcept { return {x * scalar, y * scalar, z * scalar}; }
-	[[nodiscard]] constexpr Vec3 operator/(T scalar) const noexcept { return {x / scalar, y / scalar, z / scalar}; }
+	[[nodiscard]] constexpr Vec3 operator/(T scalar) const noexcept {
+		TRIVIAL_ASSUME(scalar != T{});
+
+		if constexpr (SignedIntegral<T>) {
+			constexpr T kMin = std::numeric_limits<T>::min();
+
+			TRIVIAL_ASSUME(!(x == kMin && scalar == T{-1})); // NOLINT(readability-simplify-boolean-expr)
+			TRIVIAL_ASSUME(!(y == kMin && scalar == T{-1})); // NOLINT(readability-simplify-boolean-expr)
+			TRIVIAL_ASSUME(!(z == kMin && scalar == T{-1})); // NOLINT(readability-simplify-boolean-expr)
+		}
+
+		return {x / scalar, y / scalar, z / scalar};
+	}
 
 	constexpr Vec3& operator+=(Vec3 rhs) noexcept {
 		x += rhs.x;
@@ -80,6 +107,18 @@ struct Vec3 {
 	}
 
 	constexpr Vec3& operator/=(Vec3 rhs) noexcept {
+		TRIVIAL_ASSUME(rhs.x != T{});
+		TRIVIAL_ASSUME(rhs.y != T{});
+		TRIVIAL_ASSUME(rhs.z != T{});
+
+		if constexpr (SignedIntegral<T>) {
+			constexpr T kMin = std::numeric_limits<T>::min();
+
+			TRIVIAL_ASSUME(!(x == kMin && rhs.x == T{-1})); // NOLINT(readability-simplify-boolean-expr)
+			TRIVIAL_ASSUME(!(y == kMin && rhs.y == T{-1})); // NOLINT(readability-simplify-boolean-expr)
+			TRIVIAL_ASSUME(!(z == kMin && rhs.z == T{-1})); // NOLINT(readability-simplify-boolean-expr)
+		}
+
 		x /= rhs.x;
 		y /= rhs.y;
 		z /= rhs.z;
@@ -94,6 +133,16 @@ struct Vec3 {
 	}
 
 	constexpr Vec3& operator/=(T scalar) noexcept {
+		TRIVIAL_ASSUME(scalar != T{});
+
+		if constexpr (SignedIntegral<T>) {
+			constexpr T kMin = std::numeric_limits<T>::min();
+
+			TRIVIAL_ASSUME(!(x == kMin && scalar == T{-1})); // NOLINT(readability-simplify-boolean-expr)
+			TRIVIAL_ASSUME(!(y == kMin && scalar == T{-1})); // NOLINT(readability-simplify-boolean-expr)
+			TRIVIAL_ASSUME(!(z == kMin && scalar == T{-1})); // NOLINT(readability-simplify-boolean-expr)
+		}
+
 		x /= scalar;
 		y /= scalar;
 		z /= scalar;

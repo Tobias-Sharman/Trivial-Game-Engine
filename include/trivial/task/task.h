@@ -16,10 +16,10 @@ namespace trivial::task {
 
 namespace detail {
 
-// Could have put in cpp and that would be safer and more "correct" but this will guarante less overhead rather than
-// maybe not have some overhead with compiler removing wrappers and inling stuff
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-inline constinit TaskSystem* g_activeTaskSystem = nullptr;
+// Could have put in cpp and that would be safer and more "correct" but this
+// will guarantee less overhead rather than maybe not have some overhead with
+// compiler removing wrappers and inling stuff
+inline constinit TaskSystem* g_activeTaskSystem = nullptr; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
 } // namespace detail
 

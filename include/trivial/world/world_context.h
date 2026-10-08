@@ -5,8 +5,7 @@
 
 namespace trivial {
 
-class WorldContext {
-public:
+struct WorldContext {
 	WorldContext() = default;
 
 	~WorldContext() = default;

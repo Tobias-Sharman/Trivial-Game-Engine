@@ -20,6 +20,8 @@
 
 namespace trivial::memory {
 
+namespace detail {
+
 struct DetectedCapabilities {
 #if !TRIVIAL_PLATFORM_PAGE_SIZE_KNOWN
 	std::size_t pageSize = 0;
@@ -31,19 +33,17 @@ struct DetectedCapabilities {
 #endif // TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
 };
 
-#if !TRIVIAL_MEMORY_HAS_DETECTED_CAPABILITIES
-static_assert(std::is_empty_v<DetectedCapabilities>,
-              "A detected capability was added without updating TRIVIAL_MEMORY_HAS_DETECTED_CAPABILITIES");
-#endif // !TRIVIAL_MEMORY_HAS_DETECTED_CAPABILITIES
-
 #if TRIVIAL_MEMORY_HAS_DETECTED_CAPABILITIES
-namespace detail {
-
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 inline constinit DetectedCapabilities g_detectedCapabilities;
 
-} // namespace detail
+#else
+static_assert(std::is_empty_v<DetectedCapabilities>,
+              "A detected capability was added without updating TRIVIAL_MEMORY_HAS_DETECTED_CAPABILITIES");
+
 #endif // TRIVIAL_MEMORY_HAS_DETECTED_CAPABILITIES
+
+} // namespace detail
 
 void initCapabilities() noexcept;
 

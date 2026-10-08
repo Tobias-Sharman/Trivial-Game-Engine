@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include <trivial/core/assert.h>
 #include <trivial/core/compiler.h>
 #include <trivial/core/memory/memory_config.h>
 #include <trivial/core/memory/oom_handler.h>
@@ -71,9 +72,9 @@ enum class SegmentKind : std::uint8_t {
 			return "texturePool";
 		case SegmentKind::External:
 			return "external";
-		default:
-			return "unknown";
 	}
+
+	TRIVIAL_UNREACHABLE();
 }
 
 struct SegmentRecord {

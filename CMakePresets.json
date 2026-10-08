@@ -30,7 +30,7 @@
 				"TRIVIAL_ENABLE_SLOW_ASSERTS": "OFF",
 				"TRIVIAL_ENABLE_LOGGING": "ON",
 				"TRIVIAL_ENABLE_VULKAN_VALIDATION": "ON",
-				"TRIVIAL_ENABLE_TRACY": "OFF",
+				"TRIVIAL_ENABLE_TRACY": "ON",
 				"TRIVIAL_MATH_DISABLE_SIMD_BACKEND": "OFF",
 				"TRIVIAL_MATH_DISABLE_FMA": "OFF",
 				"TRIVIAL_MEMORY_DEBUG": "AUTO",
@@ -42,29 +42,24 @@
 		},
 		{
 			"name": "debug-slow",
-			"displayName": "Debug + Slow Assertions",
+			"displayName": "Debug + Slow Assertions + Scalar Maths",
 			"inherits": "debug",
 			"binaryDir": "${sourceDir}/build/debug-slow",
 			"cacheVariables": {
-				"TRIVIAL_ENABLE_SLOW_ASSERTS": "ON"
-			}
-		},
-		{
-			"name": "debug-tracy",
-			"displayName": "Debug + Tracy",
-			"inherits": "debug",
-			"binaryDir": "${sourceDir}/build/debug-tracy",
-			"cacheVariables": {
-				"TRIVIAL_ENABLE_TRACY": "ON"
+				"TRIVIAL_ENABLE_SLOW_ASSERTS": "ON",
+				"TRIVIAL_MATH_DISABLE_SIMD_BACKEND": "ON"
 			}
 		},
 		{
 			"name": "debug-tsan",
-			"displayName": "Debug + ThreadSanitizer",
+			"displayName": "Debug + ThreadSanitizer + No FMA + No Decommit",
 			"inherits": "debug",
 			"binaryDir": "${sourceDir}/build/debug-tsan",
 			"cacheVariables": {
-				"TRIVIAL_ENABLE_TSAN": "ON"
+				"TRIVIAL_ENABLE_TSAN": "ON",
+				"TRIVIAL_ENABLE_TRACY": "OFF",
+				"TRIVIAL_MATH_DISABLE_FMA": "ON",
+				"TRIVIAL_MEMORY_DECOMMIT": "OFF"
 			}
 		},
 		{
@@ -100,24 +95,6 @@
 			}
 		},
 		{
-			"name": "release-tracy",
-			"displayName": "Release + Tracy",
-			"inherits": "release",
-			"binaryDir": "${sourceDir}/build/release-tracy",
-			"cacheVariables": {
-				"TRIVIAL_ENABLE_TRACY": "ON"
-			}
-		},
-		{
-			"name": "release-no-decommit",
-			"displayName": "Release + No Decommit",
-			"inherits": "release",
-			"binaryDir": "${sourceDir}/build/release-no-decommit",
-			"cacheVariables": {
-				"TRIVIAL_MEMORY_DECOMMIT": "OFF"
-			}
-		},
-		{
 			"name": "relwithdebinfo",
 			"inherits": "vs-analysis",
 			"displayName": "Release With Debug Info",
@@ -130,7 +107,7 @@
 				"TRIVIAL_ENABLE_SLOW_ASSERTS": "OFF",
 				"TRIVIAL_ENABLE_LOGGING": "ON",
 				"TRIVIAL_ENABLE_VULKAN_VALIDATION": "OFF",
-				"TRIVIAL_ENABLE_TRACY": "OFF",
+				"TRIVIAL_ENABLE_TRACY": "ON",
 				"TRIVIAL_MATH_DISABLE_SIMD_BACKEND": "OFF",
 				"TRIVIAL_MATH_DISABLE_FMA": "OFF",
 				"TRIVIAL_MEMORY_DEBUG": "AUTO",
@@ -138,26 +115,6 @@
 				"TRIVIAL_MEMORY_DECOMMIT": "AUTO",
 				"TRIVIAL_ENABLE_SIMD": "ON",
 				"TRIVIAL_EXPORT_DEPENDENCY_COMPILE_COMMANDS": "OFF"
-			}
-		},
-		{
-			"name": "relwithdebinfo-tracy",
-			"displayName": "Release With Debug Info + Tracy",
-			"inherits": "relwithdebinfo",
-			"binaryDir": "${sourceDir}/build/relwithdebinfo-tracy",
-			"cacheVariables": {
-				"TRIVIAL_ENABLE_TRACY": "ON"
-			}
-		},
-		{
-			"name": "relwithdebinfo-memdebug",
-			"displayName": "Release With Debug Info + Memory Debugging",
-			"inherits": "relwithdebinfo",
-			"binaryDir": "${sourceDir}/build/relwithdebinfo-memdebug",
-			"cacheVariables": {
-				"TRIVIAL_ENABLE_ASSERTS": "ON",
-				"TRIVIAL_MEMORY_DEBUG": "ON",
-				"TRIVIAL_MEMORY_DEBUG_STATS": "ON"
 			}
 		}
 	],
@@ -169,10 +126,6 @@
 		{
 			"name": "debug-slow",
 			"configurePreset": "debug-slow"
-		},
-		{
-			"name": "debug-tracy",
-			"configurePreset": "debug-tracy"
 		},
 		{
 			"name": "debug-tsan",
@@ -187,24 +140,8 @@
 			"configurePreset": "release"
 		},
 		{
-			"name": "release-tracy",
-			"configurePreset": "release-tracy"
-		},
-		{
-			"name": "release-no-decommit",
-			"configurePreset": "release-no-decommit"
-		},
-		{
 			"name": "relwithdebinfo",
 			"configurePreset": "relwithdebinfo"
-		},
-		{
-			"name": "relwithdebinfo-tracy",
-			"configurePreset": "relwithdebinfo-tracy"
-		},
-		{
-			"name": "relwithdebinfo-memdebug",
-			"configurePreset": "relwithdebinfo-memdebug"
 		}
 	]
 }

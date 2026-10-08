@@ -1,5 +1,5 @@
-#ifndef TRIVIAL_SRC_RHI_BACKEND_H
-#define TRIVIAL_SRC_RHI_BACKEND_H
+#ifndef TRIVIAL_RHI_BACKEND_H
+#define TRIVIAL_RHI_BACKEND_H
 
 #include <cstdint>
 #include <span>
@@ -17,7 +17,7 @@ class TRIVIAL_NOVTABLE Backend {
 public:
 	Backend() noexcept = default;
 
-	virtual ~Backend() = default;
+	virtual ~Backend() noexcept;
 
 	Backend(const Backend&) = delete;
 	Backend& operator=(const Backend&) = delete;
@@ -42,4 +42,4 @@ public:
 
 } // namespace trivial::rhi
 
-#endif // TRIVIAL_SRC_RHI_BACKEND_H
+#endif // TRIVIAL_RHI_BACKEND_H

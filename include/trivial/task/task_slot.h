@@ -91,8 +91,7 @@ public:
 
 private:
 	[[nodiscard]] TaskState* rawStatePointer() noexcept TRIVIAL_LIFETIMEBOUND {
-		// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-		return reinterpret_cast<TaskState*>(m_storage.data());
+		return reinterpret_cast<TaskState*>(m_storage.data()); // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
 	}
 	[[nodiscard]] const TaskState* rawStatePointer() const noexcept TRIVIAL_LIFETIMEBOUND {
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)

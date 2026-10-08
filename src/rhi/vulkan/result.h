@@ -3,11 +3,18 @@
 
 #include <vulkan/vulkan_core.h>
 
+#include <trivial/core/compiler.h>
 #include <trivial/core/log.h>
 
 namespace trivial::rhi::vulkan {
 
 [[nodiscard]] constexpr const char* resultName(VkResult result) noexcept {
+	// TODO: List every VkResult value with VK_HEADER_VERSION guards, then drop
+	//       this suppression
+	TRIVIAL_DIAGNOSTIC_PUSH
+	TRIVIAL_DIAGNOSTIC_IGNORE_CLANG("-Wswitch-enum")
+	TRIVIAL_DIAGNOSTIC_IGNORE_GCC("-Wswitch-enum")
+	TRIVIAL_DIAGNOSTIC_IGNORE_MSVC(4061)
 	switch (result) {
 		case VK_SUCCESS:
 			return "VK_SUCCESS";
@@ -77,6 +84,7 @@ namespace trivial::rhi::vulkan {
 		default:
 			return "VK_UNKNOWN_RESULT";
 	}
+	TRIVIAL_DIAGNOSTIC_POP
 }
 
 } // namespace trivial::rhi::vulkan

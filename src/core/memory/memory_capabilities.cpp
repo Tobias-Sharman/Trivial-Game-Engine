@@ -30,7 +30,7 @@ void initCapabilities() noexcept {
 #endif // TRIVIAL_MEMORY_LAZY_DECOMMIT && TRIVIAL_PLATFORM_LINUX
 
 #if TRIVIAL_MEMORY_HAS_DETECTED_CAPABILITIES
-	detail::g_detectedCapabilities = DetectedCapabilities{
+	detail::g_detectedCapabilities = detail::DetectedCapabilities{
 #if !TRIVIAL_PLATFORM_PAGE_SIZE_KNOWN
 	    .pageSize = kSystemInfo.pageSize,
 	    .allocationGranularity = kSystemInfo.allocationGranularity,

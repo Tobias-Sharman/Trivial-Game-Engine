@@ -146,7 +146,6 @@ template <FloatingPoint T>
                                          T m33) noexcept {
 	return {{m00, m10, m20, m30}, {m01, m11, m21, m31}, {m02, m12, m22, m32}, {m03, m13, m23, m33}};
 }
-namespace detail {
 
 [[nodiscard]] Vec4f multiplyMat4Vec4(const Mat4f& matrix, const Vec4f& vector) noexcept;
 
@@ -167,26 +166,24 @@ template <FloatingPoint T>
 	};
 }
 
-} // namespace detail
-
 template <FloatingPoint T>
 [[nodiscard]] constexpr Vec4<T> operator*(const Mat4<T>& matrix, const Vec4<T>& vector) noexcept {
 	if constexpr (std::is_same_v<T, float>) {
 		if (!std::is_constant_evaluated()) {
-			return detail::multiplyMat4Vec4(matrix, vector);
+			return multiplyMat4Vec4(matrix, vector);
 		}
 	}
-	return detail::multiplyMat4Vec4Scalar(matrix, vector);
+	return multiplyMat4Vec4Scalar(matrix, vector);
 }
 
 template <FloatingPoint T>
 [[nodiscard]] constexpr Mat4<T> operator*(const Mat4<T>& lhs, const Mat4<T>& rhs) noexcept {
 	if constexpr (std::is_same_v<T, float>) {
 		if (!std::is_constant_evaluated()) {
-			return detail::multiplyMat4Mat4(lhs, rhs);
+			return multiplyMat4Mat4(lhs, rhs);
 		}
 	}
-	return detail::multiplyMat4Mat4Scalar(lhs, rhs);
+	return multiplyMat4Mat4Scalar(lhs, rhs);
 }
 
 template <FloatingPoint T>
@@ -211,6 +208,9 @@ static_assert(sizeof(Mat4d) == sizeof(double) * 16); // NOLINT(readability-magic
 
 static_assert(alignof(Mat4f) == alignof(Vec4f));
 static_assert(alignof(Mat4d) == alignof(Vec4d));
+
+static_assert(std::is_aggregate_v<Mat4f>);
+static_assert(std::is_aggregate_v<Mat4d>);
 
 static_assert(std::is_trivially_copyable_v<Mat4f>);
 static_assert(std::is_trivially_copyable_v<Mat4d>);

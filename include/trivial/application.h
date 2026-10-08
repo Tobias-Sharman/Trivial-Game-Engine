@@ -16,10 +16,10 @@ class Application {
 public:
 	explicit Application(std::unique_ptr<Layer> gameLayer) noexcept;
 
-	virtual ~Application() = default;
+	~Application() noexcept = default;
 
 	Application(const Application&) = delete;
-	Application& operator=(const Application) = delete;
+	Application& operator=(const Application&) = delete;
 
 	Application(Application&&) = delete;
 	Application& operator=(Application&&) = delete;

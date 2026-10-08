@@ -74,8 +74,7 @@ TaskCreateDispatchOutcome TaskGraph::createDispatched(TaskPayload payload,
 	for (const TaskHandle kPrerequisite : prerequisites) {
 		const TaskPrerequisiteResult kResult = addPrerequisiteLocked(kHandle, *slot, kPrerequisite);
 
-		// NOLINTNEXTLINE(readability-simplify-boolean-expr)
-		TRIVIAL_ASSERT(kResult == TaskPrerequisiteResult::Success
+		TRIVIAL_ASSERT(kResult == TaskPrerequisiteResult::Success // NOLINT(readability-simplify-boolean-expr)
 		               || kResult == TaskPrerequisiteResult::DuplicateDependency);
 		(void)kResult;
 	}

@@ -1,14 +1,16 @@
 #ifndef TRIVIAL_CORE_MATH_ANGLE_H
 #define TRIVIAL_CORE_MATH_ANGLE_H
 
+#include <type_traits>
+
+#include <trivial/core/assert.h>
 #include <trivial/core/math/concepts.h>
 #include <trivial/core/math/math_constants.h>
 
 namespace trivial::math {
 
 template <FloatingPoint T>
-class Angle {
-public:
+struct Angle {
 	[[nodiscard]] static constexpr Angle fromRadians(T radians) noexcept {
 		Angle result;
 		result.m_radians = radians;
@@ -25,22 +27,22 @@ public:
 	[[nodiscard]] constexpr Angle operator+() const noexcept { return *this; }
 	[[nodiscard]] constexpr Angle operator-() const noexcept { return fromRadians(-m_radians); }
 
-	[[nodiscard]] constexpr Angle operator+(Angle other) const noexcept {
-		return fromRadians(m_radians + other.m_radians);
-	}
-	[[nodiscard]] constexpr Angle operator-(Angle other) const noexcept {
-		return fromRadians(m_radians - other.m_radians);
-	}
+	[[nodiscard]] constexpr Angle operator+(Angle rhs) const noexcept { return fromRadians(m_radians + rhs.m_radians); }
+	[[nodiscard]] constexpr Angle operator-(Angle rhs) const noexcept { return fromRadians(m_radians - rhs.m_radians); }
 	[[nodiscard]] constexpr Angle operator*(T scalar) const noexcept { return fromRadians(m_radians * scalar); }
-	[[nodiscard]] constexpr Angle operator/(T scalar) const noexcept { return fromRadians(m_radians / scalar); }
+	[[nodiscard]] constexpr Angle operator/(T scalar) const noexcept {
+		TRIVIAL_ASSUME(scalar != T{});
 
-	constexpr Angle& operator+=(Angle other) noexcept {
-		m_radians += other.m_radians;
+		return fromRadians(m_radians / scalar);
+	}
+
+	constexpr Angle& operator+=(Angle rhs) noexcept {
+		m_radians += rhs.m_radians;
 		return *this;
 	}
 
-	constexpr Angle& operator-=(Angle other) noexcept {
-		m_radians -= other.m_radians;
+	constexpr Angle& operator-=(Angle rhs) noexcept {
+		m_radians -= rhs.m_radians;
 		return *this;
 	}
 
@@ -50,11 +52,13 @@ public:
 	}
 
 	constexpr Angle& operator/=(T scalar) noexcept {
+		TRIVIAL_ASSUME(scalar != T{});
+
 		m_radians /= scalar;
 		return *this;
 	}
 
-	[[nodiscard]] constexpr bool operator==(const Angle&) const = default;
+	[[nodiscard]] constexpr bool operator==(const Angle&) const noexcept = default;
 
 	[[nodiscard]] constexpr bool nearlyEqual(const Angle& rhs, T epsilon) const noexcept {
 		T difference = m_radians > rhs.m_radians ? m_radians - rhs.m_radians : rhs.m_radians - m_radians;
@@ -78,6 +82,21 @@ template <FloatingPoint T>
 
 using Anglef = Angle<float>;
 using Angled = Angle<double>;
+
+static_assert(sizeof(Anglef) == sizeof(float));
+static_assert(sizeof(Angled) == sizeof(double));
+
+static_assert(alignof(Anglef) == alignof(float));
+static_assert(alignof(Angled) == alignof(double));
+
+static_assert(std::is_trivially_copyable_v<Anglef>);
+static_assert(std::is_trivially_copyable_v<Angled>);
+
+static_assert(std::is_standard_layout_v<Anglef>);
+static_assert(std::is_standard_layout_v<Angled>);
+
+static_assert(!std::is_convertible_v<float, Anglef>);
+static_assert(!std::is_convertible_v<double, Angled>);
 
 } // namespace trivial::math
 

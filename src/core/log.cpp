@@ -6,6 +6,8 @@
 
 #include <cstdio>
 
+#include <trivial/core/assert.h>
+
 namespace trivial::core {
 
 namespace {
@@ -22,9 +24,9 @@ namespace {
 			return "error";
 		case LogLevel::Fatal:
 			return "fatal";
-		default:
-			return "unknown";
 	}
+
+	TRIVIAL_UNREACHABLE();
 }
 
 } // namespace

@@ -100,7 +100,7 @@ class TRIVIAL_NOVTABLE IComponentStore {
 public:
 	IComponentStore() = default;
 
-	virtual ~IComponentStore() = default;
+	virtual ~IComponentStore() noexcept;
 
 	IComponentStore(const IComponentStore&) = delete;
 	IComponentStore& operator=(const IComponentStore&) = delete;

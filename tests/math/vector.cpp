@@ -328,34 +328,6 @@ TEST(Vec4Test, SupportsGeometry) {
 	testVec4Geometry<double>();
 }
 
-static_assert(sizeof(Vec2<int>) == sizeof(int) * 2);
-static_assert(sizeof(Vec2<float>) == sizeof(float) * 2);
-static_assert(sizeof(Vec2<double>) == sizeof(double) * 2);
-
-static_assert(sizeof(Vec3<int>) == sizeof(int) * 3);
-static_assert(sizeof(Vec3<float>) == sizeof(float) * 3);
-static_assert(sizeof(Vec3<double>) == sizeof(double) * 3);
-
-static_assert(sizeof(Vec4<int>) == sizeof(int) * 4);
-static_assert(sizeof(Vec4<float>) == sizeof(float) * 4);
-static_assert(sizeof(Vec4<double>) == sizeof(double) * 4);
-
-static_assert(alignof(Vec2<float>) == alignof(float));
-static_assert(alignof(Vec3<float>) == alignof(float));
-static_assert(alignof(Vec4<float>) == alignof(float));
-
-static_assert(alignof(Vec2<double>) == alignof(double));
-static_assert(alignof(Vec3<double>) == alignof(double));
-static_assert(alignof(Vec4<double>) == alignof(double));
-
-static_assert(std::is_trivially_copyable_v<Vec2<float>>);
-static_assert(std::is_trivially_copyable_v<Vec3<float>>);
-static_assert(std::is_trivially_copyable_v<Vec4<float>>);
-
-static_assert(std::is_standard_layout_v<Vec2<float>>);
-static_assert(std::is_standard_layout_v<Vec3<float>>);
-static_assert(std::is_standard_layout_v<Vec4<float>>);
-
 } // namespace
 
 } // namespace trivial::math

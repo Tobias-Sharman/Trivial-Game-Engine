@@ -13,8 +13,7 @@ template <typename T>
 class HeapArray {
 public:
 	explicit constexpr HeapArray(std::size_t size) noexcept
-	    // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
-	    : m_elements(std::make_unique<T[]>(size))
+	    : m_elements(std::make_unique<T[]>(size)) // NOLINT(cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
 	    , m_size(size) {}
 
 	~HeapArray() noexcept = default;

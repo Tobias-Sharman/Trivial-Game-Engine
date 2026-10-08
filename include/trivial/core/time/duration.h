@@ -2,15 +2,11 @@
 #define TRIVIAL_CORE_TIME_DURATION_H
 
 #include <cstdint>
+#include <limits>
 #include <type_traits>
 
 #include <trivial/core/assert.h>
-#include <trivial/core/config.h>
 #include <trivial/core/time/time_constants.h>
-
-#if TRIVIAL_ENABLE_ASSERTS
-#include <limits>
-#endif // TRIVIAL_ENABLE_ASSERTS
 
 namespace trivial::time {
 
@@ -70,19 +66,30 @@ struct Duration {
 	}
 
 	[[nodiscard]] constexpr Duration operator/(std::int64_t scalar) const noexcept {
+		constexpr std::int64_t kMin = std::numeric_limits<std::int64_t>::min();
 		TRIVIAL_ASSUME(scalar != 0);
+		TRIVIAL_ASSUME(!(m_nanoseconds == kMin && scalar == -1)); // NOLINT(readability-simplify-boolean-expr)
+
 		Duration result = *this;
 		result.m_nanoseconds /= scalar;
 		return result;
 	}
 
 	[[nodiscard]] constexpr std::int64_t operator/(Duration rhs) const noexcept {
+		constexpr std::int64_t kMin = std::numeric_limits<std::int64_t>::min();
 		TRIVIAL_ASSUME(rhs.m_nanoseconds != 0);
+		// NOLINTNEXTLINE(readability-simplify-boolean-expr)
+		TRIVIAL_ASSUME(!(m_nanoseconds == kMin && rhs.m_nanoseconds == -1));
+
 		return m_nanoseconds / rhs.m_nanoseconds;
 	}
 
 	[[nodiscard]] constexpr Duration operator%(Duration rhs) const noexcept {
+		constexpr std::int64_t kMin = std::numeric_limits<std::int64_t>::min();
 		TRIVIAL_ASSUME(rhs.m_nanoseconds != 0);
+		// NOLINTNEXTLINE(readability-simplify-boolean-expr)
+		TRIVIAL_ASSUME(!(m_nanoseconds == kMin && rhs.m_nanoseconds == -1));
+
 		Duration result = *this;
 		result.m_nanoseconds %= rhs.m_nanoseconds;
 		return result;
@@ -104,13 +111,20 @@ struct Duration {
 	}
 
 	constexpr Duration& operator/=(std::int64_t scalar) noexcept {
+		constexpr std::int64_t kMin = std::numeric_limits<std::int64_t>::min();
 		TRIVIAL_ASSUME(scalar != 0);
+		TRIVIAL_ASSUME(!(m_nanoseconds == kMin && scalar == -1)); // NOLINT(readability-simplify-boolean-expr)
+
 		m_nanoseconds /= scalar;
 		return *this;
 	}
 
 	constexpr Duration& operator%=(Duration rhs) noexcept {
+		constexpr std::int64_t kMin = std::numeric_limits<std::int64_t>::min();
 		TRIVIAL_ASSUME(rhs.m_nanoseconds != 0);
+		// NOLINTNEXTLINE(readability-simplify-boolean-expr)
+		TRIVIAL_ASSUME(!(m_nanoseconds == kMin && rhs.m_nanoseconds == -1));
+
 		m_nanoseconds %= rhs.m_nanoseconds;
 		return *this;
 	}

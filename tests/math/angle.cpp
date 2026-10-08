@@ -102,21 +102,6 @@ TYPED_TEST(AngleTest, ComparesStoredValue) {
 	EXPECT_FALSE(kLhs.nearlyEqual(kDifferent, epsilon<T>()));
 }
 
-static_assert(sizeof(Anglef) == sizeof(float));
-static_assert(sizeof(Angled) == sizeof(double));
-
-static_assert(alignof(Anglef) == alignof(float));
-static_assert(alignof(Angled) == alignof(double));
-
-static_assert(std::is_trivially_copyable_v<Anglef>);
-static_assert(std::is_trivially_copyable_v<Angled>);
-
-static_assert(std::is_standard_layout_v<Anglef>);
-static_assert(std::is_standard_layout_v<Angled>);
-
-static_assert(!std::is_convertible_v<float, Anglef>);
-static_assert(!std::is_convertible_v<double, Angled>);
-
 } // namespace
 
 } // namespace trivial::math

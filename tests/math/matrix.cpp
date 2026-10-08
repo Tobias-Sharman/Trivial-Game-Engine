@@ -148,18 +148,6 @@ TYPED_TEST(Affine2Test, ComparesValues) {
 	EXPECT_FALSE(kLhs.nearlyEqual(kDifferent, epsilon<T>()));
 }
 
-static_assert(sizeof(Affine2f) == sizeof(float) * 6);
-static_assert(sizeof(Affine2d) == sizeof(double) * 6);
-
-static_assert(alignof(Affine2f) == alignof(float));
-static_assert(alignof(Affine2d) == alignof(double));
-
-static_assert(std::is_trivially_copyable_v<Affine2f>);
-static_assert(std::is_trivially_copyable_v<Affine2d>);
-
-static_assert(std::is_standard_layout_v<Affine2f>);
-static_assert(std::is_standard_layout_v<Affine2d>);
-
 TYPED_TEST_SUITE(Mat4Test, FloatingPointTypes);
 
 TYPED_TEST(Mat4Test, DefaultInitialisesToZero) {
@@ -463,21 +451,6 @@ static_assert(g_kConstexprMatrix * Vec4f{.x = 1.0F, .y = 2.0F, .z = 3.0F, .w = 4
               == Vec4f{.x = 30.0F, .y = 70.0F, .z = 110.0F, .w = 150.0F});
 static_assert(Mat4f::identity() * g_kConstexprMatrix == g_kConstexprMatrix);
 static_assert(g_kConstexprMatrix * Mat4f::identity() == g_kConstexprMatrix);
-
-static_assert(sizeof(Mat4f) == sizeof(float) * 16);
-static_assert(sizeof(Mat4d) == sizeof(double) * 16);
-
-static_assert(alignof(Mat4f) == alignof(float));
-static_assert(alignof(Mat4d) == alignof(double));
-
-static_assert(std::is_aggregate_v<Mat4f>);
-static_assert(std::is_aggregate_v<Mat4d>);
-
-static_assert(std::is_trivially_copyable_v<Mat4f>);
-static_assert(std::is_trivially_copyable_v<Mat4d>);
-
-static_assert(std::is_standard_layout_v<Mat4f>);
-static_assert(std::is_standard_layout_v<Mat4d>);
 
 } // namespace
 

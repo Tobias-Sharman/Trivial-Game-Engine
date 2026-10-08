@@ -23,14 +23,10 @@
 
 namespace trivial::task {
 
-namespace detail {
-
 template <typename Callable>
 concept InlineStorable = sizeof(Callable) <= TRIVIAL_TASK_PAYLOAD_INLINE_STORAGE_SIZE
                          && alignof(Callable) <= TRIVIAL_TASK_PAYLOAD_INLINE_STORAGE_ALIGNMENT
                          && std::is_nothrow_move_constructible_v<Callable>;
-
-} // namespace detail
 
 template <typename Callable>
 using TaskResult = std::invoke_result_t<std::decay_t<Callable>&>;
@@ -47,7 +43,7 @@ public:
 	explicit TaskPayload(Callable&& callable) noexcept { // NOLINT(cppcoreguidelines-pro-type-member-init)
 		using StoredCallable = std::decay_t<Callable>;
 
-		if constexpr (detail::InlineStorable<StoredCallable>) {
+		if constexpr (InlineStorable<StoredCallable>) {
 			std::construct_at(rawStoragePointer<StoredCallable>(m_storage.data()), std::forward<Callable>(callable));
 
 			m_operations = &getInlineOperations<StoredCallable>();
@@ -214,12 +210,11 @@ private:
 
 				    return &getEmptyOperations();
 			    } else {
-				    // NOLINTNEXTLINE(misc-const-correctness)
-				    StoredResult result = std::invoke(*callable);
+				    StoredResult result = std::invoke(*callable); // NOLINT(misc-const-correctness)
 
 				    std::destroy_at(callable);
 
-				    if constexpr (detail::InlineStorable<StoredResult>) {
+				    if constexpr (InlineStorable<StoredResult>) {
 					    std::construct_at(rawStoragePointer<StoredResult>(storage), std::move(result));
 
 					    return &getInlineResultOperations<StoredResult>();
@@ -286,7 +281,7 @@ private:
 				    std::destroy_at(slot);
 				    delete callable;
 
-				    if constexpr (detail::InlineStorable<StoredResult>) {
+				    if constexpr (InlineStorable<StoredResult>) {
 					    std::construct_at(rawStoragePointer<StoredResult>(storage), std::move(result));
 
 					    return &getInlineResultOperations<StoredResult>();

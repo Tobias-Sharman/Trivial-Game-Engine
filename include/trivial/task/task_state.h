@@ -1,6 +1,5 @@
-// task_state.h
-#ifndef TRIVIAL_SRC_TASK_TASK_STATE_H
-#define TRIVIAL_SRC_TASK_TASK_STATE_H
+#ifndef TRIVIAL_TASK_TASK_STATE_H
+#define TRIVIAL_TASK_TASK_STATE_H
 
 #include <cstdint>
 #include <utility>
@@ -137,4 +136,4 @@ private:
 #undef TRIVIAL_TASK_STATE_AFFINITY_SHIFT
 #undef TRIVIAL_TASK_STATE_LIFETIME_SHIFT
 
-#endif // TRIVIAL_SRC_TASK_TASK_STATE_H
+#endif // TRIVIAL_TASK_TASK_STATE_H

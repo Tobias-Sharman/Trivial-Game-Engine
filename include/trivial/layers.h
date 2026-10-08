@@ -14,7 +14,7 @@ class TRIVIAL_NOVTABLE Layer {
 public:
 	Layer() = default;
 
-	virtual ~Layer() = default;
+	virtual ~Layer() noexcept;
 
 	Layer(const Layer&) = delete;
 	Layer& operator=(const Layer&) = delete;
@@ -22,9 +22,9 @@ public:
 	Layer(Layer&&) = delete;
 	Layer& operator=(Layer&&) = delete;
 
-	virtual void onStart([[maybe_unused]] gpu::Context* gpu) noexcept {};
-	virtual void onUpdate([[maybe_unused]] const FrameContext& frameContext) noexcept {};
-	virtual void onEnd() noexcept {};
+	virtual void onStart([[maybe_unused]] gpu::Context* gpu) noexcept {}
+	virtual void onUpdate([[maybe_unused]] const FrameContext& frameContext) noexcept {}
+	virtual void onEnd() noexcept {}
 
 	[[nodiscard]] virtual std::vector<render::Drawable> collectDrawables() const noexcept = 0;
 };

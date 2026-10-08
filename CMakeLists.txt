@@ -7,7 +7,8 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET 14.4)
 project(
 	Trivial
 	VERSION 0.1.0
-	LANGUAGES C CXX
+	# LANGUAGES C CXX
+	LANGUAGES CXX
 )
 
 # -----------------------------------------------------------------------------
@@ -24,6 +25,7 @@ option(TRIVIAL_MATH_DISABLE_SIMD_BACKEND "Disable explicit SIMD math backends" O
 option(TRIVIAL_MATH_DISABLE_FMA "Disable explicit FMA in math backends" OFF)
 option(TRIVIAL_ENABLE_TSAN "Enable ThreadSanitizer" OFF)
 option(TRIVIAL_EXPORT_DEPENDENCY_COMPILE_COMMANDS "Include third-party targets in compile_commands.json" OFF)
+option(TRIVIAL_WARNINGS_AS_ERRORS "Treat compiler warnings in the engine as errors" OFF)
 
 set(TRIVIAL_MEMORY_DEBUG "AUTO" CACHE STRING "Allocation level memory debugging (AUTO/ON/OFF)")
 set_property(CACHE TRIVIAL_MEMORY_DEBUG PROPERTY STRINGS AUTO ON OFF)
@@ -41,6 +43,7 @@ set_property(CACHE TRIVIAL_MEMORY_DECOMMIT PROPERTY STRINGS AUTO ON OFF)
 set(TRIVIAL_PRIVATE_SOURCES
 	src/engine.cpp
 	src/application.cpp
+	src/layers.cpp
 	src/core/assert.cpp
 	src/core/log.cpp
 	src/core/math/mat4.cpp
@@ -56,12 +59,14 @@ set(TRIVIAL_PRIVATE_SOURCES
 	src/core/thread/thread.cpp
 	src/core/thread/thread_stack_allocator.cpp
 	src/core/time/time.cpp
+	src/ecs/component_store.cpp
 	src/core/time/time_capabilities.cpp
 	src/gpu/context.cpp
 	src/platform/window.cpp
 	src/platform/glfw/window.cpp
 	src/render/renderer.cpp
 	src/render/shapes.cpp
+	src/rhi/backend.cpp
 	src/rhi/vulkan/allocator.cpp
 	src/rhi/vulkan/backend.cpp
 	src/rhi/vulkan/command.cpp
@@ -104,8 +109,8 @@ target_include_directories(trivial
 target_compile_features(trivial
 	PUBLIC
 		cxx_std_23
-	PRIVATE
-		c_std_99
+	# PRIVATE
+	# 	c_std_99
 )
 
 if(TRIVIAL_ENABLE_TSAN AND NOT MSVC)
@@ -277,17 +282,38 @@ add_subdirectory(tests)
 add_subdirectory(sandbox)
 
 # -----------------------------------------------------------------------------
-# Compiler warnings for Trivial itself - not to be used by games using
+# Compiler options for Trivial itself - not to be used by games using
 # -----------------------------------------------------------------------------
 
 if(MSVC)
 	target_compile_options(trivial PRIVATE
-		$<$<COMPILE_LANGUAGE:C>:/W4>
-		$<$<COMPILE_LANGUAGE:CXX>:/W4>
-		$<$<COMPILE_LANGUAGE:CXX>:/permissive->
-		$<$<COMPILE_LANGUAGE:CXX>:/Zc:__cplusplus>
-		$<$<COMPILE_LANGUAGE:CXX>:/EHs-c->
+		/permissive-
+		/Zc:__cplusplus
+		/Zc:preprocessor
+		/utf-8
+		/EHs-c-
+
+		/Gy
+		/Gw
+
+		/W4
+		/external:env:INCLUDE
+		/external:W0
 		/wd4324
+		/w44365
+		/w44242
+		/w44254
+		/w44826
+		/w44265
+		/w44263
+		/w44264
+		/w45267
+		/w45262
+		/w44061
+		/w44062
+		/we4668
+		/w45038
+		$<$<BOOL:${TRIVIAL_WARNINGS_AS_ERRORS}>:/WX>
 	)
 
 	target_compile_definitions(trivial PRIVATE _HAS_EXCEPTIONS=0)
@@ -295,12 +321,62 @@ if(MSVC)
 	string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 else()
 	target_compile_options(trivial PRIVATE
+		-fno-exceptions
+
+		-ffunction-sections
+		-fdata-sections
+		$<$<NOT:$<CONFIG:Release>>:-fno-omit-frame-pointer>
+		$<$<NOT:$<CONFIG:Release>>:-mno-omit-leaf-frame-pointer>
+		$<$<CONFIG:Debug>:-ftrivial-auto-var-init=pattern>
+
 		-Wall
 		-Wextra
 		-Wpedantic
 		-Wshadow
-		$<$<CXX_COMPILER_ID:Clang,AppleClang>:-Wshadow-all>
 		-Werror=undef
-		$<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
+		-Wconversion
+		-Wsign-conversion
+		-Wdouble-promotion
+		-Wold-style-cast
+		-Wcast-qual
+		-Wzero-as-null-pointer-constant
+		-Wnon-virtual-dtor
+		-Woverloaded-virtual
+		-Wsuggest-override
+		-Wextra-semi
+		-Wctad-maybe-unsupported
+		-Wdeprecated
+		-Wimplicit-fallthrough
+		-Wswitch-enum
+		-Wnull-dereference
+		-Wformat=2
+		$<$<BOOL:${TRIVIAL_WARNINGS_AS_ERRORS}>:-Werror>
 	)
+
+	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+		target_compile_options(trivial PRIVATE
+			-Wshadow-all
+			-Wcast-align
+			-Wcast-function-type-mismatch
+			-Wweak-vtables
+			-Wcovered-switch-default
+			-Wunreachable-code-aggressive
+			-Wcomma
+			-Wmissing-prototypes
+			-Wmissing-variable-declarations
+			-Wnewline-eof
+			-Wreserved-identifier
+			-Werror=assume
+		)
+	elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+		target_compile_options(trivial PRIVATE
+			-Wcast-align=strict
+			-Wcast-function-type
+			-Wuseless-cast
+			-Wduplicated-cond
+			-Wduplicated-branches
+			-Wlogical-op
+			-Wmissing-declarations
+		)
+	endif()
 endif()

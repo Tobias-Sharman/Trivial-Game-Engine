@@ -522,8 +522,7 @@ private:
 
 namespace detail {
 
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-inline constinit ParkingLot* g_activeParkingLot = nullptr;
+inline constinit ParkingLot* g_activeParkingLot = nullptr; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
 } // namespace detail
 

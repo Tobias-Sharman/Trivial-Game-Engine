@@ -121,8 +121,7 @@ Backend::Backend(const ApplicationInfo& applicationInfo, const platform::Window&
 	m_syncState = createFrameSyncState(m_device, kImageCount);
 	m_commandState = createCommandState(m_device, m_graphicsFamily, kImageCount);
 
-	// NOLINTNEXTLINE(cppcoreguidelines-prefer-member-initializer)
-	m_pipelineLayout = createPipelineLayout(m_device);
+	m_pipelineLayout = createPipelineLayout(m_device); // NOLINT(cppcoreguidelines-prefer-member-initializer)
 
 	VkShaderModule vertexModule
 	    = createShaderModule(m_device, std::string(TRIVIAL_SHADER_DIR) + "flat_colour.vert.spv");

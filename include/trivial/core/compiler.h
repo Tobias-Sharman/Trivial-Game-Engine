@@ -107,6 +107,32 @@
 
 #endif // Debug break
 
+#define TRIVIAL_DIAGNOSTIC_PRAGMA_STRING(text) #text
+
+#if TRIVIAL_COMPILER_CLANG
+#define TRIVIAL_DIAGNOSTIC_PUSH _Pragma("clang diagnostic push")
+#define TRIVIAL_DIAGNOSTIC_POP _Pragma("clang diagnostic pop")
+#define TRIVIAL_DIAGNOSTIC_IGNORE_CLANG(warning)                                                                       \
+	_Pragma(TRIVIAL_DIAGNOSTIC_PRAGMA_STRING(clang diagnostic ignored warning))
+#define TRIVIAL_DIAGNOSTIC_IGNORE_GCC(warning)
+#define TRIVIAL_DIAGNOSTIC_IGNORE_MSVC(number)
+
+#elif TRIVIAL_COMPILER_GCC
+#define TRIVIAL_DIAGNOSTIC_PUSH _Pragma("GCC diagnostic push")
+#define TRIVIAL_DIAGNOSTIC_POP _Pragma("GCC diagnostic pop")
+#define TRIVIAL_DIAGNOSTIC_IGNORE_CLANG(warning)
+#define TRIVIAL_DIAGNOSTIC_IGNORE_GCC(warning) _Pragma(TRIVIAL_DIAGNOSTIC_PRAGMA_STRING(GCC diagnostic ignored warning))
+#define TRIVIAL_DIAGNOSTIC_IGNORE_MSVC(number)
+
+#elif TRIVIAL_COMPILER_MSVC
+#define TRIVIAL_DIAGNOSTIC_PUSH __pragma(warning(push))
+#define TRIVIAL_DIAGNOSTIC_POP __pragma(warning(pop))
+#define TRIVIAL_DIAGNOSTIC_IGNORE_CLANG(warning)
+#define TRIVIAL_DIAGNOSTIC_IGNORE_GCC(warning)
+#define TRIVIAL_DIAGNOSTIC_IGNORE_MSVC(number) __pragma(warning(disable : number))
+
+#endif // Diagnostic suppression
+
 #ifdef __SANITIZE_THREAD__
 #define TRIVIAL_THREAD_SANITISER_ENABLED 1
 

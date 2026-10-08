@@ -1,5 +1,5 @@
-#ifndef TRIVIAL_SRC_RHI_VULKAN_COMMANDS_H
-#define TRIVIAL_SRC_RHI_VULKAN_COMMANDS_H
+#ifndef TRIVIAL_SRC_RHI_VULKAN_COMMAND_H
+#define TRIVIAL_SRC_RHI_VULKAN_COMMAND_H
 
 #include <cstdint>
 #include <vector>
@@ -20,4 +20,4 @@ void destroyCommandState(VkDevice device, CommandState& state) noexcept;
 
 } // namespace trivial::rhi::vulkan
 
-#endif // TRIVIAL_SRC_RHI_VULKAN_COMMANDS_H
+#endif // TRIVIAL_SRC_RHI_VULKAN_COMMAND_H

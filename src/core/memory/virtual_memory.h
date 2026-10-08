@@ -170,16 +170,14 @@ inline bool probeMadvFree(std::size_t pageSize) noexcept {
 
 	const std::size_t kOffset = alignmentOffset(raw, alignment);
 
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-	char* aligned = static_cast<char*>(raw) + kOffset;
+	char* aligned = static_cast<char*>(raw) + kOffset; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
 	if (kOffset > 0) {
 		(void)munmap(raw, kOffset);
 	}
 
 	if (const std::size_t kTail = kRawBytes - kOffset - bytes; kTail > 0) {
-		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-		(void)munmap(aligned + bytes, kTail);
+		(void)munmap(aligned + bytes, kTail); // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 	}
 
 	return aligned;

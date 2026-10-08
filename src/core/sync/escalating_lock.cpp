@@ -85,8 +85,7 @@ void EscalatingLock::lockSlow() noexcept {
 	}
 }
 
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
-void EscalatingLock::unlockSlow() noexcept {
+void EscalatingLock::unlockSlow() noexcept { // NOLINT(readability-function-cognitive-complexity)
 	std::uintptr_t state = m_state.load(std::memory_order_relaxed);
 
 	for (;;) {

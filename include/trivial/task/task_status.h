@@ -1,5 +1,5 @@
-#ifndef TRIVIAL_SRC_TASK_TASK_STATUS_H
-#define TRIVIAL_SRC_TASK_TASK_STATUS_H
+#ifndef TRIVIAL_TASK_TASK_STATUS_H
+#define TRIVIAL_TASK_TASK_STATUS_H
 
 #include <cstdint>
 
@@ -16,4 +16,4 @@ enum class TaskStatus : std::uint8_t {
 
 } // namespace trivial::task
 
-#endif // TRIVIAL_SRC_TASK_TASK_STATUS_H
+#endif // TRIVIAL_TASK_TASK_STATUS_H

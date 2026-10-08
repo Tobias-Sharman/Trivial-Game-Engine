@@ -99,8 +99,7 @@ VkDebugUtilsMessengerEXT createDebugMessenger(VkInstance instance) noexcept {
 	TRIVIAL_ASSERT(instance != VK_NULL_HANDLE);
 
 	const PFN_vkCreateDebugUtilsMessengerEXT kCreateDebugUtilsMessenger // NOLINT(misc-misplaced-const)
-	    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-	    = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
+	    = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>( // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
 	        vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"));
 
 	if (kCreateDebugUtilsMessenger == nullptr) {
@@ -130,8 +129,7 @@ void destroyDebugMessenger(VkInstance instance, VkDebugUtilsMessengerEXT debugMe
 	}
 
 	const PFN_vkDestroyDebugUtilsMessengerEXT kDestroyDebugUtilsMessenger // NOLINT(misc-misplaced-const)
-	    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-	    = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
+	    = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>( // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
 	        vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
 
 	TRIVIAL_ASSERT(kDestroyDebugUtilsMessenger != nullptr);

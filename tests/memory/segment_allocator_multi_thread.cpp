@@ -214,10 +214,10 @@ TEST_F(SegmentAllocatorMultiThreadTest, CommitKeepsPrefixConsistent) {
 	EXPECT_EQ(inconsistencies.load(), 0U);
 }
 
-#if TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
 // The counter is claimed before each commit and released on every decommit and
 // purge, so a drift here is a bookkeeping leak rather than a memory one
 TEST_F(SegmentAllocatorMultiThreadTest, CommittedBytesReturnsToBaseline) {
+#if TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
 	const std::size_t kBaseline = m_allocator.committedBytes();
 
 	runOnAllTasks([&](std::size_t taskIndex) {
@@ -244,9 +244,11 @@ TEST_F(SegmentAllocatorMultiThreadTest, CommittedBytesReturnsToBaseline) {
 
 	EXPECT_EQ(m_allocator.committedBytes(), kBaseline);
 #else
-	EXPECT_GE(allocator.committedBytes(), kBaseline);
+	EXPECT_GE(m_allocator.committedBytes(), kBaseline);
 #endif // TRIVIAL_MEMORY_ENABLE_DECOMMIT
-}
+#else
+	GTEST_SKIP() << "Committed bytes are not tracked in this configuration";
 #endif // TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
+}
 
 } // namespace

@@ -2,9 +2,10 @@
 
 #include <trivial/core/math/math_config.h>
 #include <trivial/core/math/vec4.h>
-#include <trivial/core/platform.h>
 
 #if TRIVIAL_MATH_USE_SIMD
+#include <trivial/core/platform.h>
+
 #if TRIVIAL_ARCH_X86_64
 #include <immintrin.h>
 
@@ -15,7 +16,7 @@
 
 #endif // SIMD check
 
-namespace trivial::math::detail {
+namespace trivial::math {
 
 Vec4f multiplyMat4Vec4(const Mat4f& matrix, const Vec4f& vector) noexcept {
 #if !TRIVIAL_MATH_USE_SIMD
@@ -74,10 +75,12 @@ Vec4f multiplyMat4Vec4(const Mat4f& matrix, const Vec4f& vector) noexcept {
 
 Mat4f multiplyMat4Mat4(const Mat4f& lhs, const Mat4f& rhs) noexcept {
 #if !TRIVIAL_MATH_USE_SIMD
-	return {(lhs.col0 * rhs.col0.x + lhs.col1 * rhs.col0.y) + (lhs.col2 * rhs.col0.z + lhs.col3 * rhs.col0.w),
-	        (lhs.col0 * rhs.col1.x + lhs.col1 * rhs.col1.y) + (lhs.col2 * rhs.col1.z + lhs.col3 * rhs.col1.w),
-	        (lhs.col0 * rhs.col2.x + lhs.col1 * rhs.col2.y) + (lhs.col2 * rhs.col2.z + lhs.col3 * rhs.col2.w),
-	        (lhs.col0 * rhs.col3.x + lhs.col1 * rhs.col3.y) + (lhs.col2 * rhs.col3.z + lhs.col3 * rhs.col3.w)};
+	return {
+	    .col0 = (lhs.col0 * rhs.col0.x + lhs.col1 * rhs.col0.y) + (lhs.col2 * rhs.col0.z + lhs.col3 * rhs.col0.w),
+	    .col1 = (lhs.col0 * rhs.col1.x + lhs.col1 * rhs.col1.y) + (lhs.col2 * rhs.col1.z + lhs.col3 * rhs.col1.w),
+	    .col2 = (lhs.col0 * rhs.col2.x + lhs.col1 * rhs.col2.y) + (lhs.col2 * rhs.col2.z + lhs.col3 * rhs.col2.w),
+	    .col3 = (lhs.col0 * rhs.col3.x + lhs.col1 * rhs.col3.y) + (lhs.col2 * rhs.col3.z + lhs.col3 * rhs.col3.w),
+	};
 	// Weird braces to match non-FMA SIMD style
 
 #elif TRIVIAL_ARCH_X86_64
@@ -237,4 +240,4 @@ Mat4f multiplyMat4Mat4(const Mat4f& lhs, const Mat4f& rhs) noexcept {
 #endif // CPU architecture and SIMD dispatch
 }
 
-} // namespace trivial::math::detail
+} // namespace trivial::math

@@ -113,18 +113,6 @@ TYPED_TEST(Transform2Test, ComparesValues) {
 	EXPECT_FALSE(kLhs.nearlyEqual(kDifferent, epsilon<T>()));
 }
 
-static_assert(sizeof(Transform2f) == sizeof(Vec2f) + sizeof(Anglef) + sizeof(Vec2f));
-static_assert(sizeof(Transform2d) == sizeof(Vec2d) + sizeof(Angled) + sizeof(Vec2d));
-
-static_assert(alignof(Transform2f) == alignof(float));
-static_assert(alignof(Transform2d) == alignof(double));
-
-static_assert(std::is_trivially_copyable_v<Transform2f>);
-static_assert(std::is_trivially_copyable_v<Transform2d>);
-
-static_assert(std::is_standard_layout_v<Transform2f>);
-static_assert(std::is_standard_layout_v<Transform2d>);
-
 } // namespace
 
 } // namespace trivial::math
