@@ -31,8 +31,6 @@ namespace {
 
 } // namespace
 
-// TODO: proper logging system safe under multithreading
-
 void logMessage(LogLevel level, const char* message) noexcept {
 	(void)std::fputs("Trivial ", stderr);
 	(void)std::fputs(logLevelName(level), stderr);

@@ -25,10 +25,6 @@
 
 namespace trivial::task {
 
-// TODO: Measure size, padding, and alignment on different platforms for cache
-//       optimisation, can very likely be improved since now is more of a basic
-//       semantic sense (decent for cache not optimised for size which is
-//       significant here)
 struct TaskState {
 	TaskState(TaskPayload initialPayload, const TaskLaunchOptions& options) noexcept
 	    : payload(std::move(initialPayload))
@@ -103,8 +99,6 @@ private:
 		    | (static_cast<std::uint32_t>(affinity) << TRIVIAL_TASK_STATE_AFFINITY_SHIFT)
 		    | (static_cast<std::uint32_t>(lifetime) << TRIVIAL_TASK_STATE_LIFETIME_SHIFT));
 	}
-
-	// TODO: See if there might be a better way that does not require casting to uint32_t for shift operations
 
 	[[nodiscard]] TRIVIAL_FORCE_INLINE std::uint32_t extractBits(std::uint32_t shift,
 	                                                             std::uint32_t mask) const noexcept {

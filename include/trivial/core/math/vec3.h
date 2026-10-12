@@ -191,8 +191,6 @@ struct Vec3 {
 		return *this / vectorLength;
 	}
 
-	// TODO: perp when I setle on a convention for direction
-
 	[[nodiscard]] constexpr Vec3 lerp(Vec3 rhs, T t) const noexcept
 	    requires FloatingPoint<T>
 	{

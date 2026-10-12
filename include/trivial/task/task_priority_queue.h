@@ -118,7 +118,7 @@ public:
 	}
 
 private:
-	using ReadyQueue = std::deque<TaskHandle>; // TODO: custom deque
+	using ReadyQueue = std::deque<TaskHandle>;
 
 	struct PriorityBucket {
 		mutable sync::Mutex mutex;

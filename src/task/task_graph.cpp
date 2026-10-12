@@ -466,7 +466,7 @@ void TaskGraph::releaseTaskIndex(std::uint32_t taskIndex) noexcept {
 
 	const sync::LockGuard<sync::Mutex> kLock(m_allocationMutex);
 
-	m_freeTaskIndices.push_back(taskIndex); // TODO: Custom allocator
+	m_freeTaskIndices.push_back(taskIndex);
 }
 
 TaskPrerequisiteResult TaskGraph::addPrerequisiteLocked(TaskHandle dependantHandle,

@@ -41,9 +41,6 @@
 
 #endif // Platform check
 
-// TODO: Some of these functions would for sure benefit from the safety gained
-//       from using a named struct
-
 #define TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_INVALID_INDEX (std::numeric_limits<std::size_t>::max())
 
 #define TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BITS_PER_WORD                                                                 \
@@ -146,9 +143,6 @@ constexpr void clearBit(std::uint64_t* bits, std::size_t index) noexcept {
 	    &= ~(std::uint64_t{1} << (index & TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BIT_INDEX_MASK));
 }
 
-// NOTE: Can for sure SIMD this, but only worth bothering once the rutime
-// dispatch is in place and there is a workload that requires enough RAM for
-// this to become a bottleneck
 [[nodiscard]] constexpr std::size_t findCachedRun(const std::uint64_t* cached,
                                                   std::size_t capacity,
                                                   std::size_t count) noexcept {

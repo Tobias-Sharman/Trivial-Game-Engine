@@ -7,10 +7,6 @@
 #include <trivial/core/compiler.h>
 #include <trivial/ecs/entity.h>
 
-// NOTE: Remeber not all cache lines are 64 bytes, will want some special handling for 128 byte for m series chips
-//       Do not care about any server cpu that may have more
-//       When adding in support for gpu compute will need to take care for their different cache size too
-
 namespace trivial::ecs {
 
 template <typename T>
@@ -47,8 +43,6 @@ public:
 	constexpr void remove(Entity entity) noexcept {
 		const Entity::ValType kIndex = entity.index();
 
-		// NOTE: Would make a point of removing this in release but by the time release matters then the store style
-		// will negate this issue
 		if (kIndex >= m_active.size()) {
 			return;
 		}
@@ -66,7 +60,6 @@ public:
 		return m_active[kIndex];
 	}
 
-	// NOTE: No safety check since safety will be enforced when making better storage style
 	[[nodiscard]] constexpr T& get(Entity entity) noexcept TRIVIAL_LIFETIMEBOUND {
 		return m_components[entity.index()];
 	}
@@ -74,13 +67,11 @@ public:
 		return m_components[entity.index()];
 	}
 
-	// TODO: wrap debug helper in macro, not doing now because need to decide if keeping
 	[[nodiscard]] constexpr Entity::ValType capacity() const noexcept {
 		return static_cast<Entity::ValType>(m_components.size());
 	}
 
 private:
-	// NOTE: This will be dropped in better implementation
 	constexpr void ensureCapacity(Entity::ValType index) noexcept {
 		if (index < m_components.size()) {
 			return;

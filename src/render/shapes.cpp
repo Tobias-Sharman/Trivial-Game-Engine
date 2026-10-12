@@ -12,8 +12,6 @@
 #include <limits>
 #endif // TRIVIAL_ENABLE_ASSERTS
 
-// TODO: Deside on sensible defaults
-
 namespace trivial::render {
 
 MeshGeometry makeQuad() noexcept {

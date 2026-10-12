@@ -13,7 +13,6 @@
 
 namespace trivial::ecs {
 
-// NOTE: Need to add asserts in use as is unsafe - see make, index, and generation
 struct Entity {
 	using ValType = std::uint32_t;
 
@@ -22,8 +21,6 @@ struct Entity {
 	              "Entity index and generation bits must exactly fill the entity value");
 
 	constexpr Entity() = default;
-
-	// TODO: Cover delete, copy, move, etc. ro5/6
 
 	[[nodiscard]] static constexpr Entity make(ValType index, ValType generation) noexcept {
 		return Entity{(generation << TRIVIAL_ECS_ENTITY_GENERATION_SHIFT) | index};

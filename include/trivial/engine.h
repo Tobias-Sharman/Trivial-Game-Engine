@@ -48,7 +48,6 @@ public:
 	[[nodiscard]] const render::Renderer& renderer() const noexcept TRIVIAL_LIFETIMEBOUND { return m_renderer; }
 
 private:
-	// TODO: Once form of what objects engine actually owns is explicit then update this
 	GraphicsApi m_requestedGraphicsApi = GraphicsApi::Auto;
 	FrameTimer m_frameTimer;
 	std::uint64_t m_frameIndex = 0;

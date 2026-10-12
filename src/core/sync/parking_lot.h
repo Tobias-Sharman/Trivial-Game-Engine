@@ -19,13 +19,6 @@
 #include "core/sync/bucket.h"
 #include "core/sync/parking_lot_slot.h"
 
-// NOTE: For later implementation on systems with a known fixed thread count
-//       the global could be dropped for a static version. A lazy initialisation
-//       singleton is not pursued, since the gain from one less pointer
-//       indirection is insignificant compared to the rest of the function and
-//       will make the behaviour less clean and consistent. The global will
-//       likely be in lower cache level so fetching is quick anyway
-
 namespace trivial::sync {
 
 class ParkingLot {

@@ -373,10 +373,6 @@ void Thread::join() noexcept {
 	return g_currentThread;
 }
 
-// TODO: Change with custom wait primitives to directly yield to waiting thread
-//       if possible
-//       For Macos adjust MACH_PORT_NULL to thread wanted and option ought to
-//       not change
 void Thread::yield() noexcept {
 #if TRIVIAL_PLATFORM_MACOS
 	thread_switch(MACH_PORT_NULL, SWITCH_OPTION_DEPRESS, TRIVIAL_THREAD_MACOS_YIELD_DEPRESS_TIMEOUT_MS);
@@ -431,7 +427,7 @@ void Thread::runEntry(Thread* self) noexcept {
 	}
 #endif // Platform-specific self naming
 
-	self->m_startRoutine(self->m_arg); // NOTE: Should surface errors
+	self->m_startRoutine(self->m_arg);
 }
 
 #if TRIVIAL_PLATFORM_POSIX

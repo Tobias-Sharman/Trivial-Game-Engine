@@ -5,7 +5,6 @@
 
 #include <trivial/core/config.h> // IWYU pragma: keep
 
-// TODO: Decide what is the best split
 #ifndef TRIVIAL_ECS_ENTITY_INDEX_BITS
 #define TRIVIAL_ECS_ENTITY_INDEX_BITS 24U
 #endif

@@ -37,7 +37,6 @@ public:
 	[[nodiscard]] constexpr std::size_t size() const noexcept { return m_size; }
 
 private:
-	// TODO: Custom allocator
 	std::unique_ptr<T[]> m_elements; // NOLINT(cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)
 	std::size_t m_size;
 };

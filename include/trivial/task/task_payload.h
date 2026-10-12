@@ -48,7 +48,7 @@ public:
 
 			m_operations = &getInlineOperations<StoredCallable>();
 		} else {
-			StoredCallable* object = new StoredCallable(std::forward<Callable>(callable)); // TODO: Custom allocator
+			StoredCallable* object = new StoredCallable(std::forward<Callable>(callable));
 
 			std::construct_at(rawStoragePointer<StoredCallable*>(m_storage.data()), object);
 
@@ -313,7 +313,7 @@ private:
 			        const Callable* object = *slot;
 
 			        std::destroy_at(slot);
-			        delete object; // TODO: Custom allocator
+			        delete object;
 		        },
 
 		    .get = [](std::byte* storage) noexcept -> void* {

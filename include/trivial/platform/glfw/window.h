@@ -17,7 +17,6 @@ class Window {
 public:
 	explicit Window(const WindowConfig& config) noexcept;
 
-	// TODO: Move GLFW init/terminate into a GLFW runtime object for multiple window support
 	~Window();
 
 	Window(const Window&) = delete;
@@ -26,7 +25,6 @@ public:
 	Window(Window&&) = delete;
 	Window& operator=(Window&&) = delete;
 
-	// TODO: Move event polling to a platform window system/runtime for multiple window support
 	static void pollEvents() noexcept { glfwPollEvents(); }
 
 	[[nodiscard]] bool shouldClose() const noexcept;

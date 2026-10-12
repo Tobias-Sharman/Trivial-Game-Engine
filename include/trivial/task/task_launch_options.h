@@ -44,8 +44,6 @@ struct TaskLaunchOptions {
 	TaskLifetime lifetime = TaskLifetime::AutoRelease;
 };
 
-// TODO: Reduce scope handle size, should not need to have such a large amount of indices or generation
-
 } // namespace trivial::task
 
 #undef TRIVIAL_TASK_SCOPE_HANDLE_INVALID_INDEX

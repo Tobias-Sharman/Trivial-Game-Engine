@@ -4,9 +4,6 @@
 #include <concepts>
 #include <type_traits>
 
-// NOTE: Later will add extension for fixed point types for improved determinism
-//       When doing so wrap numeric traits like epsilon, infinity, max etc.
-
 namespace trivial::math {
 
 template <typename T>

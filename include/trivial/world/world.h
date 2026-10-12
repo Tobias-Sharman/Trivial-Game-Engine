@@ -121,15 +121,13 @@ private:
 
 	struct EntitySlot {
 		Entity::ValType generation = 0;
-		bool alive = false; // TODO: Drop on redesign of entity storage style, should be able to encode in storage
+		bool alive = false;
 	};
 
 	template <typename T>
 	[[nodiscard]] static constexpr bool isStandardComponent() noexcept {
 		return std::is_same_v<T, Position2D> || std::is_same_v<T, Velocity2D>;
 	}
-
-	// TODO: Can probably make this cleaner and more scaleable for more types, do when adding them
 
 	template <typename T>
 	[[nodiscard]] ComponentStore<T>& standardStore() noexcept TRIVIAL_LIFETIMEBOUND {
@@ -199,15 +197,12 @@ private:
 
 	std::vector<EntitySlot> m_entities;
 	std::vector<Entity::ValType> m_freeIndices;
-	// TODO: Confirm that using a std::stack is defo worse than a vector as a stack
 
-	Entity::ValType m_aliveCount = 0; // TODO: Also encode into storage style
+	Entity::ValType m_aliveCount = 0;
 
 	ComponentStore<Position2D> m_positions2D;
 	ComponentStore<Velocity2D> m_velocities2D;
 
-	// TODO: Custom type id would make this faster as could put into a vector
-	//       Would need to consider how this affects serialisation so leave until then
 	ComponentStoreMap m_componentStores;
 };
 

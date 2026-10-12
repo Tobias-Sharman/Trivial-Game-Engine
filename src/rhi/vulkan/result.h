@@ -9,8 +9,6 @@
 namespace trivial::rhi::vulkan {
 
 [[nodiscard]] constexpr const char* resultName(VkResult result) noexcept {
-	// TODO: List every VkResult value with VK_HEADER_VERSION guards, then drop
-	//       this suppression
 	TRIVIAL_DIAGNOSTIC_PUSH
 	TRIVIAL_DIAGNOSTIC_IGNORE_CLANG("-Wswitch-enum")
 	TRIVIAL_DIAGNOSTIC_IGNORE_GCC("-Wswitch-enum")

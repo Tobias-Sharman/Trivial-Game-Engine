@@ -181,7 +181,6 @@ namespace {
 
 namespace trivial::rhi::vulkan {
 
-// TODO: Adjust when async is in place, and maybe move spv into compiled binary
 VkShaderModule createShaderModule(VkDevice device, const std::string& spirvPath) noexcept {
 	TRIVIAL_ASSERT(device != VK_NULL_HANDLE);
 

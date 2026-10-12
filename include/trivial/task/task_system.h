@@ -36,11 +36,7 @@ struct TaskSystemConfig {
 	WorkerConfig workers{};
 
 	std::uint32_t waitHelpMaxDepth = 0;
-
-	// TODO: Config for dedicated worker threads, main, render etc.
 };
-
-// TODO: Support for thread affinities beyond main
 
 class TaskSystem {
 public:
@@ -59,8 +55,6 @@ public:
 	[[nodiscard]] TRIVIAL_HOT TaskHandle launch(TaskPayload payload,
 	                                            TaskHandle prerequisite,
 	                                            const TaskLaunchOptions& options = {}) noexcept;
-
-	// TODO: Add more non general paths
 
 	[[nodiscard]] TRIVIAL_HOT TaskHandle launch(TaskPayload payload,
 	                                            std::span<const TaskHandle> prerequisites,
@@ -113,7 +107,7 @@ private:
 #endif // TRIVIAL_PLATFORM_POSIX
 
 	// Can't do vector since no move construction
-	std::deque<Worker> m_workers; // TODO: Custom container with custom allocator since deque makes no semantic sense
+	std::deque<Worker> m_workers;
 
 	std::atomic<std::size_t> m_nextWorkerStartIndex{0};
 
@@ -121,7 +115,7 @@ private:
 	sync::Semaphore m_activeSlots;
 
 	sync::Mutex m_parkedIndicesMutex;
-	std::vector<std::size_t> m_parkedWorkerIndices; // TODO: custom allocator/structure
+	std::vector<std::size_t> m_parkedWorkerIndices;
 
 	std::uint32_t m_waitHelpMaxDepth = 0;
 };

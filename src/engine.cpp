@@ -29,7 +29,7 @@ Engine::Engine(const EngineConfig& config) noexcept
 	memory::initCapabilities();
 	time::initCapabilities();
 
-	thread::Thread* mainThread = new (std::nothrow) thread::Thread(); // TODO: Custom allocator
+	thread::Thread* mainThread = new (std::nothrow) thread::Thread();
 	if (mainThread == nullptr) {
 		TRIVIAL_LOG_FATAL_PREFIX("Engine", "Failed to allocate main thread adoption record");
 		std::abort();
@@ -41,20 +41,20 @@ Engine::Engine(const EngineConfig& config) noexcept
 
 	const std::size_t kCapacity = 1 + taskConfig.workers.count + taskConfig.workers.maxStandbyWorkers;
 
-	sync::ParkingLot* parkingLot = new (std::nothrow) sync::ParkingLot(kCapacity); // TODO: Custom allocator
+	sync::ParkingLot* parkingLot = new (std::nothrow) sync::ParkingLot(kCapacity);
 	if (parkingLot == nullptr) {
 		TRIVIAL_LOG_FATAL_PREFIX("Engine", "Failed to allocate ParkingLot");
 		std::abort();
 	}
 	sync::setActiveParkingLot(parkingLot);
 
-	task::TaskSystem* taskSystem = new (std::nothrow) task::TaskSystem(taskConfig); // TODO: Custom allocator
+	task::TaskSystem* taskSystem = new (std::nothrow) task::TaskSystem(taskConfig);
 	if (taskSystem == nullptr) {
 		TRIVIAL_LOG_FATAL_PREFIX("Engine", "Failed to allocate TaskSystem");
 		std::abort();
 	}
 	task::setActiveTaskSystem(taskSystem);
-} // TODO: Rework to integrate World/WorldContext/GameInstance
+}
 
 Engine::~Engine() {
 	delete &task::activeTaskSystem();
@@ -71,12 +71,12 @@ void Engine::tick(Application& application) noexcept {
 	m_frameTimer.tick();
 	const FrameContext kFrameContext = {.deltaTime = m_frameTimer.deltaSeconds(), .frameIndex = m_frameIndex};
 
-	platform::Window::pollEvents(); // TODO: Ought to change the form of this
+	platform::Window::pollEvents();
 
 	{
 		TRIVIAL_PROFILE_SCOPE("Update game layer");
 
-		application.updateGame(kFrameContext); // NOTE: Later split into stuff like updating physics and other phases
+		application.updateGame(kFrameContext);
 	}
 
 #if TRIVIAL_CONFIG_DEBUG
@@ -88,9 +88,8 @@ void Engine::tick(Application& application) noexcept {
 #endif // TRIVIAL_CONFIG_DEBUG
 
 	{
-		TRIVIAL_PROFILE_SCOPE("Render"); // TODO: Look to do two render passes to profile game and debug separately
+		TRIVIAL_PROFILE_SCOPE("Render");
 
-		// TODO: Move to world function on ecs
 		const std::vector<render::Drawable> kDrawables = application.collectDrawables();
 		m_renderer.drawFrame(m_frameIndex, kDrawables);
 	}

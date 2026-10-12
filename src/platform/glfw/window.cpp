@@ -30,7 +30,6 @@ Window::Window(const WindowConfig& config) noexcept {
 
 	initialiseGlfw();
 
-	// NOTE: Good for vulkan need to look to adjust when adding more apis
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
 	m_handle = glfwCreateWindow(static_cast<int>(config.size.width),

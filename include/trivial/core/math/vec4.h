@@ -190,7 +190,6 @@ struct Vec4 {
 	    requires FloatingPoint<T>
 	{
 		return std::hypot(std::hypot(x, y), std::hypot(z, w));
-		// TODO: Make a custom function for this to avoid duplicate operations
 	}
 
 	[[nodiscard]] Vec4 normalised() const noexcept
@@ -214,8 +213,6 @@ struct Vec4 {
 
 		return *this / vectorLength;
 	}
-
-	// TODO: perp when I setle on a convention for direction
 
 	[[nodiscard]] constexpr Vec4 lerp(Vec4 rhs, T t) const noexcept
 	    requires FloatingPoint<T>

@@ -14,7 +14,6 @@
 namespace {
 
 [[nodiscard]] constexpr trivial::GraphicsApi resolveGraphicsApi(trivial::GraphicsApi requested) noexcept {
-	// TODO: Select based on system once there is support for multiple apis
 	if (requested == trivial::GraphicsApi::Auto) {
 		return trivial::GraphicsApi::Vulkan;
 	}

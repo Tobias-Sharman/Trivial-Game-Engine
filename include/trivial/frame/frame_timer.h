@@ -46,7 +46,7 @@ private:
 	time::Instant m_start;
 	time::Instant m_previous;
 
-	time::Duration m_rawDelta; // NOTE: Could screen this for release build
+	time::Duration m_rawDelta;
 	time::Duration m_delta;
 };
 

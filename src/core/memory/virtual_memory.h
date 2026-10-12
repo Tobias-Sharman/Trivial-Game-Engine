@@ -93,7 +93,6 @@ inline bool adjustLockMemoryPrivilege(bool enable) noexcept {
 	info.allocationGranularity = info.pageSize;
 
 #if TRIVIAL_MEMORY_ENABLE_LARGE_PAGES && TRIVIAL_PLATFORM_LINUX
-	// TODO: need to verify this approach
 	info.largePageSize = info.pageSize * (info.pageSize / sizeof(std::uintptr_t));
 #endif // TRIVIAL_MEMORY_ENABLE_LARGE_PAGES && TRIVIAL_PLATFORM_LINUX
 

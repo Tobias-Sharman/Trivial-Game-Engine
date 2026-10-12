@@ -64,8 +64,6 @@ MeshData createMeshData(VmaAllocator allocator,
 	TRIVIAL_VK_CHECK("vmaCreateBuffer failed", kResult);
 	TRIVIAL_ASSERT(mesh.buffer != VK_NULL_HANDLE);
 	TRIVIAL_ASSERT(allocationInfo.pMappedData != nullptr);
-	// NOTE: need changing to handle large assets later without hard crash -> full handling with
-	// VMA_ALLOCATION_CREATE_HOST_ACCESS_ALLOW_TRANSFER_INSTEAD_BIT
 
 	std::uint8_t* destination = static_cast<std::uint8_t*>(allocationInfo.pMappedData);
 	std::memcpy(destination, vertices.data(), static_cast<std::size_t>(kVertexBytes));

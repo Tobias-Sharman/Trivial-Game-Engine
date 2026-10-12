@@ -13,7 +13,6 @@
 namespace trivial::core {
 
 [[noreturn]] void reportAssertionFailure(const char* expression, std::source_location location) noexcept {
-	// TODO: route through the logging system once it exists
 	(void)std::fprintf(stderr, // NOLINT(cppcoreguidelines-pro-type-vararg)
 	                   "Trivial assertion failed: %s\nFile: %s\nLine: %u\nFunction: %s\n",
 	                   expression,

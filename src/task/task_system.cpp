@@ -474,7 +474,6 @@ bool TaskSystem::tryStealTask(std::size_t workerIndex, TaskHandle& handle) noexc
 		return false;
 	}
 
-	// TODO: More even load balancing whilst staying light weight - custom hash?
 	for (std::size_t offset = 1; offset < kWorkerCount; ++offset) {
 		const std::size_t kCandidateIndex = (workerIndex + offset) % kWorkerCount;
 
@@ -495,11 +494,10 @@ void TaskSystem::enqueueReadyTask(TaskHandle handle, TaskAffinity affinity, Task
 	if (affinity == TaskAffinity::AnyWorker) {
 		wakeOneIfUnderTarget();
 	}
-	// TODO: Switch for when having proper dedicated threads
 }
 
 void TaskSystem::completeTask(TaskHandle handle) noexcept {
-	std::vector<TaskHandle> completionDependants; // TODO: Thread local vectors to reduce allocations
+	std::vector<TaskHandle> completionDependants;
 	m_graph.completeAndCollectDependants(handle, completionDependants);
 
 	for (const TaskHandle kDependant : completionDependants) {
@@ -544,7 +542,7 @@ bool TaskSystem::tryHelpComplete(TaskHandle target, TaskAffinity callerAffinity,
 		std::uint32_t depth;
 	};
 
-	std::vector<StackEntry> stack; // TODO: Custom allocator
+	std::vector<StackEntry> stack;
 	std::vector<TaskHandle> visited;
 
 	std::vector<TaskHandle> prerequisitesScratch;

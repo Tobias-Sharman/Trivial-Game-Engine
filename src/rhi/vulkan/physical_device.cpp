@@ -117,7 +117,6 @@ constexpr void initialiseDeviceFeatures(trivial::rhi::vulkan::DeviceFeatures& fe
     const VkPhysicalDeviceVulkan13Features& supportedFeatures,
     const VkPhysicalDeviceVulkan13Features& requiredFeatures) noexcept {
 
-	// NOTE: Expand for all options as needed later when caring about more support to save complexity
 	if (requiredFeatures.synchronization2 == VK_TRUE && supportedFeatures.synchronization2 != VK_TRUE) {
 		return false;
 	}

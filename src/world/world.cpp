@@ -25,8 +25,6 @@ Entity World::create() noexcept {
 		return Entity::make(kIndex, m_entities[kIndex].generation);
 	}
 
-	// TODO: Profile this in release when testing game to see if worth dropping
-	//       check or just handle it properly
 	if (m_entities.size() >= TRIVIAL_ECS_ENTITY_INVALID_INDEX) {
 		TRIVIAL_LOG_ERROR("Maximum entity count reached");
 

@@ -18,7 +18,6 @@
 namespace {
 
 [[nodiscard]] constexpr const char* debugMessageTypePrefix(VkDebugUtilsMessageTypeFlagsEXT messageType) noexcept {
-	// NOTE: Address binding needs toggling on if wanting to use, apparently VK_EXT_device_address_binding_report
 	static constexpr std::array<const char*, 16> s_kPrefixes = {
 	    "[unknown] ",
 	    "[general] ",

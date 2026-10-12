@@ -165,7 +165,7 @@ private:
 	sync::Mutex m_debugTopologyMutex;
 #endif // TRIVIAL_CONFIG_DEBUG
 
-	std::vector<std::uint32_t> m_freeTaskIndices; // TODO: replace when having custom allocator
+	std::vector<std::uint32_t> m_freeTaskIndices;
 	std::uint32_t m_nextUnusedTaskIndex = 0;
 };
 

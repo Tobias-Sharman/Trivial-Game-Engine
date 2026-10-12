@@ -6,8 +6,6 @@
 
 #include <trivial/core/compiler.h>
 
-// TODO: Fairness deferred until a timer-free design can be figured out
-
 #define TRIVIAL_SYNC_MUTEX_LOCKED_BIT (std::uint8_t{0b01})
 #define TRIVIAL_SYNC_MUTEX_PARKED_BIT (std::uint8_t{0b10})
 
