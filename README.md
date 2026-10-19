@@ -35,4 +35,4 @@ neglected prior to a proper version 1.0.0.
 
 The engine architecture can be seen below:
 
-![alt text](docs/design/Architecture.svg "Engine Architecture")
+![alt text](docs/images/architecture.svg "Engine Architecture")

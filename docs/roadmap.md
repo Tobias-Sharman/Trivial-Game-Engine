@@ -132,6 +132,8 @@ clamp
 
 - Custom window manager to replace GLFW
 
+- Update and settle architecture shape (in particular the design image)
+
 - Code generation flags
   - Try `o2` vs `o3`, LTO, and PGO
   - Target architecture: x86-64 level (`-march=x86-64-v2`/`v3`, `/arch:AVX2`)
