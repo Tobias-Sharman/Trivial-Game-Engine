@@ -11,6 +11,6 @@ Diagnostics:
       - /sys/_pthread/.*
       - /sys/_types/.*
       - /bits/.*
-      - '[/\]um[/\](synch|memory|processthreads|processtopology|errhandling|handle|sysinfo|libloader|securitybase)api\.h'
+      - '[/\]um[/\](synch|memory|processthreads|processtopology|errhandling|handle|sysinfo|libloader|securitybase|profile)api\.h'
       - '[/\]um[/\](winnt|WinBase|minwinbase)\.h'
       - '[/\]shared[/\](minwindef|windef|winerror|basetsd)\.h'
