@@ -21,6 +21,7 @@ Application::Application(std::unique_ptr<Layer> gameLayer) noexcept
 
 #if TRIVIAL_CONFIG_DEBUG
 void Application::attachDebugLayer(std::unique_ptr<Layer> debugLayer) noexcept {
+	TRIVIAL_ASSERT(debugLayer != nullptr);
 	m_debugLayer = std::move(debugLayer);
 }
 #endif // TRIVIAL_CONFIG_DEBUG
@@ -30,8 +31,9 @@ void Application::onStart(gpu::Context* gpu) noexcept {
 	m_gameLayer->onStart(gpu);
 
 #if TRIVIAL_CONFIG_DEBUG
-	TRIVIAL_ASSERT(m_debugLayer != nullptr);
-	m_debugLayer->onStart(gpu);
+	if (m_debugLayer != nullptr) {
+		m_debugLayer->onStart(gpu);
+	}
 #endif // TRIVIAL_CONFIG_DEBUG
 }
 
@@ -40,8 +42,9 @@ void Application::onEnd() noexcept {
 	m_gameLayer->onEnd();
 
 #if TRIVIAL_CONFIG_DEBUG
-	TRIVIAL_ASSERT(m_debugLayer != nullptr);
-	m_debugLayer->onEnd();
+	if (m_debugLayer != nullptr) {
+		m_debugLayer->onEnd();
+	}
 #endif // TRIVIAL_CONFIG_DEBUG
 }
 
@@ -52,8 +55,9 @@ void Application::updateGame(const FrameContext& frameContext) noexcept {
 
 #if TRIVIAL_CONFIG_DEBUG
 void Application::updateDebug(const FrameContext& frameContext) noexcept {
-	TRIVIAL_ASSERT(m_debugLayer != nullptr);
-	m_debugLayer->onUpdate(frameContext);
+	if (m_debugLayer != nullptr) {
+		m_debugLayer->onUpdate(frameContext);
+	}
 }
 #endif // TRIVIAL_CONFIG_DEBUG
 
@@ -62,9 +66,10 @@ void Application::updateDebug(const FrameContext& frameContext) noexcept {
 	std::vector<render::Drawable> drawables = m_gameLayer->collectDrawables();
 
 #if TRIVIAL_CONFIG_DEBUG
-	TRIVIAL_ASSERT(m_debugLayer != nullptr);
-	std::vector<render::Drawable> debugDrawables2 = m_debugLayer->collectDrawables();
-	drawables.insert(drawables.end(), debugDrawables2.begin(), debugDrawables2.end());
+	if (m_debugLayer != nullptr) {
+		std::vector<render::Drawable> debugDrawables = m_debugLayer->collectDrawables();
+		drawables.insert(drawables.end(), debugDrawables.begin(), debugDrawables.end());
+	}
 #endif // TRIVIAL_CONFIG_DEBUG
 
 	return drawables;
