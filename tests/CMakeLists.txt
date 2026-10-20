@@ -58,8 +58,7 @@ target_link_libraries(trivial_tests
 		GTest::gtest
 )
 
-target_include_directories(trivial PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/config)
-target_include_directories(trivial_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/config ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/src)
+target_include_directories(trivial_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/engine/src)
 
 include(GoogleTest)
 

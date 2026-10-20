@@ -20,7 +20,7 @@ physics subsystem, as that will change the suitable hooks.
     ```
 
     ```cmake
-    add_subdirectory(<path>)
+    add_subdirectory(<path>/engine)
     target_link_libraries(game PRIVATE trivial)
     ```
 
@@ -33,6 +33,7 @@ physics subsystem, as that will change the suitable hooks.
         trivial
         GIT_REPOSITORY https://github.com/Tobias-Sharman/Trivial-Game-Engine.git
         GIT_TAG <commit>
+        SOURCE_SUBDIR engine
     )
     FetchContent_MakeAvailable(trivial)
     target_link_libraries(game PRIVATE trivial)

@@ -15,9 +15,13 @@ cmake --preset <preset>
 cmake --build --preset <preset>
 ```
 
-but, due to some consequences of the global state, some tests need to be ran in
-their own processes, so a build script was made (explained below) which can also
-be used to build the project.
+Due to some consequences of the global state, some tests need to be ran in their
+own processes, so a build script was made (explained below) which can also be
+used to build the project. This build script is primarily used for development
+of the engine but can be used effectively for engine users by either replacing
+sandbox with your application or adding an extension for your project.
+Alternatively, the recommended way would be to build the engine as part of a
+project following the [getting started guide](getting_started.md).
 
 ## Requirements
 
@@ -25,9 +29,13 @@ be used to build the project.
 - Ninja, used by every preset
 - A C++23 compiler, see [platform support](platform_support.md)
 - The Vulkan SDK, found by CMake with `find_package(Vulkan)`
+- `slangc`, the Slang shader compiler, to compile the engine's shaders
 - Python 3.14 or newer for `scripts/build.py`, which has no other dependencies
 - clang-format and clang-tidy 23.1.2, only needed for the format and tidy
 checks, and required at exactly that version so results match
+
+Grabbing the Vulkan SDK through lunar ought address the Vulkan and slangc
+requirements.
 
 ## Dependencies
 

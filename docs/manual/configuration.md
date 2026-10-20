@@ -20,10 +20,15 @@ since there has been no screening for bugs done in advance for you.
 - All tunables are in file names ending in `_config.h`. Not listed here so as to
 not have a divergence later
 - Override them by defining the value in a user config header, either:
-  - `trivial_user_config.h` on the include path, or
-  - a header named by `TRIVIAL_USER_CONFIG`, quotes included, e.g.
-  `-DTRIVIAL_USER_CONFIG="\"game/engine_config.h\""`, which wins over the
-  default name (for this usage it is recommended to bake into a CMake preset)
+  - `trivial_user_config.h` on the include path
+  - or the recommended way which is a header set with the `TRIVIAL_USER_CONFIG`
+  CMake option, which wins over the default name, set in the game's
+  `CMakeLists.txt` before adding the engine:
+
+    ```cmake
+    set(TRIVIAL_USER_CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/engine_config.h)
+    ```
+
 - Build options cannot be overridden this way, as `build_config.h` defines them
 first, so they have to be set through CMake
 - Overrides go through the same checks as the defaults, so invalid values fail
@@ -32,6 +37,10 @@ care when using)
 - The engine must be built with the same user config header as the game, as it
 is a static library compiled separately, otherwise the two disagree on values
 such as sizes and layouts
+  - The `TRIVIAL_USER_CONFIG` option handles this, as it applies to the engine
+  and to everything linking against it
+  - A `trivial_user_config.h` on the include path must be on the engine's
+  include path too, not only the game's
 
 ## Runtime configuration
 

@@ -16,7 +16,7 @@ from typing import TextIO
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 BUILD_DIR = ROOT_DIR / "build"
-SOURCE_DIRS: tuple[str, ...] = ("include", "src", "tests", "sandbox")
+SOURCE_DIRS: tuple[str, ...] = ("engine/include", "engine/src", "tests", "sandbox")
 HEADER_SUFFIXES: tuple[str, ...] = (".h",)
 SOURCE_SUFFIXES: tuple[str, ...] = (".cpp",)
 
@@ -339,10 +339,10 @@ def format_files(check_only: bool) -> bool:
 
 def expected_include_guard(header: Path) -> str | None:
     relative = header.relative_to(ROOT_DIR).as_posix()
-    if relative.startswith("include/trivial/"):
-        name = "TRIVIAL_" + relative.removeprefix("include/trivial/")
-    elif relative.startswith("src/"):
-        name = "TRIVIAL_SRC_" + relative.removeprefix("src/")
+    if relative.startswith("engine/include/trivial/"):
+        name = "TRIVIAL_" + relative.removeprefix("engine/include/trivial/")
+    elif relative.startswith("engine/src/"):
+        name = "TRIVIAL_SRC_" + relative.removeprefix("engine/src/")
     else:
         return None
     return "".join(character if character.isalnum() else "_" for character in name).upper()
