@@ -215,9 +215,25 @@ nested `std::hypot` calls
 epsilon, infinity and max when doing so
 - More SIMD backing to functions, and extend it beyond float
 - More matrix functions, in particular inverse
-- Review all classes for missing support
+- Review all classes for missing support (maybe more maybe less)
+  - `distance` and `distanceSquared` between points
+  - `reflect`, `project` and `reject` for vectors, for collision response
+  - `angleBetween` for vectors, and wrapping an `Angle` into a single turn
+  - `clampLength` and `moveTowards` for capping and stepping vectors
+  - Component-wise versions of the scalar helpers (`abs`, `min`, `max`,
+  `clamp`, `floor` etc.)
 - `Mat3` class
-- Maths helpers
+- Maths helpers (maybe more maybe less)
+  - `nearlyEqual` on the maths classes for approximate comparison
+    - Turn on `-Wfloat-equal` and deal with any bits that would want
+     suppression
+  - `min`, `max`, `clamp` and `minMax` (`<algorithm>`)
+  - `abs`, `sign`, `floor`, `ceil`, `round` and `sqrt` (`<cmath>`), as
+  `constexpr` where the standard ones are not
+  - `lerp` and `midpoint` (`<cmath>`, `<numeric>`), plus `inverseLerp`, `remap`
+  and `smoothstep`
+  - `gcd` and `lcm` (`<numeric>`)
+  - Power of two checks and rounding, and alignment helpers (`<bit>`)
 - Graphics related classes
 - Maybe some geometry classes
 - Test against glm
