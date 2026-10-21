@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.30)
 
 set(CMAKE_OSX_DEPLOYMENT_TARGET 14.4)
 # Linux minimum not set here, based around buld environment
-# Windows minimum stuff can be seen in the platform definitions of this file
+# Windows minimum stuff can be seen in its cmake file
 
 project(
 	Trivial
@@ -39,6 +39,41 @@ set_property(CACHE TRIVIAL_MEMORY_DECOMMIT PROPERTY STRINGS AUTO ON OFF)
 set(TRIVIAL_USER_CONFIG "" CACHE FILEPATH "User config header overriding the compile time tunables")
 
 # -----------------------------------------------------------------------------
+# Target platform
+# -----------------------------------------------------------------------------
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+	set(TRIVIAL_TARGET_OS windows)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+	set(TRIVIAL_TARGET_OS macos)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+	set(TRIVIAL_TARGET_OS linux)
+else()
+	message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
+endif()
+
+if(CMAKE_CXX_COMPILER_ARCHITECTURE_ID)
+	set(TRIVIAL_TARGET_PROCESSOR ${CMAKE_CXX_COMPILER_ARCHITECTURE_ID})
+else()
+	set(TRIVIAL_TARGET_PROCESSOR ${CMAKE_SYSTEM_PROCESSOR})
+endif()
+
+list(LENGTH TRIVIAL_TARGET_PROCESSOR TRIVIAL_TARGET_PROCESSOR_COUNT)
+if(TRIVIAL_TARGET_PROCESSOR_COUNT GREATER 1)
+	message(FATAL_ERROR "Multi-architecture builds are not supported, build each architecture separately")
+endif()
+
+string(TOLOWER "${TRIVIAL_TARGET_PROCESSOR}" TRIVIAL_TARGET_PROCESSOR)
+
+if(TRIVIAL_TARGET_PROCESSOR MATCHES "^(x86_64|amd64|x64)$")
+	set(TRIVIAL_TARGET_ARCH x86_64)
+elseif(TRIVIAL_TARGET_PROCESSOR MATCHES "^(arm64|aarch64)$")
+	set(TRIVIAL_TARGET_ARCH arm64)
+else()
+	message(FATAL_ERROR "Unsupported CPU architecture: ${TRIVIAL_TARGET_PROCESSOR}")
+endif()
+
+# -----------------------------------------------------------------------------
 # Source files
 # -----------------------------------------------------------------------------
 
@@ -59,10 +94,7 @@ set(TRIVIAL_PRIVATE_SOURCES
 	src/core/sync/parker.cpp
 	src/core/sync/semaphore.cpp
 	src/core/thread/thread.cpp
-	src/core/thread/thread_stack_allocator.cpp
-	src/core/time/time.cpp
 	src/ecs/component_store.cpp
-	src/core/time/time_capabilities.cpp
 	src/gpu/context.cpp
 	src/platform/window.cpp
 	src/platform/glfw/window.cpp
@@ -131,14 +163,10 @@ target_compile_definitions(trivial
 )
 
 # -----------------------------------------------------------------------------
-# Platform definitions
+# Platform specifics
 # -----------------------------------------------------------------------------
 
-if(WIN32)
-	target_compile_definitions(trivial PUBLIC _WIN32_WINNT=0x0A00 NTDDI_VERSION=0x0A000005)
-
-	target_link_libraries(trivial PRIVATE Synchronization onecore)
-endif()
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/platform_${TRIVIAL_TARGET_OS}.cmake)
 
 # -----------------------------------------------------------------------------
 # Dependencies

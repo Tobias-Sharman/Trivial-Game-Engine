@@ -4,10 +4,10 @@
 
 #include <gtest/gtest.h>
 
+#include <trivial/core/memory/memory.h>
 #include <trivial/core/memory/memory_config.h>
 #include <trivial/core/memory/oom_handler.h>
 
-#include "core/memory/memory_capabilities.h"
 #include "core/memory/segment_allocator.h"
 
 using namespace trivial::memory;

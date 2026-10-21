@@ -7,8 +7,8 @@
 #include <cstddef>
 
 #include <trivial/core/assert.h>
+#include <trivial/core/memory/memory.h>
 
-#include "core/memory/memory_capabilities.h"
 #include "core/memory/virtual_memory.h"
 
 namespace trivial::thread {

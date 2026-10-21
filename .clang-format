@@ -88,7 +88,7 @@ BreakBeforeBinaryOperators: All
 # =============================================================================
 SortIncludes: CaseSensitive
 IncludeBlocks: Regroup
-IncludeIsMainRegex: '([-_](test|unittest))?$'
+IncludeIsMainRegex: '(_(windows|posix|linux|macos))?(_(x86_64|arm64))?([-_](test|unittest))?$'
 MainIncludeChar: Any
 
 IncludeCategories:

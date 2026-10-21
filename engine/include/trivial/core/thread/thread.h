@@ -168,6 +168,17 @@ private:
 	NativeHandleStorage m_nativeHandleStorage{};
 };
 
+namespace detail {
+
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+inline constinit thread_local Thread* g_currentThread = nullptr;
+
+} // namespace detail
+
+[[nodiscard]] TRIVIAL_FORCE_INLINE Thread* Thread::current() noexcept {
+	return detail::g_currentThread;
+}
+
 } // namespace trivial::thread
 
 #ifndef TRIVIAL_THREAD_IMPLEMENTATION

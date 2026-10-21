@@ -6,13 +6,13 @@
 
 #include <gtest/gtest.h>
 
+#include <trivial/core/memory/memory.h>
 #include <trivial/core/memory/memory_config.h>
 #include <trivial/core/thread/thread.h>
 #include <trivial/task/task_handle.h>
 #include <trivial/task/task_payload.h>
 #include <trivial/task/task_system.h>
 
-#include "core/memory/memory_capabilities.h"
 #include "core/memory/segment_allocator.h"
 #include "support/helpers.h"
 
