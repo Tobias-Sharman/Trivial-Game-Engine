@@ -2,6 +2,7 @@
 #include "core/memory/memory_capabilities.h"
 
 #include <trivial/core/config.h>
+#include <trivial/core/memory/memory.h>
 
 #if TRIVIAL_MEMORY_HAS_DETECTED_CAPABILITIES || TRIVIAL_ENABLE_ASSERTS
 #include <trivial/core/memory/memory_config.h>

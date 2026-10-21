@@ -8,38 +8,23 @@
 
 #include <trivial/core/assert.h>
 #include <trivial/core/log.h>
+#include <trivial/core/memory/memory.h>
 #include <trivial/core/memory/memory_config.h>
 #include <trivial/core/memory/oom_handler.h>
-#include <trivial/core/platform.h>
 #include <trivial/core/profile.h>
 #include <trivial/core/sync/lock_guard.h>
 #include <trivial/core/sync/mutex.h>
 
-#include "core/memory/memory_capabilities.h"
+#include "core/memory/segment_allocator_metadata.h"
 #include "core/memory/virtual_memory.h"
 
 #if TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
 #include <atomic>
 #endif // TRIVIAL_MEMORY_TRACK_COMMITTED_BYTES
 
-#if TRIVIAL_PLATFORM_WINDOWS
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif // WIN32_LEAN_AND_MEAN
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif // NOMINMAX
-
-#include <windows.h> // IWYU pragma: keep
-
-#elif TRIVIAL_PLATFORM_POSIX
-#include <cerrno>
-#include <sys/mman.h>
-
-#else
-#error "Unsupported platform in segment_allocator.cpp"
-
-#endif // Platform check
+#if TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
+#include <trivial/core/platform.h>
+#endif // TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
 
 #define TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_INVALID_INDEX (std::numeric_limits<std::size_t>::max())
 
@@ -52,77 +37,6 @@
 #define TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_FULL_WORD (~std::uint64_t{0})
 
 namespace {
-
-[[nodiscard]] void* mapMetadata(std::size_t bytes,
-                                std::size_t pageSize,
-                                std::size_t& outMappingBytes,
-                                int& outOsErrorCode) noexcept {
-	const std::size_t kPayload = (bytes + pageSize - 1) & ~(pageSize - 1);
-
-	if (kPayload == 0 || kPayload > SIZE_MAX - (2 * pageSize)) {
-		outOsErrorCode = 0;
-		return nullptr;
-	}
-
-	const std::size_t kMappingBytes = kPayload + (2 * pageSize);
-
-#if TRIVIAL_PLATFORM_WINDOWS
-	void* raw = VirtualAlloc(nullptr, kMappingBytes, MEM_RESERVE, PAGE_NOACCESS);
-	if (raw == nullptr) {
-		outOsErrorCode = static_cast<int>(GetLastError());
-		return nullptr;
-	}
-
-	void* payloadBase = static_cast<char*>(raw) + pageSize; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-
-	if (VirtualAlloc(payloadBase, kPayload, MEM_COMMIT, PAGE_READWRITE) == nullptr) {
-		outOsErrorCode = static_cast<int>(GetLastError());
-		(void)VirtualFree(raw, 0, MEM_RELEASE);
-		return nullptr;
-	}
-
-#elif TRIVIAL_PLATFORM_POSIX
-	void* raw = mmap(nullptr, kMappingBytes, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-	if (raw == MAP_FAILED) {
-		outOsErrorCode = errno;
-		return nullptr;
-	}
-
-	void* payloadBase = static_cast<char*>(raw) + pageSize; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-
-	if (mprotect(payloadBase, kPayload, PROT_READ | PROT_WRITE) != 0) {
-		outOsErrorCode = errno;
-		(void)munmap(raw, kMappingBytes);
-		return nullptr;
-	}
-
-#endif // Platform check
-
-	outMappingBytes = kMappingBytes;
-	return payloadBase;
-}
-
-void unmapMetadata(void* payloadBase, std::size_t mappingBytes, std::size_t pageSize) noexcept {
-	if (payloadBase == nullptr) {
-		return;
-	}
-
-	void* raw = static_cast<char*>(payloadBase) - pageSize; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-
-#if TRIVIAL_PLATFORM_WINDOWS
-	(void)mappingBytes;
-
-	if (VirtualFree(raw, 0, MEM_RELEASE) == 0) {
-		TRIVIAL_LOG_ERROR_PREFIX("SegmentAllocator", "metadata release failed (VirtualFree)");
-	}
-
-#elif TRIVIAL_PLATFORM_POSIX
-	if (munmap(raw, mappingBytes) != 0) {
-		TRIVIAL_LOG_ERROR_PREFIX("SegmentAllocator", "metadata release failed (munmap)");
-	}
-
-#endif // Platform check
-}
 
 [[nodiscard]] constexpr bool isBitSet(const std::uint64_t* bits, std::size_t index) noexcept {
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
