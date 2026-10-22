@@ -12,11 +12,12 @@
 #include <windows.h> // IWYU pragma: keep
 
 #include <trivial/core/assert.h>
+#include <trivial/core/compiler.h>
 #include <trivial/core/time/time.h>
 
 namespace {
 
-[[nodiscard]] std::uint64_t probePerformanceFrequency() noexcept {
+[[nodiscard]] TRIVIAL_FORCE_INLINE std::uint64_t probePerformanceFrequency() noexcept {
 	LARGE_INTEGER frequency{};
 	TRIVIAL_VERIFY(QueryPerformanceFrequency(&frequency) != 0);
 
@@ -28,7 +29,7 @@ namespace {
 namespace trivial::time {
 
 void initCapabilities() noexcept {
-	detail::g_detectedCapabilities = detail::DetectedCapabilities{.ticksPerSecond = probePerformanceFrequency()};
+	detail::g_detectedCapabilities.ticksPerSecond = probePerformanceFrequency();
 }
 
 } // namespace trivial::time

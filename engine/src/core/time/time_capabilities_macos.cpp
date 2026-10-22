@@ -5,6 +5,7 @@
 #include <mach/mach_time.h>
 
 #include <trivial/core/assert.h>
+#include <trivial/core/compiler.h>
 #include <trivial/core/time/time.h>
 #include <trivial/core/time/time_constants.h>
 
@@ -15,7 +16,7 @@ struct Timebase {
 	std::uint32_t denominator = 0;
 };
 
-[[nodiscard]] Timebase probeTimebase() noexcept {
+[[nodiscard]] TRIVIAL_FORCE_INLINE Timebase probeTimebase() noexcept {
 	mach_timebase_info_data_t info{};
 	TRIVIAL_VERIFY(mach_timebase_info(&info) == KERN_SUCCESS);
 
@@ -34,11 +35,9 @@ void initCapabilities() noexcept {
 	const std::uint64_t kScaledDenominator = std::uint64_t{TRIVIAL_TIME_NANOSECONDS_PER_SECOND} * kTimebase.denominator;
 
 	TRIVIAL_ASSERT(kScaledDenominator % kTimebase.numerator == 0);
-	detail::g_detectedCapabilities = detail::DetectedCapabilities{
-	    .ticksPerSecond = kScaledDenominator / kTimebase.numerator,
-	    .timebaseNumerator = kTimebase.numerator,
-	    .timebaseDenominator = kTimebase.denominator,
-	};
+	detail::g_detectedCapabilities.ticksPerSecond = kScaledDenominator / kTimebase.numerator;
+	detail::g_detectedCapabilities.timebaseNumerator = kTimebase.numerator;
+	detail::g_detectedCapabilities.timebaseDenominator = kTimebase.denominator;
 }
 
 } // namespace trivial::time

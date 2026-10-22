@@ -31,16 +31,17 @@ void initCapabilities() noexcept {
 #endif // TRIVIAL_MEMORY_LAZY_DECOMMIT && TRIVIAL_PLATFORM_LINUX
 
 #if TRIVIAL_MEMORY_HAS_DETECTED_CAPABILITIES
-	detail::g_detectedCapabilities = detail::DetectedCapabilities{
 #if !TRIVIAL_PLATFORM_PAGE_SIZE_KNOWN
-	    .pageSize = kSystemInfo.pageSize,
-	    .allocationGranularity = kSystemInfo.allocationGranularity,
+	detail::g_detectedCapabilities.pageSize = kSystemInfo.pageSize;
+	detail::g_detectedCapabilities.allocationGranularity = kSystemInfo.allocationGranularity;
 #endif // !TRIVIAL_PLATFORM_PAGE_SIZE_KNOWN
+
 #if TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
-	    .largePageSize = kSystemInfo.largePageSize,
+	detail::g_detectedCapabilities.largePageSize = kSystemInfo.largePageSize;
 #endif // TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
-	};
+
 #endif // TRIVIAL_MEMORY_HAS_DETECTED_CAPABILITIES
+
 #endif // TRIVIAL_MEMORY_HAS_DETECTED_CAPABILITIES || TRIVIAL_ENABLE_ASSERTS
 }
 
