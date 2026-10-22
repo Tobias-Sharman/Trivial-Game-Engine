@@ -35,7 +35,7 @@ struct alignas(TRIVIAL_PLATFORM_FALSE_SHARING_ALIGNMENT) Worker {
 
 	thread::Thread thread;
 
-	alignas(TRIVIAL_PLATFORM_CACHE_LINE_SIZE) TaskPriorityQueue localQueue;
+	alignas(TRIVIAL_PLATFORM_FALSE_SHARING_ALIGNMENT) TaskPriorityQueue localQueue;
 };
 
 } // namespace trivial::task
