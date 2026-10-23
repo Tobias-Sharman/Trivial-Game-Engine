@@ -1,6 +1,7 @@
 #ifndef TRIVIAL_SRC_CORE_SYNC_PARKING_LOT_H
 #define TRIVIAL_SRC_CORE_SYNC_PARKING_LOT_H
 
+#include <array>
 #include <atomic>
 #include <bit>
 #include <cstddef>
@@ -17,6 +18,7 @@
 
 #include "core/heap_array.h"
 #include "core/sync/bucket.h"
+#include "core/sync/parker.h"
 #include "core/sync/parking_lot_slot.h"
 
 namespace trivial::sync {
@@ -35,7 +37,7 @@ public:
 	};
 
 	struct UnparkAllRequeueResult {
-		bool handledAny;
+		bool requeuedAll;
 		bool anyRequeued;
 	};
 
@@ -230,8 +232,9 @@ public:
 
 			current.nextInQueue = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
 			current.key.store(0, std::memory_order_relaxed);
-			current.parker.beginUnpark().wake();
+			current.parker.commitUnpark();
 			bucket.lock.unlock();
+			current.parker.wake();
 			return true;
 		}
 
@@ -281,8 +284,9 @@ public:
 
 			std::forward<Callback>(callback)(UnparkOneResult{.woke = true, .hasMoreWaiters = hasMoreWaiters});
 
-			current.parker.beginUnpark().wake();
+			current.parker.commitUnpark();
 			bucket.lock.unlock();
+			current.parker.wake();
 			return;
 		}
 
@@ -294,6 +298,8 @@ public:
 		Bucket& bucket = bucketFor(address);
 		bucket.lock.lock();
 
+		std::array<std::size_t, TRIVIAL_SYNC_PARKING_LOT_UNPARK_BATCH_SIZE> wakeIndices{};
+		std::size_t wakeCount = 0;
 		std::size_t* link = &bucket.queueHead;
 		std::size_t previousIndex = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
 		std::size_t currentIndex = bucket.queueHead;
@@ -317,12 +323,23 @@ public:
 
 			current.nextInQueue = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
 			current.key.store(0, std::memory_order_relaxed);
-			current.parker.beginUnpark().wake();
+			current.parker.commitUnpark();
+
+			if (wakeCount < wakeIndices.size()) {
+				wakeIndices[wakeCount] = currentIndex;
+				++wakeCount;
+			} else {
+				current.parker.wake();
+			}
 
 			currentIndex = kNextIndex;
 		}
 
 		bucket.lock.unlock();
+
+		for (std::size_t i = 0; i < wakeCount; ++i) {
+			m_slots[wakeIndices[i]].parker.wake();
+		}
 	}
 
 	template <typename ShouldRequeue>
@@ -363,16 +380,24 @@ public:
 			if (kRequeue) {
 				current.key.store(toAddress, std::memory_order_relaxed);
 				pushToQueue(toBucket, currentIndex);
-			} else {
-				current.nextInQueue = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
-				current.key.store(0, std::memory_order_relaxed);
-				current.parker.beginUnpark().wake();
+
+				if (!kSameBucket) {
+					toBucket.lock.unlock();
+				}
+				fromBucket.lock.unlock();
+				return true;
 			}
+
+			current.nextInQueue = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
+			current.key.store(0, std::memory_order_relaxed);
+			current.parker.commitUnpark();
 
 			if (!kSameBucket) {
 				toBucket.lock.unlock();
 			}
 			fromBucket.lock.unlock();
+
+			current.parker.wake();
 			return true;
 		}
 
@@ -384,10 +409,11 @@ public:
 		return false;
 	}
 
-	template <typename ShouldRequeue>
-	[[nodiscard]] UnparkAllRequeueResult unparkAllRequeue(std::uintptr_t fromAddress,
-	                                                      std::uintptr_t toAddress,
-	                                                      ShouldRequeue&& shouldRequeue) noexcept {
+	template <typename ShouldRequeue, typename Callback>
+	void unparkAllRequeue(std::uintptr_t fromAddress,
+	                      std::uintptr_t toAddress,
+	                      ShouldRequeue&& shouldRequeue,
+	                      Callback&& callback) noexcept {
 		Bucket& fromBucket = bucketFor(fromAddress);
 		Bucket& toBucket = bucketFor(toAddress);
 		const bool kSameBucket = (&fromBucket == &toBucket);
@@ -399,58 +425,81 @@ public:
 
 		const bool kRequeueAll = std::forward<ShouldRequeue>(shouldRequeue)();
 
-		bool handledAny = false;
-		bool anyRequeued = false;
+		std::size_t wakeIndex = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
+		std::size_t requeueHead = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
+		std::size_t requeueTail = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
 		std::size_t* link = &fromBucket.queueHead;
 		std::size_t previousIndex = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
 		std::size_t currentIndex = fromBucket.queueHead;
 
 		while (currentIndex != TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX) {
 			ParkingLotSlot& current = m_slots[currentIndex];
+			const std::size_t kNextIndex = current.nextInQueue;
 
 			if (current.key.load(std::memory_order_relaxed) != fromAddress) {
 				link = &current.nextInQueue;
 				previousIndex = currentIndex;
-				currentIndex = *link;
+				currentIndex = kNextIndex;
 				continue;
 			}
 
-			const std::size_t kNextIndex = current.nextInQueue;
-			const bool kWakeThisOne = !handledAny && !kRequeueAll;
-			handledAny = true;
+			*link = kNextIndex;
 
-			if (kWakeThisOne || !kSameBucket) {
-				*link = kNextIndex;
-
-				if (currentIndex == fromBucket.queueTail) {
-					fromBucket.queueTail = previousIndex;
-				}
-			} else {
-				link = &current.nextInQueue;
-				previousIndex = currentIndex;
+			if (currentIndex == fromBucket.queueTail) {
+				fromBucket.queueTail = previousIndex;
 			}
 
-			if (kWakeThisOne) {
-				current.nextInQueue = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
-				current.key.store(0, std::memory_order_relaxed);
-				current.parker.beginUnpark().wake();
+			if (!kRequeueAll && wakeIndex == TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX) {
+				wakeIndex = currentIndex;
 			} else {
-				current.key.store(toAddress, std::memory_order_relaxed);
-				if (!kSameBucket) {
-					pushToQueue(toBucket, currentIndex);
+				if (requeueTail == TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX) {
+					requeueHead = currentIndex;
+				} else {
+					m_slots[requeueTail].nextInQueue = currentIndex;
 				}
-				anyRequeued = true;
+
+				requeueTail = currentIndex;
+				current.key.store(toAddress, std::memory_order_relaxed);
 			}
 
 			currentIndex = kNextIndex;
 		}
 
-		if (!kSameBucket) {
-			toBucket.lock.unlock();
-		}
-		fromBucket.lock.unlock();
+		if (requeueHead != TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX) {
+			m_slots[requeueTail].nextInQueue = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
 
-		return UnparkAllRequeueResult{.handledAny = handledAny, .anyRequeued = anyRequeued};
+			if (toBucket.queueTail == TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX) {
+				toBucket.queueHead = requeueHead;
+			} else {
+				m_slots[toBucket.queueTail].nextInQueue = requeueHead;
+			}
+
+			toBucket.queueTail = requeueTail;
+		}
+
+		std::forward<Callback>(callback)(UnparkAllRequeueResult{
+		    .requeuedAll = kRequeueAll,
+		    .anyRequeued = requeueHead != TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX,
+		});
+
+		if (wakeIndex != TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX) {
+			ParkingLotSlot& woken = m_slots[wakeIndex];
+			woken.nextInQueue = TRIVIAL_SYNC_PARKING_LOT_INVALID_SLOT_INDEX;
+			woken.key.store(0, std::memory_order_relaxed);
+			woken.parker.commitUnpark();
+
+			if (!kSameBucket) {
+				toBucket.lock.unlock();
+			}
+			fromBucket.lock.unlock();
+
+			woken.parker.wake();
+		} else {
+			if (!kSameBucket) {
+				toBucket.lock.unlock();
+			}
+			fromBucket.lock.unlock();
+		}
 	}
 
 private:

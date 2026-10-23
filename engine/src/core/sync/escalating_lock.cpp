@@ -152,8 +152,8 @@ outer:
 			m_state.fetch_and(~TRIVIAL_SYNC_ESCALATING_LOCK_QUEUE_LOCKED_BIT, std::memory_order_release);
 		}
 
-		UnparkHandle handle = queueTail->parker.beginUnpark();
-		handle.wake();
+		queueTail->parker.commitUnpark();
+		queueTail->parker.wake();
 		return;
 	}
 }
