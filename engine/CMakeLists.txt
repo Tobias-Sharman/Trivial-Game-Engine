@@ -82,6 +82,7 @@ set(TRIVIAL_PRIVATE_SOURCES
 	src/application.cpp
 	src/layers.cpp
 	src/core/assert.cpp
+	src/core/cpu/cpu_capabilities.cpp
 	src/core/log.cpp
 	src/core/math/mat4.cpp
 	src/core/memory/memory_capabilities.cpp
@@ -163,10 +164,13 @@ target_compile_definitions(trivial
 )
 
 # -----------------------------------------------------------------------------
-# Platform specifics
+# Platform and architecture specifics
 # -----------------------------------------------------------------------------
 
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/arch_${TRIVIAL_TARGET_ARCH}.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/platform_${TRIVIAL_TARGET_OS}.cmake)
+
+trivial_apply_cpu_level()
 
 # -----------------------------------------------------------------------------
 # Dependencies
