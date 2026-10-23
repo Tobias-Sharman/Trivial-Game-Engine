@@ -8,8 +8,14 @@
 #include <cerrno>
 #include <cstdint>
 #include <cstring>
+#include <mach/kern_return.h>
+#include <mach/mach_init.h>
+#include <mach/mach_port.h>
 #include <mach/mach_traps.h>
+#include <mach/message.h>
 #include <mach/port.h>
+#include <mach/thread_act.h>
+#include <mach/thread_info.h>
 #include <mach/thread_switch.h>
 #include <pthread.h>
 #include <pthread/qos.h>
@@ -20,6 +26,7 @@
 #include <trivial/core/thread/thread_stack_allocator.h>
 
 static_assert(sizeof(pthread_t) == sizeof(void*), "pthread_t is no longer NativeHandleStorage-sized");
+static_assert(sizeof(mach_port_t) == sizeof(std::uint32_t), "mach_port_t no longer fits m_machThreadPort");
 
 namespace {
 
@@ -37,6 +44,19 @@ void copyName(const char* name, std::array<char, TRIVIAL_THREAD_MAX_NAME_LENGTH>
 
 	std::memcpy(outName.data(), name, kLength);
 	outName[kLength] = '\0';
+}
+
+void waitForKernelThreadExit(mach_port_t port) noexcept {
+	for (;;) {
+		thread_basic_info_data_t info{};
+		mach_msg_type_number_t count = THREAD_BASIC_INFO_COUNT;
+		// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+		if (thread_info(port, THREAD_BASIC_INFO, reinterpret_cast<thread_info_t>(&info), &count) != KERN_SUCCESS) {
+			return;
+		}
+
+		trivial::thread::Thread::yield();
+	}
 }
 
 } // namespace
@@ -147,6 +167,10 @@ void Thread::join() noexcept {
 
 	pthread_join(kHandle, nullptr);
 
+	waitForKernelThreadExit(m_machThreadPort);
+	(void)mach_port_deallocate(mach_task_self(), m_machThreadPort);
+	m_machThreadPort = 0;
+
 	m_stackAllocator->release(m_stackAllocation);
 	m_stackAllocator = nullptr;
 	m_stackAllocation = ThreadStackAllocation{};
@@ -160,6 +184,7 @@ void Thread::yield() noexcept {
 
 void Thread::runEntry(Thread* self) noexcept {
 	detail::g_currentThread = self;
+	self->m_machThreadPort = mach_thread_self();
 
 	if (self->m_state.load(std::memory_order_acquire) == ThreadState::Suspended) {
 		self->m_state.wait(ThreadState::Suspended, std::memory_order_acquire);

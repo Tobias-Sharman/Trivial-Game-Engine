@@ -163,6 +163,7 @@ private:
 #if TRIVIAL_PLATFORM_MACOS
 	qos_class_t m_qosClass = QOS_CLASS_DEFAULT;
 	int m_qosRelativePriority = 0;
+	std::uint32_t m_machThreadPort = 0;
 #endif // TRIVIAL_PLATFORM_MACOS
 
 	NativeHandleStorage m_nativeHandleStorage{};
