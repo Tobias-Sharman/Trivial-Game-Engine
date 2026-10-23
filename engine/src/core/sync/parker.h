@@ -8,21 +8,6 @@
 
 namespace trivial::sync {
 
-struct ParkState {
-	std::atomic<std::uint32_t> state{0};
-};
-
-class UnparkHandle {
-public:
-	explicit UnparkHandle(ParkState* state) noexcept
-	    : m_state(state) {}
-
-	void wake() noexcept;
-
-private:
-	ParkState* m_state;
-};
-
 class Parker {
 public:
 	Parker() noexcept = default;
@@ -41,12 +26,14 @@ public:
 
 	[[nodiscard]] bool parkFor(time::Duration timeout) noexcept;
 
-	[[nodiscard]] UnparkHandle beginUnpark() noexcept;
+	void commitUnpark() noexcept;
+
+	void wake() noexcept;
 
 	[[nodiscard]] bool timedOut() noexcept;
 
 private:
-	ParkState m_state;
+	std::atomic<std::uint32_t> m_state{0};
 };
 
 } // namespace trivial::sync

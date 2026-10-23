@@ -36,14 +36,14 @@ namespace {
 
 namespace trivial::sync {
 
-void UnparkHandle::wake() noexcept {
-	WakeByAddressSingle(&m_state->state);
+void Parker::wake() noexcept {
+	WakeByAddressSingle(&m_state);
 }
 
 void Parker::park() noexcept {
 	std::uint32_t compare = 1;
-	while (m_state.state.load(std::memory_order_acquire) != 0) {
-		TRIVIAL_VERIFY(WaitOnAddress(&m_state.state, &compare, sizeof(compare), INFINITE) != 0);
+	while (m_state.load(std::memory_order_acquire) != 0) {
+		TRIVIAL_VERIFY(WaitOnAddress(&m_state, &compare, sizeof(compare), INFINITE) != 0);
 	}
 }
 
@@ -51,7 +51,7 @@ void Parker::park() noexcept {
 	const time::Instant kExpiry = time::now().clampedAdd(timeout);
 	std::uint32_t compare = 1;
 
-	while (m_state.state.load(std::memory_order_acquire) != 0) {
+	while (m_state.load(std::memory_order_acquire) != 0) {
 		const time::Instant kNow = time::now();
 		if (kExpiry <= kNow) {
 			return false;
@@ -59,7 +59,7 @@ void Parker::park() noexcept {
 
 		const DWORD kTimeoutMs = timeoutMilliseconds(kExpiry - kNow);
 
-		if (WaitOnAddress(&m_state.state, &compare, sizeof(compare), kTimeoutMs) == 0) {
+		if (WaitOnAddress(&m_state, &compare, sizeof(compare), kTimeoutMs) == 0) {
 			TRIVIAL_ASSERT(GetLastError() == ERROR_TIMEOUT);
 		}
 	}

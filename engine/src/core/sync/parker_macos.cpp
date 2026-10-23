@@ -47,13 +47,13 @@ void osSyncWake(std::atomic<std::uint32_t>& state) noexcept {
 
 namespace trivial::sync {
 
-void UnparkHandle::wake() noexcept {
-	osSyncWake(m_state->state);
+void Parker::wake() noexcept {
+	osSyncWake(m_state);
 }
 
 void Parker::park() noexcept {
-	while (m_state.state.load(std::memory_order_acquire) != 0) {
-		osSyncWait(m_state.state);
+	while (m_state.load(std::memory_order_acquire) != 0) {
+		osSyncWait(m_state);
 	}
 }
 
@@ -64,13 +64,13 @@ void Parker::park() noexcept {
 [[nodiscard]] bool Parker::parkFor(time::Duration timeout) noexcept {
 	const time::Instant kExpiry = time::now().clampedAdd(timeout);
 
-	while (m_state.state.load(std::memory_order_acquire) != 0) {
+	while (m_state.load(std::memory_order_acquire) != 0) {
 		const time::Instant kNow = time::now();
 		if (kExpiry <= kNow) {
 			return false;
 		}
 
-		osSyncWaitFor(m_state.state, kExpiry - kNow);
+		osSyncWaitFor(m_state, kExpiry - kNow);
 	}
 
 	return true;

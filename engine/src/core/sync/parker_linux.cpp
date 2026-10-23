@@ -47,20 +47,20 @@ void futexWake(const std::atomic<std::uint32_t>& state) noexcept {
 
 namespace trivial::sync {
 
-void UnparkHandle::wake() noexcept {
-	futexWake(m_state->state);
+void Parker::wake() noexcept {
+	futexWake(m_state);
 }
 
 void Parker::park() noexcept {
-	while (m_state.state.load(std::memory_order_acquire) != 0) {
-		futexWait(m_state.state, nullptr);
+	while (m_state.load(std::memory_order_acquire) != 0) {
+		futexWait(m_state, nullptr);
 	}
 }
 
 [[nodiscard]] bool Parker::parkFor(time::Duration timeout) noexcept {
 	const time::Instant kExpiry = time::now().clampedAdd(timeout);
 
-	while (m_state.state.load(std::memory_order_acquire) != 0) {
+	while (m_state.load(std::memory_order_acquire) != 0) {
 		const time::Instant kNow = time::now();
 		if (kExpiry <= kNow) {
 			return false;
@@ -78,7 +78,7 @@ void Parker::park() noexcept {
 		    .tv_nsec = static_cast<long>(kRemaining.count() % TRIVIAL_TIME_NANOSECONDS_PER_SECOND),
 		};
 
-		futexWait(m_state.state, &kTimeout);
+		futexWait(m_state, &kTimeout);
 	}
 
 	return true;

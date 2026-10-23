@@ -25,16 +25,17 @@ void ConditionVariable::notifyOne(Mutex& mutex) noexcept {
 }
 
 void ConditionVariable::notifyAll(Mutex& mutex) noexcept {
-	bool wasMutexLocked = false;
-	const ParkingLot::UnparkAllRequeueResult kResult
-	    = activeParkingLot().unparkAllRequeue(parkingKey(*this), parkingKey(mutex), [&mutex, &wasMutexLocked] {
-		      wasMutexLocked = mutex.markParkedIfLocked();
-		      return wasMutexLocked;
-	      });
-
-	if (!wasMutexLocked && kResult.anyRequeued) {
-		mutex.markParked();
-	}
+	activeParkingLot().unparkAllRequeue(
+	    parkingKey(*this),
+	    parkingKey(mutex),
+	    [&mutex] {
+		    return mutex.markParkedIfLocked();
+	    },
+	    [&mutex](ParkingLot::UnparkAllRequeueResult result) {
+		    if (!result.requeuedAll && result.anyRequeued) {
+			    mutex.markParked();
+		    }
+	    });
 }
 
 } // namespace trivial::sync

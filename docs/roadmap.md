@@ -224,12 +224,23 @@ part of the section making the file platform abstract interface
 
 ### Multithreading
 
+- Get commit hash not dates read for parking lot
 - `Mutex` fairness without timers
 - Power saving spin waits with timed low power waits (`TPAUSE`/`UMWAIT` on x86,
 `WFET` on ARM), through runtime dispatch
 - Uneven work splitting on hybrid CPUs, by measuring the relative speed of each
 efficiency class (timing a fixed workload at startup or per class job timings)
 rather than relying on an OS capacity value, as only Linux exposes one
+- Use the inline vector for `ParkingLot::unparkAll`'s wake batch instead of the
+fixed batch with extra waiters woken under the bucket lock
+  - Template option for the inline vector's allocation to be direct OS calls
+  for a page rather than the engine allocators (allocating through those under
+  a bucket lock can park on the `ParkingLot` itself)
+    - Or maybe change segment allocator lock not held to parking lot, e.g. spin
+    lock
+  - Still keep handling for failed allocation (wake under the lock)
+  - It should be noted that this should only be reviewed properly once the fibre
+  approach is implemented due to the impact that might have on locks
 - Move `Thread`'s stack allocator member to a global
 - Surface errors from thread entry routines
 - Compile time fixed thread count option, allowing inline forms such as a static
