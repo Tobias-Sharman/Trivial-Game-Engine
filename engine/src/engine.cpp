@@ -1,12 +1,15 @@
 #include <trivial/engine.h>
 
+#include <cstddef>
 #include <cstdlib>
 #include <new>
 #include <vector>
 
 #include <trivial/application.h>
 #include <trivial/core/config.h>
+#include <trivial/core/cpu/cpu.h>
 #include <trivial/core/log.h>
+#include <trivial/core/platform.h>
 #include <trivial/core/profile.h>
 #include <trivial/core/thread/thread.h>
 #include <trivial/frame/frame_context.h>
@@ -15,6 +18,7 @@
 #include <trivial/task/task.h>
 #include <trivial/task/task_system.h>
 
+#include "core/cpu/cpu_capabilities.h"
 #include "core/memory/memory_capabilities.h"
 #include "core/sync/parking_lot.h"
 #include "core/time/time_capabilities.h"
@@ -27,6 +31,7 @@ Engine::Engine(const EngineConfig& config) noexcept
     , m_gpu(config.graphicsApi, config.applicationInfo, m_window)
     , m_renderer(&m_gpu) {
 	memory::initCapabilities();
+	cpu::initCapabilities();
 	time::initCapabilities();
 
 	thread::Thread* mainThread = new (std::nothrow) thread::Thread();
@@ -64,6 +69,14 @@ Engine::~Engine() {
 	sync::setActiveParkingLot(nullptr);
 
 	delete thread::Thread::current();
+
+#if TRIVIAL_PLATFORM_HAS_CPU_AFFINITY
+	delete[] cpu::detail::g_detectedCapabilities.topology.logicalProcessors;
+	delete[] cpu::detail::g_detectedCapabilities.topology.caches;
+#else
+	delete[] cpu::detail::g_detectedCapabilities.topology.efficiencyClasses;
+#endif // TRIVIAL_PLATFORM_HAS_CPU_AFFINITY
+	cpu::detail::g_detectedCapabilities.topology = {};
 }
 
 void Engine::tick(Application& application) noexcept {

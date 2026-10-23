@@ -56,13 +56,17 @@ reference counted form)
 
 - Async support
 
+- File system abstraction
+
 - Review what is exposed as public for the task system and what can moved to
 internal when they ought not be touched, or put in a detail namespace
 
 - Custom versions of stl vector, string, maps, stack, queue, set, list, and
 other data structures like heaps, trees, graphs, and any others deemed relevant
+  - Inline string and inline vector
   - Consider `-Wpadded` for a pass over struct layout
   - Consider `-Wunsafe-buffer-usage`
+  - Try CRC32 (SSE4.2, ARM CRC32) for hashing keys in the custom maps
   - `TaskSystem::m_parkedWorkerIndices` as the first user of the custom stack,
   with capacity fixed at the worker count so parking never allocates
 
@@ -129,6 +133,8 @@ clamp
 
 - Logging system safe under multithreading
   - Route assert output through it
+  - Pop up a dialogue if it is seen that the system does not meet the requirements
+  to run the application
 
 - Custom window manager to replace GLFW
 
@@ -138,6 +144,8 @@ clamp
   - Try `o2` vs `o3`, LTO, and PGO
   - Target architecture: x86-64 level (`-march=x86-64-v2`/`v3`, `/arch:AVX2`)
   as a hardware floor, and `-mcpu=apple-m1` for macOS (safe for the 14.4 floor)
+  - x86 v1 support based on compile time branching
+  - ARM v8.2 extended version, if profiling shows an issue
   - Standard library hardening (`_LIBCPP_HARDENING_MODE`,
   `_GLIBCXX_ASSERTIONS`, `_MSVC_STL_HARDENING`), debug mode in debug builds and
   possibly fast mode in release
@@ -192,10 +200,36 @@ different higher level allocators with some kind of debug layer)
 - SIMD the cached run search once runtime dispatch exists and a workload needs
 it
 - Verify the Linux large page size calculation in `virtual_memory.h`
+- Plain reserve function in `virtual_memory.h` for page aligned requests (such
+as the CPU topology tables), so they skip `reserveAligned`'s over reserve and
+trim
+- Get rid of the `MADV_FREE` probe, have it error, or decide on keeping it and
+lowering the Linux floor
+- Expand the memory probe
+- Group engine specific allocations for memory efficiency, especially what is
+meant to be read only (made to error on write), consuming the metadata and the
+like for engine components such as the CPU topology and the allocators' memory
+related data
+
+### CPU
+
+- Possibly probe the SVE and SME vector lengths in the future as needed
+- Clean up the form of the CPU detected capabilities struct
+- Address the CPU vendor and brand string sizing (x86 has spec sizes of 13 and
+48, ARM has no spec and the longest name seen is 60 characters)
+- Replace the macos name creation with an inline string
+- Update macos logs to say the efficiency class in the error logs
+- Linux CPU topology probe: as it is opening and reading sysfs files, do it as
+part of the section making the file platform abstract interface
 
 ### Multithreading
 
 - `Mutex` fairness without timers
+- Power saving spin waits with timed low power waits (`TPAUSE`/`UMWAIT` on x86,
+`WFET` on ARM), through runtime dispatch
+- Uneven work splitting on hybrid CPUs, by measuring the relative speed of each
+efficiency class (timing a fixed workload at startup or per class job timings)
+rather than relying on an OS capacity value, as only Linux exposes one
 - Move `Thread`'s stack allocator member to a global
 - Surface errors from thread entry routines
 - Compile time fixed thread count option, allowing inline forms such as a static
@@ -211,6 +245,7 @@ it
 - Custom function for `Vec4::length` to avoid the duplicate operations of the
 nested `std::hypot` calls
 - Evaluate explicit FMA usage in hot paths
+- Clean up the SIMD maths backing for a clearer split of determinism vs fast
 - Fixed point type for bit consistent maths, wrapping numeric traits like
 epsilon, infinity and max when doing so
 - More SIMD backing to functions, and extend it beyond float
@@ -234,6 +269,7 @@ epsilon, infinity and max when doing so
   and `smoothstep`
   - `gcd` and `lcm` (`<numeric>`)
   - Power of two checks and rounding, and alignment helpers (`<bit>`)
+  - Ceiling integer division and rounding up to a multiple
 - Graphics related classes
 - Maybe some geometry classes
 - Test against glm
