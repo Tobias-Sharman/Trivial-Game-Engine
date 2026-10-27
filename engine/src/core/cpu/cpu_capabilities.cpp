@@ -2,9 +2,9 @@
 #include "core/cpu/cpu_capabilities.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 
-#include <trivial/core/compiler.h>
 #include <trivial/core/config.h>
 #include <trivial/core/cpu/cpu.h>
 #include <trivial/core/cpu/cpu_config.h>
@@ -22,10 +22,6 @@
 
 #include "core/cpu/cpu_probe.h"
 
-#if TRIVIAL_CPU_ENABLE_CACHE_LINE_CHECK || TRIVIAL_PLATFORM_HAS_CPU_AFFINITY
-#include <cstdint>
-#endif // TRIVIAL_CPU_ENABLE_CACHE_LINE_CHECK || TRIVIAL_PLATFORM_HAS_CPU_AFFINITY
-
 #if TRIVIAL_PLATFORM_HAS_CPU_AFFINITY
 #include <algorithm>
 #include <array>
@@ -36,54 +32,11 @@
 
 namespace {
 
-#if TRIVIAL_CPU_ENABLE_FLOOR_CHECK
 #if TRIVIAL_ARCH_X86_64
 using ArchitectureFeature = trivial::cpu::X86_64Feature;
-
-[[nodiscard]] consteval trivial::cpu::FeatureSet<ArchitectureFeature> guaranteedFeatures() noexcept {
-	return trivial::cpu::detail::guaranteedX86_64Features();
-}
-
 #elif TRIVIAL_ARCH_ARM64
 using ArchitectureFeature = trivial::cpu::Arm64Feature;
-
-[[nodiscard]] consteval trivial::cpu::FeatureSet<ArchitectureFeature> guaranteedFeatures() noexcept {
-	return trivial::cpu::detail::guaranteedArm64Features();
-}
-
 #endif // Cpu architecture check
-
-[[noreturn]] TRIVIAL_COLD void reportMissingFeatures(
-    const trivial::cpu::FeatureSet<ArchitectureFeature>& detected) noexcept {
-	TRIVIAL_LOG_FATAL_PREFIX("Cpu", "missing features this build requires:");
-
-	for (std::size_t index = 0; index < static_cast<std::size_t>(ArchitectureFeature::Count); ++index) {
-		const ArchitectureFeature kFeature = static_cast<ArchitectureFeature>(index);
-
-		if (trivial::cpu::isGuaranteed(kFeature) && !detected.contains(kFeature)) {
-			TRIVIAL_LOG_FATAL_PREFIX("Cpu", trivial::cpu::featureName(kFeature));
-		}
-	}
-
-	trivial::cpu::probeRunningTranslated();
-
-	if (trivial::cpu::detail::g_detectedCapabilities.runningTranslated) {
-		TRIVIAL_LOG_FATAL_PREFIX("Cpu", "running under x86-64 translation, which may not provide them");
-	}
-
-	std::abort();
-}
-#endif // TRIVIAL_CPU_ENABLE_FLOOR_CHECK
-
-#if TRIVIAL_CPU_ENABLE_CACHE_LINE_CHECK
-TRIVIAL_COLD void checkCacheLineSize() noexcept {
-	const std::uint16_t kCacheLineSize = trivial::cpu::detail::g_detectedCapabilities.topology.cacheLineSize;
-
-	if (kCacheLineSize != 0 && kCacheLineSize != TRIVIAL_PLATFORM_CACHE_LINE_SIZE) {
-		TRIVIAL_LOG_WARNING_PREFIX("Cpu", "L1 data cache line size differs from TRIVIAL_PLATFORM_CACHE_LINE_SIZE");
-	}
-}
-#endif // TRIVIAL_CPU_ENABLE_CACHE_LINE_CHECK
 
 #if TRIVIAL_PLATFORM_HAS_CPU_AFFINITY
 [[nodiscard]] std::size_t findRawCache(std::span<const trivial::cpu::RawCache> caches,
@@ -363,11 +316,29 @@ namespace trivial::cpu {
 void initCapabilities() noexcept {
 	probeIdentity();
 
-#if TRIVIAL_CPU_ENABLE_FLOOR_CHECK
-	if (!detail::g_detectedCapabilities.identity.features.containsAll(guaranteedFeatures())) [[unlikely]] {
-		reportMissingFeatures(detail::g_detectedCapabilities.identity.features);
+	if constexpr (TRIVIAL_CPU_ENABLE_FLOOR_CHECK) {
+		const FeatureSet<ArchitectureFeature>& kDetected = detail::g_detectedCapabilities.identity.features;
+
+		if (!kDetected.containsAll(detail::guaranteedFeatures())) [[unlikely]] {
+			TRIVIAL_LOG_FATAL_PREFIX("Cpu", "missing features this build requires:");
+
+			for (std::size_t index = 0; index < static_cast<std::size_t>(ArchitectureFeature::Count); ++index) {
+				const ArchitectureFeature kFeature = static_cast<ArchitectureFeature>(index);
+
+				if (isGuaranteed(kFeature) && !kDetected.contains(kFeature)) {
+					TRIVIAL_LOG_FATAL_PREFIX("Cpu", featureName(kFeature));
+				}
+			}
+
+			probeRunningTranslated();
+
+			if (detail::g_detectedCapabilities.runningTranslated) {
+				TRIVIAL_LOG_FATAL_PREFIX("Cpu", "running under x86-64 translation, which may not provide them");
+			}
+
+			std::abort();
+		}
 	}
-#endif // TRIVIAL_CPU_ENABLE_FLOOR_CHECK
 
 #if TRIVIAL_PLATFORM_HAS_CPU_AFFINITY
 	buildTopology();
@@ -375,9 +346,13 @@ void initCapabilities() noexcept {
 	probeTopology();
 #endif // TRIVIAL_PLATFORM_HAS_CPU_AFFINITY
 
-#if TRIVIAL_CPU_ENABLE_CACHE_LINE_CHECK
-	checkCacheLineSize();
-#endif // TRIVIAL_CPU_ENABLE_CACHE_LINE_CHECK
+	if constexpr (TRIVIAL_CPU_ENABLE_CACHE_LINE_CHECK) {
+		const std::uint16_t kCacheLineSize = detail::g_detectedCapabilities.topology.cacheLineSize;
+
+		if (kCacheLineSize != 0 && kCacheLineSize != TRIVIAL_PLATFORM_CACHE_LINE_SIZE) {
+			TRIVIAL_LOG_WARNING_PREFIX("Cpu", "L1 data cache line size differs from TRIVIAL_PLATFORM_CACHE_LINE_SIZE");
+		}
+	}
 
 	probeRunningTranslated();
 

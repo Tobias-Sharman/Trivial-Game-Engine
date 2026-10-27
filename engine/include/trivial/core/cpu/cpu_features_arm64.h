@@ -6,10 +6,13 @@
 #if TRIVIAL_ARCH_ARM64
 #include <cstdint>
 
-#include <trivial/core/assert.h>
 #include <trivial/core/compiler.h>
 #include <trivial/core/config.h>
 #include <trivial/core/cpu/cpu_feature_set.h>
+
+#if TRIVIAL_ENABLE_LOGGING
+#include <trivial/core/assert.h>
+#endif // TRIVIAL_ENABLE_LOGGING
 
 #if (TRIVIAL_CPU_ARM64_APPLE_M1 != 0) && (TRIVIAL_CPU_ARM64_APPLE_M1 != 1)
 #error "TRIVIAL_CPU_ARM64_APPLE_M1 must be 0 or 1"
@@ -83,6 +86,7 @@ struct Arm64MainId {
 	std::uint8_t revision = 0;
 };
 
+#if TRIVIAL_ENABLE_LOGGING
 [[nodiscard]] TRIVIAL_COLD constexpr const char* featureName(Arm64Feature feature) noexcept {
 	switch (feature) {
 		case Arm64Feature::Crc32:
@@ -187,10 +191,11 @@ struct Arm64MainId {
 
 	TRIVIAL_UNREACHABLE();
 }
+#endif // TRIVIAL_ENABLE_LOGGING
 
 namespace detail {
 
-[[nodiscard]] consteval FeatureSet<Arm64Feature> guaranteedArm64Features() noexcept {
+[[nodiscard]] consteval FeatureSet<Arm64Feature> guaranteedFeatures() noexcept {
 	FeatureSet<Arm64Feature> features;
 
 	if constexpr (TRIVIAL_CPU_ARM64_APPLE_M1) {
@@ -227,7 +232,7 @@ namespace detail {
 } // namespace detail
 
 [[nodiscard]] TRIVIAL_FORCE_INLINE constexpr bool isGuaranteed(Arm64Feature feature) noexcept {
-	return detail::guaranteedArm64Features().contains(feature);
+	return detail::guaranteedFeatures().contains(feature);
 }
 
 } // namespace trivial::cpu

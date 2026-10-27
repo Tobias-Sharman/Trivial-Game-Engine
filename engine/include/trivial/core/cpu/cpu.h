@@ -124,16 +124,23 @@ inline constinit DetectedCapabilities g_detectedCapabilities;
 } // namespace detail
 
 #if TRIVIAL_ARCH_X86_64
-[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr bool has(X86_64Feature feature) noexcept {
-	if consteval {
-		if (isGuaranteed(feature)) {
-			return true;
-		}
-	}
-
+[[nodiscard]] TRIVIAL_FORCE_INLINE bool isDetected(X86_64Feature feature) noexcept {
 	TRIVIAL_ASSERT(detail::g_detectedCapabilities.initialised);
 	return detail::g_detectedCapabilities.identity.features.contains(feature);
 }
+
+namespace detail {
+
+template <X86_64Feature Feature>
+[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr bool has() noexcept {
+	if constexpr (isGuaranteed(Feature)) {
+		return true;
+	} else {
+		return isDetected(Feature);
+	}
+}
+
+} // namespace detail
 
 [[nodiscard]] TRIVIAL_FORCE_INLINE const X86_64Info& architectureInfo() noexcept {
 	TRIVIAL_ASSERT(detail::g_detectedCapabilities.initialised);
@@ -141,18 +148,27 @@ inline constinit DetectedCapabilities g_detectedCapabilities;
 }
 
 #elif TRIVIAL_ARCH_ARM64
-[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr bool has(Arm64Feature feature) noexcept {
-	if consteval {
-		if (isGuaranteed(feature)) {
-			return true;
-		}
-	}
-
+[[nodiscard]] TRIVIAL_FORCE_INLINE bool isDetected(Arm64Feature feature) noexcept {
 	TRIVIAL_ASSERT(detail::g_detectedCapabilities.initialised);
 	return detail::g_detectedCapabilities.identity.features.contains(feature);
 }
 
+namespace detail {
+
+template <Arm64Feature Feature>
+[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr bool has() noexcept {
+	if constexpr (isGuaranteed(Feature)) {
+		return true;
+	} else {
+		return isDetected(Feature);
+	}
+}
+
+} // namespace detail
+
 #endif // Cpu architecture check
+
+#define TRIVIAL_CPU_HAS(feature) (::trivial::cpu::detail::has<(feature)>())
 
 [[nodiscard]] TRIVIAL_FORCE_INLINE const char* vendor() noexcept {
 	TRIVIAL_ASSERT(detail::g_detectedCapabilities.initialised);
