@@ -184,13 +184,13 @@ Backend::~Backend() {
 	}
 }
 
-bool Backend::beginFrame(std::uint64_t frameIndex) noexcept {
+bool Backend::beginFrame(std::uint64_t frameNumber) noexcept {
 	if (m_swapchainState.imageExtent.width == 0 || m_swapchainState.imageExtent.height == 0) {
 		return false;
 	}
 
 	const std::uint32_t kImageCount = static_cast<std::uint32_t>(m_swapchainState.images.size());
-	m_currentImageSlot = static_cast<std::uint32_t>(frameIndex % kImageCount);
+	m_currentImageSlot = static_cast<std::uint32_t>(frameNumber % kImageCount);
 
 	// NOLINTNEXTLINE(misc-const-correctness, misc-misplaced-const)
 	const VkFence kFence = m_syncState.inFlightFences[m_currentImageSlot];

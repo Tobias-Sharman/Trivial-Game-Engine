@@ -70,7 +70,7 @@ compiles away outside of debug builds
 
 - `onStart(gpu::Context*)`, `onUpdate(const FrameContext&)` and `onEnd()`
 - `collectDrawables()` must be implemented
-- `FrameContext` holds the delta time and the frame index
+- `FrameContext` holds the delta time and the frame number
 - Each frame: poll events, update the game layer, update the debug layer, then
 render
 

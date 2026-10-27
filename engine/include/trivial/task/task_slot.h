@@ -90,6 +90,8 @@ public:
 	}
 
 private:
+	TRIVIAL_DIAGNOSTIC_PUSH
+	TRIVIAL_DIAGNOSTIC_IGNORE_GCC("-Wcast-align")
 	[[nodiscard]] TaskState* rawStatePointer() noexcept TRIVIAL_LIFETIMEBOUND {
 		return reinterpret_cast<TaskState*>(m_storage.data()); // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
 	}
@@ -97,6 +99,7 @@ private:
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
 		return reinterpret_cast<const TaskState*>(m_storage.data());
 	}
+	TRIVIAL_DIAGNOSTIC_POP
 
 	[[nodiscard]] TaskState* statePointer() noexcept TRIVIAL_LIFETIMEBOUND { return std::launder(rawStatePointer()); }
 	[[nodiscard]] const TaskState* statePointer() const noexcept TRIVIAL_LIFETIMEBOUND {

@@ -3,12 +3,14 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <cstdlib>
 #include <span>
 #include <vector>
 
 #include <vulkan/vulkan_core.h>
 
 #include <trivial/core/assert.h>
+#include <trivial/core/log.h>
 #include <trivial/platform/window_types.h>
 
 #include "rhi/vulkan/result.h"
@@ -52,7 +54,10 @@ namespace {
 
 [[nodiscard]] constexpr VkSurfaceFormatKHR selectSurfaceFormat(
     std::span<const VkSurfaceFormatKHR> availableFormats) noexcept {
-	TRIVIAL_ASSERT(!availableFormats.empty());
+	if (availableFormats.empty()) {
+		TRIVIAL_LOG_FATAL_PREFIX("Vulkan", "the surface reports no formats, so no swapchain can be created");
+		std::abort();
+	}
 
 	for (const VkSurfaceFormatKHR& availableFormat : availableFormats) {
 		const bool kIsPreferredFormat = availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB;

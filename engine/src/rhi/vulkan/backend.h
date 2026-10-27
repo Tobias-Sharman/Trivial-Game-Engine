@@ -37,7 +37,7 @@ public:
 	Backend(Backend&&) = delete;
 	Backend& operator=(Backend&&) = delete;
 
-	[[nodiscard]] bool beginFrame(std::uint64_t frameIndex) noexcept override;
+	[[nodiscard]] bool beginFrame(std::uint64_t frameNumber) noexcept override;
 	void endFrame() noexcept override;
 
 	[[nodiscard]] MeshHandle createMesh(std::span<const Vertex2> vertices,

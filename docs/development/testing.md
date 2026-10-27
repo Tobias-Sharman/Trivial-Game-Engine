@@ -39,8 +39,10 @@ support or possibly deployment to some environment with only a set amount of
 allotted memory where it is wished to be enforced at the engine not environment
 level.
 
-The test `main` initialises the memory and time capabilities itself, as the
-`Engine` constructor normally does this and tests do not create an `Engine`.
+The test `main` initialises the memory, CPU and time capabilities itself, in the
+same order as the `Engine` constructor, as tests do not create an `Engine`. It
+also logs the system info at start-up (outside release) and frees the CPU
+capabilities once the tests finish.
 
 ## Isolated tests
 
@@ -103,6 +105,7 @@ Expected skips:
 as committed bytes are not tracked there
 - `TaskSystemMultiThreadTest.TasksDistributeAcrossWorkers` on a single core
 machine
+- `CpuTest.CountsAreConsistent` on Linux, until its topology is probed
 
 Skipped tests count towards the passed total, and `build.py` shows how many
 were skipped.

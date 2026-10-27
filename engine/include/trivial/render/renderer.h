@@ -29,7 +29,7 @@ public:
 	Renderer(Renderer&&) = delete;
 	Renderer& operator=(Renderer&&) = delete;
 
-	void drawFrame(std::uint64_t frameIndex, std::span<const Drawable> drawables) noexcept;
+	void drawFrame(std::uint64_t frameNumber, std::span<const Drawable> drawables) noexcept;
 
 private:
 	gpu::Context* m_gpu = nullptr;

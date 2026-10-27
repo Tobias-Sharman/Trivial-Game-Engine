@@ -66,21 +66,21 @@ constexpr void clearBit(std::uint64_t* bits, std::size_t index) noexcept {
 
 	std::size_t run = 0;
 
-	for (std::size_t index = 0; index < capacity; ++index) {
-		const bool kWordStart = (index & TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BIT_INDEX_MASK) == 0;
-		const std::size_t kWordIndex = index >> TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_WORD_SHIFT;
+	for (std::size_t i = 0; i < capacity; ++i) {
+		const bool kWordStart = (i & TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BIT_INDEX_MASK) == 0;
+		const std::size_t kWordIndex = i >> TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_WORD_SHIFT;
 
 		if (kWordStart && cached[kWordIndex] == 0) { // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-			index += TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BIT_INDEX_MASK;
+			i += TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BIT_INDEX_MASK;
 			run = 0;
 			continue;
 		}
 
-		if (isBitSet(cached, index)) {
+		if (isBitSet(cached, i)) {
 			++run;
 
 			if (run == count) {
-				return index + 1 - count;
+				return i + 1 - count;
 			}
 		} else {
 			run = 0;
@@ -99,22 +99,22 @@ constexpr void clearBit(std::uint64_t* bits, std::size_t index) noexcept {
 
 	std::size_t run = 0;
 
-	for (std::size_t index = 0; index < capacity; ++index) {
-		const bool kWordStart = (index & TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BIT_INDEX_MASK) == 0;
-		const std::size_t kWordIndex = index >> TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_WORD_SHIFT;
+	for (std::size_t i = 0; i < capacity; ++i) {
+		const bool kWordStart = (i & TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BIT_INDEX_MASK) == 0;
+		const std::size_t kWordIndex = i >> TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_WORD_SHIFT;
 
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 		if (kWordStart && allocated[kWordIndex] == TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_FULL_WORD) {
-			index += TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BIT_INDEX_MASK;
+			i += TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BIT_INDEX_MASK;
 			run = 0;
 			continue;
 		}
 
-		if (!isBitSet(allocated, index)) {
+		if (!isBitSet(allocated, i)) {
 			++run;
 
 			if (run == count) {
-				return index + 1 - count;
+				return i + 1 - count;
 			}
 		} else {
 			run = 0;
@@ -157,11 +157,10 @@ namespace trivial::memory {
 
 			const std::size_t kBitmapWords = (m_segmentCapacity + TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_BITS_PER_WORD - 1)
 			                                 >> TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_WORD_SHIFT;
-			const std::size_t kBitmapBytes = kBitmapWords * sizeof(std::uint64_t);
 			constexpr std::size_t kBitmapCount = TRIVIAL_MEMORY_ENABLE_LARGE_PAGES ? 3 : 2;
 
 			const std::size_t kMetadataBytes
-			    = (kBitmapCount * kBitmapBytes) + (m_segmentCapacity * sizeof(SegmentRecord));
+			    = (kBitmapCount * kBitmapWords * sizeof(std::uint64_t)) + (m_segmentCapacity * sizeof(SegmentRecord));
 
 			int metadataError = 0;
 			void* const kMetadata = mapMetadata(kMetadataBytes, kPageSize, m_metadataMappingBytes, metadataError);
@@ -180,22 +179,21 @@ namespace trivial::memory {
 			} else {
 				m_metadata = kMetadata;
 
-				char* cursor = static_cast<char*>(kMetadata);
+				std::uint64_t* cursor = static_cast<std::uint64_t*>(kMetadata);
 
-				// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-				m_allocatedBitmap = reinterpret_cast<std::uint64_t*>(cursor);
-				cursor += kBitmapBytes; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+				m_allocatedBitmap = cursor;
+				cursor += kBitmapWords; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
-				// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-				m_cachedBitmap = reinterpret_cast<std::uint64_t*>(cursor);
-				cursor += kBitmapBytes; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+				m_cachedBitmap = cursor;
+				cursor += kBitmapWords; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
 #if TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
-				// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-				m_pinnedBitmap = reinterpret_cast<std::uint64_t*>(cursor);
-				cursor += kBitmapBytes;
+				m_pinnedBitmap = cursor;
+				cursor += kBitmapWords; // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+
 #endif // TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
 
+				static_assert(alignof(SegmentRecord) <= alignof(std::uint64_t), "Records follow whole bitmap words");
 				// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
 				m_records = reinterpret_cast<SegmentRecord*>(cursor);
 
@@ -254,21 +252,21 @@ void SegmentAllocator::shutdown() noexcept {
 	{
 		const sync::LockGuard<sync::Mutex> kLock(m_stateMutex);
 
-		std::size_t index = TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_INVALID_INDEX;
+		std::size_t firstSegment = TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_INVALID_INDEX;
 
 		if (m_cachedSegments >= count) {
-			index = findCachedRun(m_cachedBitmap, m_segmentCapacity, count);
+			firstSegment = findCachedRun(m_cachedBitmap, m_segmentCapacity, count);
 		}
 
-		if (index == TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_INVALID_INDEX) {
-			index = findFreeRun(m_allocatedBitmap, m_segmentCapacity, count);
+		if (firstSegment == TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_INVALID_INDEX) {
+			firstSegment = findFreeRun(m_allocatedBitmap, m_segmentCapacity, count);
 		}
 
-		if (index == TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_INVALID_INDEX) {
+		if (firstSegment == TRIVIAL_MEMORY_SEGMENT_ALLOCATOR_INVALID_INDEX) {
 			needsOomReport = true;
 		} else {
 			for (std::size_t offset = 0; offset < count; ++offset) {
-				const std::size_t kSegment = index + offset;
+				const std::size_t kSegment = firstSegment + offset;
 
 				TRIVIAL_ASSERT(!isBitSet(m_allocatedBitmap, kSegment));
 
@@ -287,10 +285,10 @@ void SegmentAllocator::shutdown() noexcept {
 #endif // TRIVIAL_ENABLE_MEMORY_DEBUG_STATS
 			}
 
-			m_highWaterSegments = std::max(m_highWaterSegments, index + count);
+			m_highWaterSegments = std::max(m_highWaterSegments, firstSegment + count);
 
 			// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-			result = static_cast<char*>(m_base) + (index << TRIVIAL_MEMORY_SEGMENT_SHIFT);
+			result = static_cast<char*>(m_base) + (firstSegment << TRIVIAL_MEMORY_SEGMENT_SHIFT);
 		}
 	}
 
@@ -317,12 +315,13 @@ void SegmentAllocator::freeSegments(void* segments, std::size_t count) noexcept 
 
 	const sync::LockGuard<sync::Mutex> kLock(m_stateMutex);
 
-	const std::size_t kIndex = segmentIndex(segments);
-	TRIVIAL_ASSERT(kIndex + count <= m_segmentCapacity);
-	TRIVIAL_ASSERT(m_records[kIndex].runLength == count); // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+	const std::size_t kFirstSegment = segmentIndex(segments);
+	TRIVIAL_ASSERT(kFirstSegment + count <= m_segmentCapacity);
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+	TRIVIAL_ASSERT(m_records[kFirstSegment].runLength == count);
 
 	for (std::size_t offset = 0; offset < count; ++offset) {
-		const std::size_t kSegment = kIndex + offset;
+		const std::size_t kSegment = kFirstSegment + offset;
 
 		TRIVIAL_ASSERT(isBitSet(m_allocatedBitmap, kSegment));
 		TRIVIAL_ASSERT(!isBitSet(m_cachedBitmap, kSegment));
@@ -610,7 +609,7 @@ void SegmentAllocator::tick() noexcept {
 #endif // TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
 
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-		const std::uint32_t kAge = static_cast<std::uint32_t>(m_tick - m_records[kSegment].lastFreeTick);
+		const std::uint32_t kAge = m_tick - m_records[kSegment].lastFreeTick;
 
 		if (kAge < TRIVIAL_MEMORY_DECAY_TICKS) {
 			continue;
@@ -701,7 +700,7 @@ void SegmentAllocator::releaseCommitBudget(std::size_t bytes) const noexcept {
 	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
 	const std::uintptr_t kBase = reinterpret_cast<std::uintptr_t>(m_base);
 
-	return static_cast<std::size_t>(kAddress - kBase) >> TRIVIAL_MEMORY_SEGMENT_SHIFT;
+	return (kAddress - kBase) >> TRIVIAL_MEMORY_SEGMENT_SHIFT;
 }
 
 #if TRIVIAL_ENABLE_MEMORY_DEBUG_STATS

@@ -4,6 +4,7 @@
 namespace trivial::cpu {
 
 void initCapabilities() noexcept;
+void freeCapabilities() noexcept;
 
 } // namespace trivial::cpu
 

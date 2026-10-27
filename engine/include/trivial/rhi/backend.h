@@ -25,7 +25,7 @@ public:
 	Backend(Backend&&) = delete;
 	Backend& operator=(Backend&&) = delete;
 
-	[[nodiscard]] virtual bool beginFrame(std::uint64_t frameIndex) noexcept = 0;
+	[[nodiscard]] virtual bool beginFrame(std::uint64_t frameNumber) noexcept = 0;
 	virtual void endFrame() noexcept = 0;
 
 	[[nodiscard]] virtual MeshHandle createMesh(std::span<const Vertex2> vertices,

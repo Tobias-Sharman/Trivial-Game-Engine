@@ -193,18 +193,19 @@ VkShaderModule createShaderModule(VkDevice device, const std::string& spirvPath)
 	TRIVIAL_ASSERT(kFileSize > 0);
 	TRIVIAL_ASSERT(kFileSize % 4 == 0); // SPIR-V is a stream of 32-bit words
 
-	std::vector<char> buffer(static_cast<std::size_t>(kFileSize));
+	std::vector<std::uint32_t> words(static_cast<std::size_t>(kFileSize) / sizeof(std::uint32_t));
+	const std::size_t kCodeBytes = words.size() * sizeof(std::uint32_t);
 
 	file.seekg(0);
-	file.read(buffer.data(), kFileSize);
+	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+	file.read(reinterpret_cast<char*>(words.data()), static_cast<std::streamsize>(kCodeBytes));
 
 	const VkShaderModuleCreateInfo kCreateInfo = {
 	    .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
 	    .pNext = nullptr,
 	    .flags = 0,
-	    .codeSize = buffer.size(),
-	    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-	    .pCode = reinterpret_cast<const std::uint32_t*>(buffer.data()),
+	    .codeSize = kCodeBytes,
+	    .pCode = words.data(),
 	};
 
 	VkShaderModule module = VK_NULL_HANDLE;

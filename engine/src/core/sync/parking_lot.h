@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <span>
 #include <utility>
 
 #include <trivial/core/assert.h>
@@ -337,8 +338,8 @@ public:
 
 		bucket.lock.unlock();
 
-		for (std::size_t i = 0; i < wakeCount; ++i) {
-			m_slots[wakeIndices[i]].parker.wake();
+		for (const std::size_t kSlotIndex : std::span{wakeIndices}.first(wakeCount)) {
+			m_slots[kSlotIndex].parker.wake();
 		}
 	}
 
@@ -507,7 +508,7 @@ private:
 		const trivial::thread::Thread* const kCurrent = trivial::thread::Thread::current();
 		TRIVIAL_ASSERT(kCurrent != nullptr);
 
-		return kCurrent->index();
+		return kCurrent->id();
 	}
 
 	[[nodiscard]] TRIVIAL_FORCE_INLINE Bucket& bucketFor(std::uintptr_t address) noexcept TRIVIAL_LIFETIMEBOUND {

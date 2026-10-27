@@ -7,9 +7,7 @@
 
 #include <trivial/application.h>
 #include <trivial/core/config.h>
-#include <trivial/core/cpu/cpu.h>
 #include <trivial/core/log.h>
-#include <trivial/core/platform.h>
 #include <trivial/core/profile.h>
 #include <trivial/core/thread/thread.h>
 #include <trivial/frame/frame_context.h>
@@ -33,6 +31,8 @@ Engine::Engine(const EngineConfig& config) noexcept
 	memory::initCapabilities();
 	cpu::initCapabilities();
 	time::initCapabilities();
+
+	TRIVIAL_LOG_STARTUP_SYSTEM_INFO();
 
 	thread::Thread* mainThread = new (std::nothrow) thread::Thread();
 	if (mainThread == nullptr) {
@@ -70,19 +70,13 @@ Engine::~Engine() {
 
 	delete thread::Thread::current();
 
-#if TRIVIAL_PLATFORM_HAS_CPU_AFFINITY
-	delete[] cpu::detail::g_detectedCapabilities.topology.logicalProcessors;
-	delete[] cpu::detail::g_detectedCapabilities.topology.caches;
-#else
-	delete[] cpu::detail::g_detectedCapabilities.topology.efficiencyClasses;
-#endif // TRIVIAL_PLATFORM_HAS_CPU_AFFINITY
-	cpu::detail::g_detectedCapabilities.topology = {};
+	cpu::freeCapabilities();
 }
 
 void Engine::tick(Application& application) noexcept {
 	TRIVIAL_PROFILE_FRAME("Frame");
 	m_frameTimer.tick();
-	const FrameContext kFrameContext = {.deltaTime = m_frameTimer.deltaSeconds(), .frameIndex = m_frameIndex};
+	const FrameContext kFrameContext = {.deltaTime = m_frameTimer.deltaSeconds(), .frameNumber = m_frameNumber};
 
 	platform::Window::pollEvents();
 
@@ -104,10 +98,10 @@ void Engine::tick(Application& application) noexcept {
 		TRIVIAL_PROFILE_SCOPE("Render");
 
 		const std::vector<render::Drawable> kDrawables = application.collectDrawables();
-		m_renderer.drawFrame(m_frameIndex, kDrawables);
+		m_renderer.drawFrame(m_frameNumber, kDrawables);
 	}
 
-	++m_frameIndex;
+	++m_frameNumber;
 }
 
 void Engine::run(Application& application) noexcept {

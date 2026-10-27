@@ -56,8 +56,8 @@ namespace {
     VkSurfaceKHR surface) noexcept {
 	trivial::rhi::vulkan::QueueFamilySelection selection = {};
 
-	for (std::uint32_t index = 0; index < queueFamilies.size(); ++index) {
-		const VkQueueFamilyProperties& queueFamily = queueFamilies[index];
+	for (std::uint32_t i = 0; i < queueFamilies.size(); ++i) {
+		const VkQueueFamilyProperties& queueFamily = queueFamilies[i];
 
 		if (queueFamily.queueCount == 0) {
 			continue;
@@ -66,25 +66,25 @@ namespace {
 		const bool kSupportsGraphics = (queueFamily.queueFlags & VkFlags{VK_QUEUE_GRAPHICS_BIT}) != 0;
 		const bool kSupportsCompute = (queueFamily.queueFlags & VkFlags{VK_QUEUE_COMPUTE_BIT}) != 0;
 		const bool kSupportsTransfer = (queueFamily.queueFlags & VkFlags{VK_QUEUE_TRANSFER_BIT}) != 0;
-		const bool kSupportsPresent = hasQueueFamilyPresentSupport(physicalDevice, index, surface);
+		const bool kSupportsPresent = hasQueueFamilyPresentSupport(physicalDevice, i, surface);
 
 		if (kSupportsGraphics && !selection.hasGraphicsFamily) {
-			selection.graphicsFamily = index;
+			selection.graphicsFamily = i;
 			selection.hasGraphicsFamily = true;
 		}
 
 		if (kSupportsCompute && !selection.hasComputeFamily) {
-			selection.computeFamily = index;
+			selection.computeFamily = i;
 			selection.hasComputeFamily = true;
 		}
 
 		if (kSupportsTransfer && !selection.hasTransferFamily) {
-			selection.transferFamily = index;
+			selection.transferFamily = i;
 			selection.hasTransferFamily = true;
 		}
 
 		if (kSupportsPresent && !selection.hasPresentFamily) {
-			selection.presentFamily = index;
+			selection.presentFamily = i;
 			selection.hasPresentFamily = true;
 		}
 	}

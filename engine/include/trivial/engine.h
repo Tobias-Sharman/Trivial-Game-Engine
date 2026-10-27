@@ -50,7 +50,7 @@ public:
 private:
 	GraphicsApi m_requestedGraphicsApi = GraphicsApi::Auto;
 	FrameTimer m_frameTimer;
-	std::uint64_t m_frameIndex = 0;
+	std::uint64_t m_frameNumber = 0;
 
 	platform::Window m_window;
 	gpu::Context m_gpu;

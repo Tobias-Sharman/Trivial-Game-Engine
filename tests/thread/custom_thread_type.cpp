@@ -73,50 +73,50 @@ TEST(ThreadTest, SuspendedWaitsForResume) {
 	EXPECT_TRUE(ran.load(std::memory_order_acquire));
 }
 
-TEST(ThreadTest, IndexVisibleInEntry) {
-	struct IndexObservation {
+TEST(ThreadTest, IdVisibleInEntry) {
+	struct IdObservation {
 		trivial::thread::Thread* thread;
-		std::atomic<std::uint32_t>* observedIndex;
+		std::atomic<std::uint32_t>* observedId;
 	};
 
 	trivial::tests::requireIsolatedProcess();
 
-	std::atomic<std::uint32_t> observedIndex{0};
+	std::atomic<std::uint32_t> observedId{0};
 
 	trivial::thread::Thread thread;
 	trivial::thread::ThreadConfig config;
-	config.name = "index";
+	config.name = "id";
 #if TRIVIAL_PLATFORM_POSIX
 	trivial::tests::attachStackAllocator(config);
 #endif // TRIVIAL_PLATFORM_POSIX
 
-	IndexObservation observation{.thread = &thread, .observedIndex = &observedIndex};
+	IdObservation observation{.thread = &thread, .observedId = &observedId};
 	const trivial::thread::ThreadCreateResult kResult = thread.create(
 	    config,
 	    [](void* arg) noexcept {
-		    const IndexObservation* observation = static_cast<IndexObservation*>(arg);
-		    observation->observedIndex->store(observation->thread->index(), std::memory_order_release);
+		    const IdObservation* observation = static_cast<IdObservation*>(arg);
+		    observation->observedId->store(observation->thread->id(), std::memory_order_release);
 	    },
 	    &observation);
 	ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
 
 	thread.join();
 
-	EXPECT_EQ(observedIndex.load(std::memory_order_acquire), thread.index());
+	EXPECT_EQ(observedId.load(std::memory_order_acquire), thread.id());
 }
 
-TEST(ThreadTest, IndicesAreDistinct) {
+TEST(ThreadTest, IdsAreDistinct) {
 	trivial::tests::requireIsolatedProcess();
 
 	constexpr std::size_t kThreadCount = 8;
 
 	std::array<trivial::thread::Thread, kThreadCount> threads;
-	std::vector<std::uint32_t> seenIndices;
-	seenIndices.reserve(kThreadCount);
+	std::vector<std::uint32_t> seenIds;
+	seenIds.reserve(kThreadCount);
 
 	for (trivial::thread::Thread& thread : threads) {
 		trivial::thread::ThreadConfig config;
-		config.name = "distinct-index";
+		config.name = "distinct-id";
 #if TRIVIAL_PLATFORM_POSIX
 		trivial::tests::attachStackAllocator(config);
 #endif // TRIVIAL_PLATFORM_POSIX
@@ -124,8 +124,8 @@ TEST(ThreadTest, IndicesAreDistinct) {
 		const trivial::thread::ThreadCreateResult kResult = thread.create(config, [](void*) noexcept {}, nullptr);
 		ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
 
-		EXPECT_EQ(std::ranges::find(seenIndices, thread.index()), seenIndices.end());
-		seenIndices.push_back(thread.index());
+		EXPECT_EQ(std::ranges::find(seenIds, thread.id()), seenIds.end());
+		seenIds.push_back(thread.id());
 	}
 
 	for (trivial::thread::Thread& thread : threads) {

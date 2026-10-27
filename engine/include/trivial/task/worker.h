@@ -18,6 +18,8 @@ enum class WorkerState : std::uint8_t {
 	Parked,
 };
 
+// The padding keeps the shared atomics off the local queue's cache lines - check when upating queues
+// NOLINTNEXTLINE(clang-analyzer-optin.performance.Padding)
 struct alignas(TRIVIAL_PLATFORM_FALSE_SHARING_ALIGNMENT) Worker {
 	Worker() noexcept = default;
 
@@ -29,7 +31,7 @@ struct alignas(TRIVIAL_PLATFORM_FALSE_SHARING_ALIGNMENT) Worker {
 	Worker(Worker&&) = delete;
 	Worker& operator=(Worker&&) = delete;
 
-	std::size_t index = 0;
+	std::size_t id = 0;
 	std::atomic<bool> stopping{false};
 	std::atomic<WorkerState> state{WorkerState::Parked};
 

@@ -137,9 +137,9 @@ TEST_F(SegmentAllocatorSingleThreadTest, MultiSegmentRunIsContiguous) {
 	const std::size_t kPagesPerSegment = TRIVIAL_MEMORY_SEGMENT_SIZE / pageSize();
 	int error = 0;
 
-	for (std::size_t segment = 0; segment < kRunSegments; ++segment) {
+	for (std::size_t i = 0; i < kRunSegments; ++i) {
 		// NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-		void* segmentBase = static_cast<char*>(run) + (segment * TRIVIAL_MEMORY_SEGMENT_SIZE);
+		void* segmentBase = static_cast<char*>(run) + (i * TRIVIAL_MEMORY_SEGMENT_SIZE);
 		ASSERT_TRUE(m_allocator.ensureCommittedPages(segmentBase, kPagesPerSegment, error));
 	}
 
@@ -181,9 +181,9 @@ TEST_F(SegmentAllocatorSingleThreadTest, FragmentationBlocksContiguousRun) {
 	ASSERT_GE(held.size(), 4U);
 
 	// Free alternating segments, so plenty is free but nothing is adjacent
-	for (std::size_t index = 0; index < held.size(); index += 2) {
-		m_allocator.freeSegments(held[index], 1);
-		held[index] = nullptr;
+	for (std::size_t i = 0; i < held.size(); i += 2) {
+		m_allocator.freeSegments(held[i], 1);
+		held[i] = nullptr;
 	}
 
 	EXPECT_EQ(m_allocator.allocSegments(2, SegmentKind::HugeHead), nullptr);

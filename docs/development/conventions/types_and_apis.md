@@ -78,12 +78,12 @@ passed to an API by address, as building them on the stack each call costs
 nothing next to the call itself. Only lookup tables indexed at runtime are
 function local `static constexpr`.
 
-## Index and count types
+## Index, id and count types
 
-An index or count uses the type that matches its role and any real constraint,
+An index, id or count uses the type that matches its role and any real constraint,
 not a blanket default. A count matches the API that produces it, so
-`Thread::index()` is `std::uint32_t` like `hardware_concurrency()`, while a
-subscript matches its container, so worker indices are `std::size_t`. A
+`Thread::id()` is `std::uint32_t` like `hardware_concurrency()`, while a
+subscript matches its container, so worker ids are `std::size_t`. A
 narrower type is only chosen for a real reason, such as an external API, a
 genuine packing saving (not one undone by alignment padding), or keeping an
 atomic lock-free on a hot path.

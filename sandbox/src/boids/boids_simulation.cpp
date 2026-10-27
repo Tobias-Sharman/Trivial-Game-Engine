@@ -92,8 +92,8 @@ void BoidsSimulation::update(float deltaTime) noexcept {
 	    .priority = trivial::task::TaskPriority::High,
 	};
 
-	for (std::size_t batchIndex = 0; batchIndex < kBatchCount; ++batchIndex) {
-		const std::size_t kStart = batchIndex * g_kBatchSize;
+	for (std::size_t i = 0; i < kBatchCount; ++i) {
+		const std::size_t kStart = i * g_kBatchSize;
 
 		const std::span<const Boid> kBatch = kPopulation.subspan(kStart, g_kBatchSize);
 		const std::span<trivial::math::Vec2f> kSeparationOut = std::span{m_separation}.subspan(kStart, g_kBatchSize);

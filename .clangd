@@ -12,5 +12,6 @@ Diagnostics:
       - /sys/_types/.*
       - /bits/.*
       - '[/\]um[/\](synch|memory|processthreads|processtopology|errhandling|handle|sysinfo|libloader|securitybase|profile)api\.h'
+      - '[/\]um[/\](jobapi2|wow64apiset)\.h'
       - '[/\]um[/\](winnt|WinBase|minwinbase)\.h'
       - '[/\]shared[/\](minwindef|windef|winerror|basetsd)\.h'

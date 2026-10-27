@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from __future__ import annotations
+
 import argparse
 import ctypes
 import json
@@ -48,8 +50,8 @@ ISOLATED_TESTS: tuple[str, ...] = (
     "EventMultiThreadTest.TriggerUnblocksAllWaiters",
     "ThreadTest.CreateJoinRunsEntry",
     "ThreadTest.SuspendedWaitsForResume",
-    "ThreadTest.IndexVisibleInEntry",
-    "ThreadTest.IndicesAreDistinct",
+    "ThreadTest.IdVisibleInEntry",
+    "ThreadTest.IdsAreDistinct",
     "ThreadTest.CurrentResolvesToSelf",
     "ThreadTest.AdoptCapturesCallingThread",
     "TaskSystemTest.LaunchWithoutPrerequisites",
@@ -381,7 +383,13 @@ def check_include_guards() -> bool:
     return not problems
 
 
-def tidy_extra_args() -> list[str]:
+def tidy_extra_args(commands: list[dict[str, str]]) -> list[str]:
+    if sys.platform == "win32":
+        # clang-tidy reads cl.exe commands as clang-cl, which ignores /arch:SSE4.2,
+        # so pass the x86-64 v2 target the same way clang-cl builds get it
+        if any("/arch:SSE4.2" in entry.get("command", "") for entry in commands):
+            return ["--extra-arg=/clang:-march=x86-64-v2"]
+        return []
     if sys.platform != "darwin":
         return []
     xcrun = require_tool("xcrun")
@@ -427,7 +435,7 @@ def run_tidy(directory: Path, jobs: int, indent: str = "") -> bool:
     commands = json.loads(compile_commands.read_text())
     sources = sorted({path for entry in commands if is_project_path(path := Path(entry["file"]).resolve())})
     headers = project_files(HEADER_SUFFIXES)
-    extra_args = tidy_extra_args()
+    extra_args = tidy_extra_args(commands)
 
     def tidy_file(source: Path) -> subprocess.CompletedProcess[str]:
         return subprocess.run(  # noqa: S603 - fixed argv, no shell, no untrusted input

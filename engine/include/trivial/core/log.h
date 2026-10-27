@@ -9,6 +9,7 @@
 #include <cstddef>
 
 #include <trivial/core/compiler.h>
+#include <trivial/core/log_config.h>
 #endif // TRIVIAL_ENABLE_LOGGING
 
 namespace trivial::core {
@@ -29,6 +30,12 @@ TRIVIAL_COLD void logOomFailure(const char* prefix,
                                 const char* context,
                                 std::size_t requestedSize,
                                 int osErrorCode) noexcept;
+
+TRIVIAL_COLD void logCpuInfo() noexcept;
+TRIVIAL_COLD void logCpuTopology() noexcept;
+TRIVIAL_COLD void logMemoryInfo() noexcept;
+TRIVIAL_COLD void logTimeInfo() noexcept;
+TRIVIAL_COLD void logSystemInfo() noexcept;
 
 #endif // TRIVIAL_ENABLE_LOGGING
 
@@ -56,6 +63,32 @@ TRIVIAL_COLD void logOomFailure(const char* prefix,
 #define TRIVIAL_LOG_OOM_FAILURE(prefix, context, requestedSize, osErrorCode)                                           \
 	::trivial::core::logOomFailure((prefix), (context), (requestedSize), (osErrorCode))
 
+#define TRIVIAL_LOG_CPU_INFO() ::trivial::core::logCpuInfo()
+#define TRIVIAL_LOG_CPU_TOPOLOGY() ::trivial::core::logCpuTopology()
+#define TRIVIAL_LOG_MEMORY_INFO() ::trivial::core::logMemoryInfo()
+#define TRIVIAL_LOG_TIME_INFO() ::trivial::core::logTimeInfo()
+#define TRIVIAL_LOG_SYSTEM_INFO() ::trivial::core::logSystemInfo()
+
+#if TRIVIAL_LOG_SYSTEM_INFO_AT_STARTUP
+#define TRIVIAL_LOG_STARTUP_SYSTEM_INFO()                                                                              \
+	do {                                                                                                               \
+		if constexpr (TRIVIAL_LOG_CPU_INFO_AT_STARTUP) {                                                               \
+			::trivial::core::logCpuInfo();                                                                             \
+		}                                                                                                              \
+		if constexpr (TRIVIAL_LOG_CPU_TOPOLOGY_AT_STARTUP) {                                                           \
+			::trivial::core::logCpuTopology();                                                                         \
+		}                                                                                                              \
+		if constexpr (TRIVIAL_LOG_MEMORY_INFO_AT_STARTUP) {                                                            \
+			::trivial::core::logMemoryInfo();                                                                          \
+		}                                                                                                              \
+		if constexpr (TRIVIAL_LOG_TIME_INFO_AT_STARTUP) {                                                              \
+			::trivial::core::logTimeInfo();                                                                            \
+		}                                                                                                              \
+	} while (false)
+#else
+#define TRIVIAL_LOG_STARTUP_SYSTEM_INFO() ((void)0)
+#endif // TRIVIAL_LOG_SYSTEM_INFO_AT_STARTUP
+
 #else
 
 #define TRIVIAL_LOG_DEBUG(message) ((void)0)
@@ -71,6 +104,14 @@ TRIVIAL_COLD void logOomFailure(const char* prefix,
 #define TRIVIAL_LOG_FATAL_PREFIX(prefix, message) ((void)0)
 
 #define TRIVIAL_LOG_OOM_FAILURE(prefix, context, requestedSize, osErrorCode) ((void)0)
+
+#define TRIVIAL_LOG_CPU_INFO() ((void)0)
+#define TRIVIAL_LOG_CPU_TOPOLOGY() ((void)0)
+#define TRIVIAL_LOG_MEMORY_INFO() ((void)0)
+#define TRIVIAL_LOG_TIME_INFO() ((void)0)
+#define TRIVIAL_LOG_SYSTEM_INFO() ((void)0)
+
+#define TRIVIAL_LOG_STARTUP_SYSTEM_INFO() ((void)0)
 
 #endif // TRIVIAL_ENABLE_LOGGING
 

@@ -1,10 +1,13 @@
 #define TRIVIAL_CPU_PROBE_IMPLEMENTATION
 #include "core/cpu/cpu_capabilities.h"
 
+#include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
+#include <cstring>
+#include <string_view>
 
-#include <trivial/core/compiler.h>
 #include <trivial/core/config.h>
 #include <trivial/core/cpu/cpu.h>
 #include <trivial/core/cpu/cpu_config.h>
@@ -22,13 +25,7 @@
 
 #include "core/cpu/cpu_probe.h"
 
-#if TRIVIAL_CPU_ENABLE_CACHE_LINE_CHECK || TRIVIAL_PLATFORM_HAS_CPU_AFFINITY
-#include <cstdint>
-#endif // TRIVIAL_CPU_ENABLE_CACHE_LINE_CHECK || TRIVIAL_PLATFORM_HAS_CPU_AFFINITY
-
 #if TRIVIAL_PLATFORM_HAS_CPU_AFFINITY
-#include <algorithm>
-#include <array>
 #include <limits>
 #include <memory>
 #include <span>
@@ -36,62 +33,13 @@
 
 namespace {
 
-#if TRIVIAL_CPU_ENABLE_FLOOR_CHECK
-#if TRIVIAL_ARCH_X86_64
-using ArchitectureFeature = trivial::cpu::X86_64Feature;
-
-[[nodiscard]] consteval trivial::cpu::FeatureSet<ArchitectureFeature> guaranteedFeatures() noexcept {
-	return trivial::cpu::detail::guaranteedX86_64Features();
-}
-
-#elif TRIVIAL_ARCH_ARM64
-using ArchitectureFeature = trivial::cpu::Arm64Feature;
-
-[[nodiscard]] consteval trivial::cpu::FeatureSet<ArchitectureFeature> guaranteedFeatures() noexcept {
-	return trivial::cpu::detail::guaranteedArm64Features();
-}
-
-#endif // Cpu architecture check
-
-[[noreturn]] TRIVIAL_COLD void reportMissingFeatures(
-    const trivial::cpu::FeatureSet<ArchitectureFeature>& detected) noexcept {
-	TRIVIAL_LOG_FATAL_PREFIX("Cpu", "missing features this build requires:");
-
-	for (std::size_t index = 0; index < static_cast<std::size_t>(ArchitectureFeature::Count); ++index) {
-		const ArchitectureFeature kFeature = static_cast<ArchitectureFeature>(index);
-
-		if (trivial::cpu::isGuaranteed(kFeature) && !detected.contains(kFeature)) {
-			TRIVIAL_LOG_FATAL_PREFIX("Cpu", trivial::cpu::featureName(kFeature));
-		}
-	}
-
-	trivial::cpu::probeRunningTranslated();
-
-	if (trivial::cpu::detail::g_detectedCapabilities.runningTranslated) {
-		TRIVIAL_LOG_FATAL_PREFIX("Cpu", "running under x86-64 translation, which may not provide them");
-	}
-
-	std::abort();
-}
-#endif // TRIVIAL_CPU_ENABLE_FLOOR_CHECK
-
-#if TRIVIAL_CPU_ENABLE_CACHE_LINE_CHECK
-TRIVIAL_COLD void checkCacheLineSize() noexcept {
-	const std::uint16_t kCacheLineSize = trivial::cpu::detail::g_detectedCapabilities.topology.cacheLineSize;
-
-	if (kCacheLineSize != 0 && kCacheLineSize != TRIVIAL_PLATFORM_CACHE_LINE_SIZE) {
-		TRIVIAL_LOG_WARNING_PREFIX("Cpu", "L1 data cache line size differs from TRIVIAL_PLATFORM_CACHE_LINE_SIZE");
-	}
-}
-#endif // TRIVIAL_CPU_ENABLE_CACHE_LINE_CHECK
-
 #if TRIVIAL_PLATFORM_HAS_CPU_AFFINITY
 [[nodiscard]] std::size_t findRawCache(std::span<const trivial::cpu::RawCache> caches,
                                        std::uint32_t id,
                                        trivial::cpu::CacheKind kind) noexcept {
-	for (std::size_t index = 0; index < caches.size(); ++index) {
-		if (caches[index].id == id && caches[index].kind == kind) {
-			return index;
+	for (std::size_t i = 0; i < caches.size(); ++i) {
+		if (caches[i].id == id && caches[i].kind == kind) {
+			return i;
 		}
 	}
 
@@ -175,9 +123,8 @@ void sortAndScaleTopologyIds(std::span<trivial::cpu::RawLogicalProcessor> rawLog
 
 void discardCaches(std::span<trivial::cpu::RawLogicalProcessor> rawLogicalProcessors) noexcept {
 	for (trivial::cpu::RawLogicalProcessor& logicalProcessor : rawLogicalProcessors) {
-		for (std::size_t kindIndex = 0; kindIndex < static_cast<std::size_t>(trivial::cpu::CacheKind::Count);
-		     ++kindIndex) {
-			logicalProcessor.topologyIds[static_cast<std::size_t>(trivial::cpu::TopologyType::L1DataCache) + kindIndex]
+		for (std::size_t i = 0; i < static_cast<std::size_t>(trivial::cpu::CacheKind::Count); ++i) {
+			logicalProcessor.topologyIds[static_cast<std::size_t>(trivial::cpu::TopologyType::L1DataCache) + i]
 			    = TRIVIAL_CPU_RAW_ID_NONE;
 		}
 	}
@@ -240,11 +187,10 @@ void countEfficiencyAndPerformanceCores(std::span<const trivial::cpu::RawLogical
 	const std::uint32_t kPerformanceRank = topology.efficiencyClassCount - 1;
 	std::uint32_t efficiencyCoreCount = 0;
 
-	for (std::size_t index = 0;
-	     index < rawLogicalProcessors.size() && rawLogicalProcessors[index].efficiencyClass != kPerformanceRank;
-	     ++index) {
-		if (index == 0
-		    || rawLogicalProcessors[index - 1].topologyIds[kCore] != rawLogicalProcessors[index].topologyIds[kCore]) {
+	for (std::size_t i = 0;
+	     i < rawLogicalProcessors.size() && rawLogicalProcessors[i].efficiencyClass != kPerformanceRank;
+	     ++i) {
+		if (i == 0 || rawLogicalProcessors[i - 1].topologyIds[kCore] != rawLogicalProcessors[i].topologyIds[kCore]) {
 			++efficiencyCoreCount;
 		}
 	}
@@ -255,22 +201,22 @@ void countEfficiencyAndPerformanceCores(std::span<const trivial::cpu::RawLogical
 
 void fillLogicalProcessors(std::span<const trivial::cpu::RawLogicalProcessor> rawLogicalProcessors,
                            std::span<trivial::cpu::LogicalProcessorInfo> logicalProcessors) noexcept {
-	for (std::size_t index = 0; index < rawLogicalProcessors.size(); ++index) {
-		const trivial::cpu::RawLogicalProcessor& kRaw = rawLogicalProcessors[index];
+	for (std::size_t i = 0; i < rawLogicalProcessors.size(); ++i) {
+		const trivial::cpu::RawLogicalProcessor& kRaw = rawLogicalProcessors[i];
 		trivial::cpu::CacheIndices cacheIndices{};
 
-		for (std::size_t kindIndex = 0; kindIndex < cacheIndices.size(); ++kindIndex) {
+		for (std::size_t j = 0; j < cacheIndices.size(); ++j) {
 			const std::uint32_t kId
-			    = kRaw.topologyIds[static_cast<std::size_t>(trivial::cpu::TopologyType::L1DataCache) + kindIndex];
+			    = kRaw.topologyIds[static_cast<std::size_t>(trivial::cpu::TopologyType::L1DataCache) + j];
 
 			if (kId == TRIVIAL_CPU_RAW_ID_NONE) {
-				cacheIndices[kindIndex] = TRIVIAL_CPU_INVALID_CACHE_INDEX;
+				cacheIndices[j] = TRIVIAL_CPU_INVALID_CACHE_INDEX;
 			} else {
-				cacheIndices[kindIndex] = static_cast<std::uint16_t>(kId);
+				cacheIndices[j] = static_cast<std::uint16_t>(kId);
 			}
 		}
 
-		logicalProcessors[index] = trivial::cpu::LogicalProcessorInfo{
+		logicalProcessors[i] = trivial::cpu::LogicalProcessorInfo{
 		    .processorNumber = kRaw.processorNumber,
 		    .core = kRaw.topologyIds[static_cast<std::size_t>(trivial::cpu::TopologyType::Core)],
 		    .package = static_cast<std::uint16_t>(
@@ -293,7 +239,6 @@ void buildTopology() noexcept {
 	const std::span<const trivial::cpu::RawCache> kRawCaches{kRaw.caches.get(), kRaw.cacheCount};
 
 	if (kRawLogicalProcessors.empty()) [[unlikely]] {
-		TRIVIAL_LOG_ERROR_PREFIX("Cpu", "the OS reported no logical processors, so the topology is unknown");
 		return;
 	}
 
@@ -302,6 +247,10 @@ void buildTopology() noexcept {
 		                         "the OS reported more logical processors than supported, so the topology is unknown");
 		return;
 	}
+
+#if TRIVIAL_CPU_PROBE_HAS_MAIN_IDS
+	trivial::cpu::probeMainIds(kRawLogicalProcessors);
+#endif // TRIVIAL_CPU_PROBE_HAS_MAIN_IDS
 
 	trivial::cpu::detail::Topology& topology = trivial::cpu::detail::g_detectedCapabilities.topology;
 	topology.logicalProcessorCount = kRaw.logicalProcessorCount;
@@ -360,14 +309,45 @@ void buildTopology() noexcept {
 
 namespace trivial::cpu {
 
+void copyBrand(std::string_view reported) noexcept {
+	const std::size_t kLength = std::min(reported.find('\0'), reported.size());
+	BrandString& brand = detail::g_detectedCapabilities.identity.brand;
+	const std::size_t kCopied = std::min(kLength, brand.size() - 1);
+
+	std::memcpy(brand.data(), reported.data(), kCopied);
+	brand[kCopied] = '\0';
+
+	if (kLength > kCopied) {
+		TRIVIAL_LOG_WARNING_PREFIX("Cpu", "the OS reported a brand longer than the brand string, so it is cut short");
+	}
+}
+
 void initCapabilities() noexcept {
 	probeIdentity();
 
-#if TRIVIAL_CPU_ENABLE_FLOOR_CHECK
-	if (!detail::g_detectedCapabilities.identity.features.containsAll(guaranteedFeatures())) [[unlikely]] {
-		reportMissingFeatures(detail::g_detectedCapabilities.identity.features);
+	if constexpr (TRIVIAL_CPU_ENABLE_FLOOR_CHECK) {
+		const FeatureSet<ArchitectureFeature>& kDetected = detail::g_detectedCapabilities.identity.features;
+
+		if (!kDetected.containsAll(detail::targetFeatures())) [[unlikely]] {
+			TRIVIAL_LOG_FATAL_PREFIX("Cpu", "missing features this build requires:");
+
+			for (std::size_t i = 0; i < static_cast<std::size_t>(ArchitectureFeature::Count); ++i) {
+				const ArchitectureFeature kFeature = static_cast<ArchitectureFeature>(i);
+
+				if (isTargetFeature(kFeature) && !kDetected.contains(kFeature)) {
+					TRIVIAL_LOG_FATAL_PREFIX("Cpu", featureName(kFeature));
+				}
+			}
+
+			probeRunningTranslated();
+
+			if (detail::g_detectedCapabilities.runningTranslated) {
+				TRIVIAL_LOG_FATAL_PREFIX("Cpu", "running under x86-64 translation, which may not provide them");
+			}
+
+			std::abort();
+		}
 	}
-#endif // TRIVIAL_CPU_ENABLE_FLOOR_CHECK
 
 #if TRIVIAL_PLATFORM_HAS_CPU_AFFINITY
 	buildTopology();
@@ -375,14 +355,32 @@ void initCapabilities() noexcept {
 	probeTopology();
 #endif // TRIVIAL_PLATFORM_HAS_CPU_AFFINITY
 
-#if TRIVIAL_CPU_ENABLE_CACHE_LINE_CHECK
-	checkCacheLineSize();
-#endif // TRIVIAL_CPU_ENABLE_CACHE_LINE_CHECK
+	if constexpr (TRIVIAL_CPU_ENABLE_CACHE_LINE_CHECK) {
+		const std::uint16_t kCacheLineSize = detail::g_detectedCapabilities.topology.cacheLineSize;
+
+		if (kCacheLineSize != 0 && kCacheLineSize != TRIVIAL_PLATFORM_CACHE_LINE_SIZE) {
+			TRIVIAL_LOG_WARNING_PREFIX("Cpu", "L1 data cache line size differs from TRIVIAL_PLATFORM_CACHE_LINE_SIZE");
+		}
+	}
 
 	probeRunningTranslated();
 
 #if TRIVIAL_ENABLE_ASSERTS
 	detail::g_detectedCapabilities.initialised = true;
+#endif // TRIVIAL_ENABLE_ASSERTS
+}
+
+void freeCapabilities() noexcept {
+#if TRIVIAL_PLATFORM_HAS_CPU_AFFINITY
+	delete[] detail::g_detectedCapabilities.topology.logicalProcessors;
+	delete[] detail::g_detectedCapabilities.topology.caches;
+#else
+	delete[] detail::g_detectedCapabilities.topology.efficiencyClasses;
+#endif // TRIVIAL_PLATFORM_HAS_CPU_AFFINITY
+	detail::g_detectedCapabilities.topology = {};
+
+#if TRIVIAL_ENABLE_ASSERTS
+	detail::g_detectedCapabilities.initialised = false;
 #endif // TRIVIAL_ENABLE_ASSERTS
 }
 

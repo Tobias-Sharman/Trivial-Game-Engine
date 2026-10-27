@@ -25,8 +25,8 @@ void sleepUntil(Instant deadline) noexcept {
 	}
 
 	const timespec kDeadline{
-	    .tv_sec = static_cast<std::time_t>(deadline.count() / TRIVIAL_TIME_NANOSECONDS_PER_SECOND),
-	    .tv_nsec = static_cast<long>(deadline.count() % TRIVIAL_TIME_NANOSECONDS_PER_SECOND),
+	    .tv_sec = deadline.count() / TRIVIAL_TIME_NANOSECONDS_PER_SECOND,
+	    .tv_nsec = deadline.count() % TRIVIAL_TIME_NANOSECONDS_PER_SECOND,
 	};
 
 	for (;;) {

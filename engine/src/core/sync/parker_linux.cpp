@@ -68,14 +68,14 @@ void Parker::park() noexcept {
 
 		const time::Duration kRemaining = kExpiry - kNow;
 		const std::int64_t kRemainingSec = kRemaining.toSeconds();
-		if (kRemainingSec > static_cast<std::int64_t>(std::numeric_limits<std::time_t>::max())) {
+		if (kRemainingSec > std::numeric_limits<std::time_t>::max()) {
 			park();
 			return true;
 		}
 
 		const timespec kTimeout{
 		    .tv_sec = static_cast<std::time_t>(kRemainingSec),
-		    .tv_nsec = static_cast<long>(kRemaining.count() % TRIVIAL_TIME_NANOSECONDS_PER_SECOND),
+		    .tv_nsec = kRemaining.count() % TRIVIAL_TIME_NANOSECONDS_PER_SECOND,
 		};
 
 		futexWait(m_state, &kTimeout);
