@@ -69,10 +69,16 @@ other data structures like heaps, trees, graphs, and any others deemed relevant
   - Try CRC32 (SSE4.2, ARM CRC32) for hashing keys in the custom maps
   - `TaskSystem::m_parkedWorkerIndices` as the first user of the custom stack,
   with capacity fixed at the worker count so parking never allocates
+  - Enum utilities for the enums to make the loops cleaner and not have so many
+  static casts
+    - Add a note to style about how count should be split from enum values with
+    a newline
 
 - Custom deque for the `TaskPriorityQueue` ready queue
 
-- Extend maths to give support for custom basic algorithms like min, max, clamp
+- Extend maths to give support for custom basic algorithms like min, max, clamp,
+round -> keeping to constexpr where possible with possible branching on a
+version for runtime that exploits CPU capabilities
 
 - Add some sorting functions, along with a general one (SIMD where appropriate)
 
@@ -135,6 +141,10 @@ clamp
   - Route assert output through it
   - Pop up a dialogue if it is seen that the system does not meet the requirements
   to run the application
+  - Pretty formatting for the system info logs once proper helpers exist (e.g.
+  boxes for CPU topology diagrams instead of the plain indented lines)
+  - Move the system info logs off `std::string` to the custom small string so
+  they avoid needless early heap allocation
 
 - Custom window manager to replace GLFW
 

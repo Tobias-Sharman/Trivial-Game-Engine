@@ -34,6 +34,8 @@ Engine::Engine(const EngineConfig& config) noexcept
 	cpu::initCapabilities();
 	time::initCapabilities();
 
+	TRIVIAL_LOG_STARTUP_SYSTEM_INFO();
+
 	thread::Thread* mainThread = new (std::nothrow) thread::Thread();
 	if (mainThread == nullptr) {
 		TRIVIAL_LOG_FATAL_PREFIX("Engine", "Failed to allocate main thread adoption record");

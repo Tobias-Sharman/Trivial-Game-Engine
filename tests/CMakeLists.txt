@@ -24,6 +24,7 @@ target_compile_features(gtest_main PUBLIC cxx_std_23)
 
 add_executable(trivial_tests
 	main.cpp
+	cpu/cpu.cpp
 	ecs/world_tests.cpp
 	frame/frame_timer.cpp
 	math/angle.cpp
