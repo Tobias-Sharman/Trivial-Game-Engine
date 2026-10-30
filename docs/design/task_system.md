@@ -114,7 +114,7 @@ Per iteration: own local queue -> (if holding an active slot) shared `AnyWorker`
 
 ### tryStealTask
 
-Round-robin from `workerIndex + 1` through every sibling, wrapping. Marked as a placeholder since the actual implementation of load balancing is not settled, standard load balancing with some stuff not free and unknown how much traffic each place has would dictate some having but this may be needless overhead (would not be too bad for a custom hash but could still become noticeable under profiling) so needs testing on a proper load - see [Deferred work](#deferred-work).
+Round-robin from `workerId + 1` through every sibling, wrapping. Marked as a placeholder since the actual implementation of load balancing is not settled, standard load balancing with some stuff not free and unknown how much traffic each place has would dictate some having but this may be needless overhead (would not be too bad for a custom hash but could still become noticeable under profiling) so needs testing on a proper load - see [Deferred work](#deferred-work).
 
 ---
 

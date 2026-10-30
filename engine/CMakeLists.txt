@@ -170,7 +170,7 @@ target_compile_definitions(trivial
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/arch_${TRIVIAL_TARGET_ARCH}.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/platform_${TRIVIAL_TARGET_OS}.cmake)
 
-trivial_apply_cpu_level()
+trivial_apply_cpu_version()
 
 # -----------------------------------------------------------------------------
 # Dependencies

@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <span>
 
 #include <trivial/core/assert.h>
 #include <trivial/core/compiler.h>
@@ -35,6 +36,22 @@ public:
 	}
 
 	[[nodiscard]] constexpr std::size_t size() const noexcept { return m_size; }
+
+	[[nodiscard]] constexpr std::span<T>::iterator begin() noexcept TRIVIAL_LIFETIMEBOUND {
+		return std::span<T>{m_elements.get(), m_size}.begin();
+	}
+
+	[[nodiscard]] constexpr std::span<const T>::iterator begin() const noexcept TRIVIAL_LIFETIMEBOUND {
+		return std::span<const T>{m_elements.get(), m_size}.begin();
+	}
+
+	[[nodiscard]] constexpr std::span<T>::iterator end() noexcept TRIVIAL_LIFETIMEBOUND {
+		return std::span<T>{m_elements.get(), m_size}.end();
+	}
+
+	[[nodiscard]] constexpr std::span<const T>::iterator end() const noexcept TRIVIAL_LIFETIMEBOUND {
+		return std::span<const T>{m_elements.get(), m_size}.end();
+	}
 
 private:
 	std::unique_ptr<T[]> m_elements; // NOLINT(cppcoreguidelines-avoid-c-arrays, modernize-avoid-c-arrays)

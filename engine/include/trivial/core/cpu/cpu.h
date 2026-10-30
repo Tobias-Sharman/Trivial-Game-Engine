@@ -133,7 +133,7 @@ namespace detail {
 
 template <X86_64Feature Feature>
 [[nodiscard]] TRIVIAL_FORCE_INLINE constexpr bool has() noexcept {
-	if constexpr (isGuaranteed(Feature)) {
+	if constexpr (isTargetFeature(Feature)) {
 		return true;
 	} else {
 		return isDetected(Feature);
@@ -157,7 +157,7 @@ namespace detail {
 
 template <Arm64Feature Feature>
 [[nodiscard]] TRIVIAL_FORCE_INLINE constexpr bool has() noexcept {
-	if constexpr (isGuaranteed(Feature)) {
+	if constexpr (isTargetFeature(Feature)) {
 		return true;
 	} else {
 		return isDetected(Feature);

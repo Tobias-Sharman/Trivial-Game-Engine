@@ -34,7 +34,7 @@ public:
 		return m_backend->createMesh(vertices, indices);
 	}
 
-	[[nodiscard]] bool beginFrame(std::uint64_t frameIndex) noexcept { return m_backend->beginFrame(frameIndex); }
+	[[nodiscard]] bool beginFrame(std::uint64_t frameNumber) noexcept { return m_backend->beginFrame(frameNumber); }
 	void drawMesh(rhi::MeshHandle handle, const math::Affine2f& transform, const math::Vec4f& tint) noexcept {
 		m_backend->drawMesh(handle, transform, tint);
 	}

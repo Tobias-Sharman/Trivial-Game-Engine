@@ -28,7 +28,7 @@
 
 #include "core/sync/parking_lot.h"
 
-#define TRIVIAL_TASK_SYSTEM_INVALID_WORKER_INDEX (std::numeric_limits<std::size_t>::max())
+#define TRIVIAL_TASK_SYSTEM_INVALID_WORKER_ID (std::numeric_limits<std::size_t>::max())
 
 namespace {
 
@@ -139,7 +139,7 @@ TaskSystem::~TaskSystem() noexcept {
 	TRIVIAL_ASSERT(m_affinityQueues[static_cast<std::size_t>(TaskAffinity::MainThread)].empty());
 
 	TRIVIAL_ASSERT(m_activeSlots.debugCount() == m_targetActiveWorkerCount);
-	TRIVIAL_ASSERT(m_parkedWorkerIndices.empty());
+	TRIVIAL_ASSERT(m_parkedWorkerIds.empty());
 #endif // TRIVIAL_ENABLE_ASSERTS
 }
 
@@ -211,14 +211,14 @@ void TaskSystem::wait(TaskHandle task) noexcept {
 
 	TRIVIAL_ASSERT(kAttachResult == TaskAttachWaiterResult::Attached);
 
-	const std::size_t kWorkerIndex = tryGetCurrentWorkerIndex();
+	const std::size_t kWorkerId = tryGetCurrentWorkerId();
 
-	if (kWorkerIndex == TRIVIAL_TASK_SYSTEM_INVALID_WORKER_INDEX) {
+	if (kWorkerId == TRIVIAL_TASK_SYSTEM_INVALID_WORKER_ID) {
 		latch.wait();
 		return;
 	}
 
-	Worker& worker = m_workers[kWorkerIndex];
+	Worker& worker = m_workers[kWorkerId];
 
 	worker.state.store(WorkerState::Waiting, std::memory_order_relaxed);
 
@@ -265,14 +265,14 @@ void TaskSystem::wait(std::span<const TaskHandle> tasks) noexcept {
 
 	latch.countDown(); // release the phantom slot
 
-	const std::size_t kWorkerIndex = tryGetCurrentWorkerIndex();
+	const std::size_t kWorkerId = tryGetCurrentWorkerId();
 
-	if (kWorkerIndex == TRIVIAL_TASK_SYSTEM_INVALID_WORKER_INDEX) {
+	if (kWorkerId == TRIVIAL_TASK_SYSTEM_INVALID_WORKER_ID) {
 		latch.wait();
 		return;
 	}
 
-	Worker& worker = m_workers[kWorkerIndex];
+	Worker& worker = m_workers[kWorkerId];
 
 	worker.state.store(WorkerState::Waiting, std::memory_order_relaxed);
 
@@ -308,34 +308,34 @@ TaskReleaseResult TaskSystem::release(TaskHandle task) noexcept {
 }
 
 void TaskSystem::runMainThreadReadyTasks() noexcept {
-	constexpr std::size_t kMainThreadIndex = static_cast<std::size_t>(TaskAffinity::MainThread);
+	constexpr std::size_t kMainThreadQueue = static_cast<std::size_t>(TaskAffinity::MainThread);
 
 	TaskHandle handle{};
 
-	while (m_affinityQueues[kMainThreadIndex].tryPop(handle)) {
+	while (m_affinityQueues[kMainThreadQueue].tryPop(handle)) {
 		runAndCompleteClaimedTask(handle);
 	}
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-std::size_t TaskSystem::tryGetCurrentWorkerIndex() const noexcept {
+std::size_t TaskSystem::tryGetCurrentWorkerId() const noexcept {
 	if (g_currentWorker == nullptr) {
-		return TRIVIAL_TASK_SYSTEM_INVALID_WORKER_INDEX;
+		return TRIVIAL_TASK_SYSTEM_INVALID_WORKER_ID;
 	}
 
 	TRIVIAL_ASSERT(g_currentWorkerSystem == this);
 
-	return g_currentWorker->index;
+	return g_currentWorker->id;
 }
 
 void TaskSystem::workerThreadEntry(void* arg) noexcept {
 	TaskSystem* system = static_cast<TaskSystem*>(arg);
-	const std::size_t kIndex = system->m_nextWorkerStartIndex.fetch_add(1, std::memory_order_relaxed);
+	const std::size_t kWorkerId = system->m_nextWorkerId.fetch_add(1, std::memory_order_relaxed);
 
-	Worker& worker = system->m_workers[kIndex];
-	worker.index = kIndex;
+	Worker& worker = system->m_workers[kWorkerId];
+	worker.id = kWorkerId;
 
-	const std::string kThreadName = "Worker " + std::to_string(kIndex);
+	const std::string kThreadName = "Worker " + std::to_string(kWorkerId);
 	thread::Thread::current()->rename(kThreadName.c_str());
 
 	g_currentWorker = &worker;
@@ -343,11 +343,11 @@ void TaskSystem::workerThreadEntry(void* arg) noexcept {
 	g_currentWorkerSystem = system;
 #endif // TRIVIAL_ENABLE_ASSERTS
 
-	system->runWorkerLoop(kIndex);
+	system->runWorkerLoop(kWorkerId);
 }
 
-void TaskSystem::runWorkerLoop(std::size_t workerIndex) noexcept {
-	Worker& worker = m_workers[workerIndex];
+void TaskSystem::runWorkerLoop(std::size_t workerId) noexcept {
+	Worker& worker = m_workers[workerId];
 
 	TRIVIAL_PROFILE_THREAD(thread::Thread::current()->name());
 
@@ -361,7 +361,7 @@ void TaskSystem::runWorkerLoop(std::size_t workerIndex) noexcept {
 			continue;
 		}
 
-		if (holdingSlot && tryClaimSharedTask(workerIndex, handle)) {
+		if (holdingSlot && tryClaimSharedTask(workerId, handle)) {
 			runAndCompleteClaimedTask(handle);
 			continue;
 		}
@@ -374,7 +374,7 @@ void TaskSystem::runWorkerLoop(std::size_t workerIndex) noexcept {
 			m_activeSlots.release();
 		}
 
-		holdingSlot = parkWorker(workerIndex);
+		holdingSlot = parkWorker(workerId);
 	}
 
 	if (holdingSlot) {
@@ -382,20 +382,20 @@ void TaskSystem::runWorkerLoop(std::size_t workerIndex) noexcept {
 	}
 }
 
-bool TaskSystem::parkWorker(std::size_t workerIndex) noexcept {
-	Worker& worker = m_workers[workerIndex];
+bool TaskSystem::parkWorker(std::size_t workerId) noexcept {
+	Worker& worker = m_workers[workerId];
 
 	worker.state.store(WorkerState::Parked, std::memory_order_relaxed);
 
 	{
 		const sync::LockGuard<sync::Mutex> kParkedLock(m_parkedIndicesMutex);
-		m_parkedWorkerIndices.push_back(workerIndex);
+		m_parkedWorkerIds.push_back(workerId);
 	}
 
-	constexpr std::size_t kAnyWorkerIndex = static_cast<std::size_t>(TaskAffinity::AnyWorker);
+	constexpr std::size_t kAnyWorkerQueue = static_cast<std::size_t>(TaskAffinity::AnyWorker);
 
-	if (!m_affinityQueues[kAnyWorkerIndex].empty() && m_activeSlots.tryAcquire()) {
-		if (!tryRemoveParkedIndex(workerIndex)) {
+	if (!m_affinityQueues[kAnyWorkerQueue].empty() && m_activeSlots.tryAcquire()) {
+		if (!tryRemoveParkedWorker(workerId)) {
 			m_activeSlots.release();
 		}
 
@@ -412,7 +412,7 @@ bool TaskSystem::parkWorker(std::size_t workerIndex) noexcept {
 		return true;
 	}
 
-	return !tryRemoveParkedIndex(workerIndex);
+	return !tryRemoveParkedWorker(workerId);
 }
 
 void TaskSystem::wakeOneIfUnderTarget() noexcept {
@@ -425,9 +425,9 @@ void TaskSystem::wakeOneIfUnderTarget() noexcept {
 	{
 		const sync::LockGuard<sync::Mutex> kParkedLock(m_parkedIndicesMutex);
 
-		if (!m_parkedWorkerIndices.empty()) {
-			workerToWake = &m_workers[m_parkedWorkerIndices.back()];
-			m_parkedWorkerIndices.pop_back();
+		if (!m_parkedWorkerIds.empty()) {
+			workerToWake = &m_workers[m_parkedWorkerIds.back()];
+			m_parkedWorkerIds.pop_back();
 			workerToWake->state.store(WorkerState::Active, std::memory_order_release);
 		}
 	}
@@ -440,13 +440,13 @@ void TaskSystem::wakeOneIfUnderTarget() noexcept {
 	(void)sync::activeParkingLot().unparkOne(sync::parkingKey(*workerToWake));
 }
 
-bool TaskSystem::tryRemoveParkedIndex(std::size_t workerIndex) noexcept {
+bool TaskSystem::tryRemoveParkedWorker(std::size_t workerId) noexcept {
 	const sync::LockGuard<sync::Mutex> kParkedLock(m_parkedIndicesMutex);
 
-	for (std::size_t i = 0; i < m_parkedWorkerIndices.size(); ++i) {
-		if (m_parkedWorkerIndices[i] == workerIndex) {
-			m_parkedWorkerIndices[i] = m_parkedWorkerIndices.back();
-			m_parkedWorkerIndices.pop_back();
+	for (std::size_t i = 0; i < m_parkedWorkerIds.size(); ++i) {
+		if (m_parkedWorkerIds[i] == workerId) {
+			m_parkedWorkerIds[i] = m_parkedWorkerIds.back();
+			m_parkedWorkerIds.pop_back();
 			return true;
 		}
 	}
@@ -454,20 +454,20 @@ bool TaskSystem::tryRemoveParkedIndex(std::size_t workerIndex) noexcept {
 	return false;
 }
 
-bool TaskSystem::tryClaimSharedTask(std::size_t workerIndex, TaskHandle& handle) noexcept {
-	Worker& worker = m_workers[workerIndex];
+bool TaskSystem::tryClaimSharedTask(std::size_t workerId, TaskHandle& handle) noexcept {
+	Worker& worker = m_workers[workerId];
 
-	constexpr std::size_t kAnyWorkerIndex = static_cast<std::size_t>(TaskAffinity::AnyWorker);
+	constexpr std::size_t kAnyWorkerQueue = static_cast<std::size_t>(TaskAffinity::AnyWorker);
 
-	const std::size_t kGranted = m_affinityQueues[kAnyWorkerIndex].tryPopWeightedBatchInto(worker.localQueue);
+	const std::size_t kGranted = m_affinityQueues[kAnyWorkerQueue].tryPopWeightedBatchInto(worker.localQueue);
 	if (kGranted > 0 && worker.localQueue.tryPop(handle)) {
 		return true;
 	}
 
-	return tryStealTask(workerIndex, handle);
+	return tryStealTask(workerId, handle);
 }
 
-bool TaskSystem::tryStealTask(std::size_t workerIndex, TaskHandle& handle) noexcept {
+bool TaskSystem::tryStealTask(std::size_t workerId, TaskHandle& handle) noexcept {
 	const std::size_t kWorkerCount = m_workers.size();
 
 	if (kWorkerCount <= 1) {
@@ -475,9 +475,9 @@ bool TaskSystem::tryStealTask(std::size_t workerIndex, TaskHandle& handle) noexc
 	}
 
 	for (std::size_t offset = 1; offset < kWorkerCount; ++offset) {
-		const std::size_t kCandidateIndex = (workerIndex + offset) % kWorkerCount;
+		const std::size_t kCandidateId = (workerId + offset) % kWorkerCount;
 
-		if (m_workers[kCandidateIndex].localQueue.tryPop(handle)) {
+		if (m_workers[kCandidateId].localQueue.tryPop(handle)) {
 			return true;
 		}
 	}
@@ -510,11 +510,11 @@ void TaskSystem::completeTask(TaskHandle handle) noexcept {
 }
 
 bool TaskSystem::tryPopAndRunOneAnyWorkerTask() noexcept {
-	constexpr std::size_t kAnyWorkerIndex = static_cast<std::size_t>(TaskAffinity::AnyWorker);
+	constexpr std::size_t kAnyWorkerQueue = static_cast<std::size_t>(TaskAffinity::AnyWorker);
 
 	TaskHandle handle{};
 
-	if (!m_affinityQueues[kAnyWorkerIndex].tryPop(handle)) {
+	if (!m_affinityQueues[kAnyWorkerQueue].tryPop(handle)) {
 		return false;
 	}
 

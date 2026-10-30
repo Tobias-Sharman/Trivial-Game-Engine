@@ -12,9 +12,9 @@ target_sources(trivial
 )
 
 if(TRIVIAL_TARGET_ARCH STREQUAL "x86_64")
-	set(TRIVIAL_CPU_X86_64_LEVEL v3)
+	set(TRIVIAL_CPU_X86_64_VERSION v3)
 else()
-	set(TRIVIAL_CPU_ARM64_LEVEL apple-m1)
+	set(TRIVIAL_CPU_ARM64_VERSION apple-m1)
 
 	target_sources(trivial PRIVATE src/core/cpu/cpu_probe_macos_arm64.cpp)
 endif()

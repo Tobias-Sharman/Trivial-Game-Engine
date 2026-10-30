@@ -81,7 +81,7 @@ TEST_F(SegmentAllocatorMultiThreadTest, AllocFreeNeverHandsOutSameSegment) {
 	runOnAllTasks([&](std::size_t taskIndex) {
 		const unsigned char kPattern = static_cast<unsigned char>(0x40 + taskIndex);
 
-		for (std::size_t iteration = 0; iteration < g_kConcurrentIterations; ++iteration) {
+		for (std::size_t i = 0; i < g_kConcurrentIterations; ++i) {
 			void* segment = m_allocator.allocSegments(1, SegmentKind::Small);
 
 			if (segment == nullptr) {
@@ -134,7 +134,7 @@ TEST_F(SegmentAllocatorMultiThreadTest, MultiSegmentRunsStayContiguous) {
 		const unsigned char kPattern = static_cast<unsigned char>(0x80 + taskIndex);
 		const std::size_t kCount = 1 + (taskIndex % 3);
 
-		for (std::size_t iteration = 0; iteration < g_kConcurrentIterations / 4; ++iteration) {
+		for (std::size_t i = 0; i < g_kConcurrentIterations / 4; ++i) {
 			void* run = m_allocator.allocSegments(kCount, SegmentKind::HugeHead);
 
 			if (run == nullptr) {
@@ -188,7 +188,7 @@ TEST_F(SegmentAllocatorMultiThreadTest, CommitKeepsPrefixConsistent) {
 	runOnAllTasks([&](std::size_t taskIndex) {
 		(void)taskIndex;
 
-		for (std::size_t iteration = 0; iteration < g_kConcurrentIterations / 8; ++iteration) {
+		for (std::size_t i = 0; i < g_kConcurrentIterations / 8; ++i) {
 			void* segment = m_allocator.allocSegments(1, SegmentKind::Medium);
 
 			if (segment == nullptr) {
@@ -223,7 +223,7 @@ TEST_F(SegmentAllocatorMultiThreadTest, CommittedBytesReturnsToBaseline) {
 	runOnAllTasks([&](std::size_t taskIndex) {
 		(void)taskIndex;
 
-		for (std::size_t iteration = 0; iteration < g_kConcurrentIterations / 8; ++iteration) {
+		for (std::size_t i = 0; i < g_kConcurrentIterations / 8; ++i) {
 			void* segment = m_allocator.allocSegments(1, SegmentKind::Small);
 
 			if (segment == nullptr) {

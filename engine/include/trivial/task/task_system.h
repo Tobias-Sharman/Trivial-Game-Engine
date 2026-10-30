@@ -72,21 +72,21 @@ public:
 	void runMainThreadReadyTasks() noexcept;
 
 private:
-	[[nodiscard]] std::size_t tryGetCurrentWorkerIndex() const noexcept;
+	[[nodiscard]] std::size_t tryGetCurrentWorkerId() const noexcept;
 
 	static void workerThreadEntry(void* arg) noexcept;
 
-	TRIVIAL_HOT void runWorkerLoop(std::size_t workerIndex) noexcept;
+	TRIVIAL_HOT void runWorkerLoop(std::size_t workerId) noexcept;
 
-	[[nodiscard]] bool parkWorker(std::size_t workerIndex) noexcept;
+	[[nodiscard]] bool parkWorker(std::size_t workerId) noexcept;
 
 	void wakeOneIfUnderTarget() noexcept;
 
-	[[nodiscard]] bool tryRemoveParkedIndex(std::size_t workerIndex) noexcept;
+	[[nodiscard]] bool tryRemoveParkedWorker(std::size_t workerId) noexcept;
 
-	[[nodiscard]] TRIVIAL_HOT bool tryClaimSharedTask(std::size_t workerIndex, TaskHandle& handle) noexcept;
+	[[nodiscard]] TRIVIAL_HOT bool tryClaimSharedTask(std::size_t workerId, TaskHandle& handle) noexcept;
 
-	[[nodiscard]] TRIVIAL_HOT bool tryStealTask(std::size_t workerIndex, TaskHandle& handle) noexcept;
+	[[nodiscard]] TRIVIAL_HOT bool tryStealTask(std::size_t workerId, TaskHandle& handle) noexcept;
 
 	TRIVIAL_HOT void enqueueReadyTask(TaskHandle handle, TaskAffinity affinity, TaskPriority priority) noexcept;
 
@@ -109,13 +109,13 @@ private:
 	// Can't do vector since no move construction
 	std::deque<Worker> m_workers;
 
-	std::atomic<std::size_t> m_nextWorkerStartIndex{0};
+	std::atomic<std::size_t> m_nextWorkerId{0};
 
 	std::size_t m_targetActiveWorkerCount = 0;
 	sync::Semaphore m_activeSlots;
 
 	sync::Mutex m_parkedIndicesMutex;
-	std::vector<std::size_t> m_parkedWorkerIndices;
+	std::vector<std::size_t> m_parkedWorkerIds;
 
 	std::uint32_t m_waitHelpMaxDepth = 0;
 };

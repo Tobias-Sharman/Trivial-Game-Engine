@@ -123,6 +123,13 @@ pressure, so reusing it soon after skips the cost of faulting it back in
 
 ### CPU
 
+- Minimum CPU version, see [CPU](../subsystems/core/cpu.md) for the floor check.
+These floors can be lowered by adjusting the target feature tables
+  - Windows and Linux: x86-64-v2 and Armv8.0
+  - macOS: x86-64-v3 and apple-m1
+- Topology: Windows and Linux store every logical processor and cache, macOS
+only its performance levels (efficiency classes), as threads cannot be pinned
+there
 - Cache line size: 128 bytes on Apple silicon, 64 bytes elsewhere, so padding
 for hot data, and the size of types padded to a cache line, differ between
 platforms

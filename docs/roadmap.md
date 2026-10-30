@@ -53,10 +53,19 @@ reference counted form)
   than a plain OS yield, on macOS by passing the target thread instead of
   `MACH_PORT_NULL` to `thread_switch` with the option unchanged
   - Own TLS and handling fibre local storage
+  - Ensure support for shadow stacks on fibre switching when enabled
 
 - Async support
 
 - File system abstraction
+
+- Linux side of CPU probing is in and then a full review of the CPU probing
+subsystem to really clean up the currently at the very least mildly horrendous
+logic. Current implementation may well be functional but is painful to work
+through so will need adjustment
+  - The dropped feature warnings list each feature with its missing
+  prerequisites, which is a bit imperfect, so as part of the overhaul list out
+  all of the missing features arising from each prerequisite instead
 
 - Review what is exposed as public for the task system and what can moved to
 internal when they ought not be touched, or put in a detail namespace
@@ -79,6 +88,9 @@ other data structures like heaps, trees, graphs, and any others deemed relevant
 - Extend maths to give support for custom basic algorithms like min, max, clamp,
 round -> keeping to constexpr where possible with possible branching on a
 version for runtime that exploits CPU capabilities
+
+- Reduction in casts around promotion and demotion by providing functions that
+give the desired type returns with the maths helpers
 
 - Add some sorting functions, along with a general one (SIMD where appropriate)
 
@@ -139,12 +151,17 @@ clamp
 
 - Logging system safe under multithreading
   - Route assert output through it
-  - Pop up a dialogue if it is seen that the system does not meet the requirements
-  to run the application
+  - Pop up a dialogue if it is seen that the system does not meet the
+  requirements to run the application
   - Pretty formatting for the system info logs once proper helpers exist (e.g.
   boxes for CPU topology diagrams instead of the plain indented lines)
   - Move the system info logs off `std::string` to the custom small string so
   they avoid needless early heap allocation
+  - Change up the dependency ties: `log.cpp` pulls in the CPU module for the
+  system info logs while the CPU module logs through `log.h`, so the two depend
+  on each other
+    - Probably move to something builds up a string that log then just logs and
+    handles line lengths
 
 - Custom window manager to replace GLFW
 
@@ -152,7 +169,7 @@ clamp
 
 - Code generation flags
   - Try `o2` vs `o3`, LTO, and PGO
-  - Target architecture: x86-64 level (`-march=x86-64-v2`/`v3`, `/arch:AVX2`)
+  - Target architecture: x86-64 version (`-march=x86-64-v2`/`v3`, `/arch:AVX2`)
   as a hardware floor, and `-mcpu=apple-m1` for macOS (safe for the 14.4 floor)
   - x86 v1 support based on compile time branching
   - ARM v8.2 extended version, if profiling shows an issue
@@ -192,6 +209,11 @@ types ought to be same across all of them)
 - Avoid the `uint32_t` casts for shifts in `TaskState`
 - Dedicated worker threads (main, render, etc.) with config for them
 - Thread affinities beyond main
+- change the thread concurrency default from
+`std::thread::hardware_concurrency()` to the CPU module's counts (available
+and quota). With that change also consider making `Thread::id()` a
+`std::size_t`, as it no longer has to match `hardware_concurrency()` and is used
+as a `std::size_t` subscript
 - More non-general task paths -> check difference in compiled results with span
 vs not span styles for if even needed/wanted
 - More even load balancing in `tryStealTask` whilst staying lightweight, maybe
@@ -207,6 +229,21 @@ fixed at construction and never move
 - Plan migration of segment kind to operate on a higher level (i.e. the
 different higher level allocators with some kind of debug layer)
 - Named structs for safety in `SegmentAllocator`'s internal functions
+- Pointer arithmetic functions so there are not so many NOLINTs (about 80 for
+`pro-bounds-pointer-arithmetic`, `pro-type-reinterpret-cast` and
+`no-int-to-ptr`), each holding its one suppression:
+  - Byte offsets (`static_cast<char*>(p) + n` and `- n`): `SegmentAllocator`,
+  the virtual memory and segment metadata files, `ThreadStackAllocator`
+  - Pointer to address (`reinterpret_cast<std::uintptr_t>`) for alignment
+  checks and masking: the virtual memory files, `SegmentAllocator`,
+  `ParkingLot`'s key, `EscalatingLock`
+  - Address back to pointer: `EscalatingLock`'s queue head
+  - Aligning a pointer down to its segment: `segment_allocator.h`
+  - Typed views over raw memory (`reinterpret_cast<T*>(cursor)`):
+  `SegmentAllocator`'s bitmaps and records, `TaskSlot` and `TaskPayload`
+  storage
+  - Indexing raw pointer arrays, which could become spans instead:
+  `SegmentAllocator`'s bitmaps and records
 - SIMD the cached run search once runtime dispatch exists and a workload needs
 it
 - Verify the Linux large page size calculation in `virtual_memory.h`
@@ -223,21 +260,101 @@ related data
 
 ### CPU
 
+The below is mostly ai generated and summarised notes, which is why it is so
+dense. This will not really be touched until Linux support is filled in.
+
 - Possibly probe the SVE and SME vector lengths in the future as needed
+- Clean up the prerequisite closure `static_assert`s in `cpu_probe_arm64.h` and
+`cpu_probe_x86_64.cpp` to only visit each feature's prerequisites rather than
+every pair of features
 - Clean up the form of the CPU detected capabilities struct
 - Address the CPU vendor and brand string sizing (x86 has spec sizes of 13 and
 48, ARM has no spec and the longest name seen is 60 characters)
 - Replace the macos name creation with an inline string
 - Update macos logs to say the efficiency class in the error logs
+- Could reduce some macOS startup by limiting the features to what is in the mac
+SDK (the cases in `sysctlSource` with no SDK capability bit each read a named
+sysctl)
 - Linux CPU topology probe: as it is opening and reading sysfs files, do it as
 part of the section making the file platform abstract interface
+- Linux cgroup CPU quota (`cpu.max`, and v1 `cfs_quota_us`/`cfs_period_us`)
+for `quotaLogicalProcessorCount`, also file reads so with the file interface
+- Linux available count: read `sched_getaffinity` once at start-up, before any
+thread is pinned, as it is per thread and so wrong from a pinned thread. With
+the file interface also read `cpuset.cpus.effective` as the hard limit, which
+can be read again after pinning and sees containers changed at runtime
+- Linux ARM64 brand string, which the kernel only exposes through files
+- Linux running translated: there is no OS report, so detect it from CPUID in
+the x86 probe. FEX returns `FEXIFEXIEMU` from hypervisor leaf 4000_0000h and the
+host architecture in leaf 4000_0001h EAX[3:0] (2 is AArch64), and Rosetta
+reports a `VirtualApple` brand (seen under macOS, unverified for Linux VMs).
+Box64 and qemu-user have no known signature. qemu-user also runs ARM64 builds
+on x86-64 hosts (Docker multi-architecture builds), which the ARM64 probe would
+need its own way to spot
+- Windows ARM64 features without a `PF_ARM_*` value: the registry holds per
+processor copies of the ID registers next to `CP 4000` (`CP 4020` PFR0 to
+`CP 403A` MMFR2, plus ZFR0 and ISAR2 on some machines, as zig and FEX read).
+They are raw hardware values, not what the OS enabled, so they can only fill in
+features with no register state (RDM, FHM, FCMA, FlagM, SB, SM3/SM4, RNG, LRCPC2
+and 3, LSE128, CSSC, HBC, LUT, FAMINMAX and similar), intersected across every
+processor. Check which values exist on real machines first
+- Windows ARM64 FP8: FPMR and the Advanced SIMD FP8 features have no
+`PF_ARM_*` value, so FPMR is only inferred from the SME FP8 features and plain
+FP8 cannot be reported yet
+- Verify the Windows registry processor numbering matches the processor group
+order on machines with more than 64 logical processors
+- Windows topology `assignTopologyId` checks every logical processor against
+every package, NUMA node and cache record (about 3P² checks for P logical
+processors), which could be made linear with a lookup from processor number to
+logical processor position, walking each record's mask bits instead
+- Add AMX support (Xeon only, Linux needs `ARCH_REQ_XCOMP_PERM` before first
+use, which grows every signal frame by the tile state)
+- AVX-512 warm up at startup on macOS (one EVEX instruction then `VZEROUPPER`
+in the CPU init) so threads start promoted instead of each taking one trap on
+first use, possibly with a compile time gate on whether it is warmed up
+- AVX-512/AVX10 code paths for batch work where profiling shows a benefit
+(culling, bitmap scans, compaction), keeping AVX2 as the main path since
+consoles are Zen 2
+- Tests that execute an instruction from each detected CPU feature
+- AVX10 discrete feature bits (CPUID leaf 24H subleaf 1): the AVX10.2 spec names
+`AVX10_V1_AUX` at ECX bit 2, LLVM reads bit 3 as `avx10v2aux` and the SDM lists
+none yet, add once settled
+- Some gatings could be put in to reduce compiled size in non checking builds
+(with the floor check off, the target feature names and check code are unused)
+- Detect whether CET shadow stacks (x86-64) or GCS (ARM64) are on, for the
+fibre shadow stack handling: a per OS query (Linux `arch_prctl`, Windows'
+process mitigation policy), as it is per thread state, not a feature
+- Features left out for having no use in the engine yet (listed in the CPU
+docs): AMX, Xeon Phi AVX-512 and ring 3 MWAIT, Key Locker, LWP, FSGSBASE, SGX,
+ENQCMD, PTWRITE, RDPRU, the ARM PAuth variants, CPA, the Spectre properties,
+MTE4 and its tag modes, DGH and LS64. Add any once a use comes up
+- Windows CPU quota in nested jobs: only the process's own job is readable, so
+a CPU rate set on a parent job is missed and the quota can be too high. There is
+no API to reach the parent; measuring CPU time at startup is the only fallback
+- Windows 10 with more than 64 logical processors: threads start in the
+process's one processor group, so thread placement has to spread them across
+groups with `SetThreadGroupAffinity` to use the whole available count
+- Verify the Windows available count on a machine with more than 64 logical
+processors, inside and outside a job with group affinity, and with groups of
+unequal size (LLVM issue 56618 saw spurious process masks there)
+- Replace the `std::vector`s in the available count (the Windows job groups
+and the Linux affinity mask) with the small vector, so the common case does not
+heap allocate outside the engine allocators on every call
+- Graceful handling of VMs and emulators that report CPUID features they cannot
+run: execute each detected feature once at startup under a fault handler
+(SIGILL handler, SEH on Windows) and drop any that fault, as currently a false
+report crashes on first use of that feature
+- Own CPUID inline assembly, only if a toolchain lacks `<cpuid.h>`/`__cpuidex`
+or clang's `cpuid.h` clashes with MSVC's `intrin.h` under clang-cl. Not needed
+now as `__cpuid_count` already passes the subleaf in ECX (mimalloc's own
+assembly works around `__get_cpuid`, which takes no subleaf)
 
 ### Multithreading
 
 - Get commit hash not dates read for parking lot
 - `Mutex` fairness without timers
-- Power saving spin waits with timed low power waits (`TPAUSE`/`UMWAIT` on x86,
-`WFET` on ARM), through runtime dispatch
+- Power saving spin waits with timed low power waits (`TPAUSE`/`UMWAIT` on
+Intel, `MONITORX`/`MWAITX` on AMD, `WFET` on ARM), through runtime dispatch
 - Uneven work splitting on hybrid CPUs, by measuring the relative speed of each
 efficiency class (timing a fixed workload at startup or per class job timings)
 rather than relying on an OS capacity value, as only Linux exposes one
@@ -290,6 +407,28 @@ epsilon, infinity and max when doing so
   and `smoothstep`
   - `gcd` and `lcm` (`<numeric>`)
   - Power of two checks and rounding, and alignment helpers (`<bit>`)
+  - Bit functions (`popcount`, `countrZero`, `countlZero`, `bitCeil`,
+  `bitWidth`) returning desired types so call sites lose their `static_cast`s
+  - Bit maths helpers that do as much as they can at compile time and are
+  templated over the unsigned integer sizes (8, 16, 32 and 64 bit) so the same
+  call works on any register or packed field:
+    - `extractBits(value, highBit, lowBit)` and `insertBits(value, field,
+    highBit, lowBit)` for reading and writing a packed field, e.g. the task
+    state's packed status, priority, affinity and lifetime
+    - `bitMask(width)` and `bitRangeMask(highBit, lowBit)`, valid up to the full
+    width
+    - `isBitSet`, `setBit`, `clearBit` and `toggleBit` on a value, plus bitmap
+    versions over a span of words, replacing `SegmentAllocator`'s own bitmap
+    functions, `FeatureSet`'s word masks, the CPUID bit tests in
+    `cpu_probe_x86_64.cpp` and the affinity bit tests in `thread_linux.cpp` and
+    `cpu_probe_windows.cpp`
+    - `lowestSetBit` (`x & -x`) and `clearLowestSetBit` (`x & (x - 1)`), and
+    iterating the set bits of a mask, e.g. walking affinity and group masks
+    - `countlOne`, `countrOne`, `rotl`, `rotr` and `byteswap` (`<bit>`)
+    - `signExtend(value, bits)` for signed packed fields
+    - `reverseBits` and `parity`, if a use comes up
+    - Morton encoding (interleaving the bits of two or three coordinates), for
+    spatial hashing and cache friendly grid layouts
   - Ceiling integer division and rounding up to a multiple
 - Graphics related classes
 - Maybe some geometry classes

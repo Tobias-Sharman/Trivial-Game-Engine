@@ -22,7 +22,7 @@ in `.clang-tidy`, so a wrong name fails the tidy check.
 | Types, concepts, template parameters | `CamelCase` | `TaskSystem` |
 | Enum constants | `CamelCase`, no prefix | `ThreadType::Main` |
 | Functions and methods | `camelBack` | `activeParkingLot()` |
-| Variables and parameters | `camelBack` | `workerIndex` |
+| Variables and parameters | `camelBack` | `workerId` |
 | Macros | `UPPER_CASE` | `TRIVIAL_ASSERT()` |
 
 Variables get a prefix for their scope, then `k` if they are const or

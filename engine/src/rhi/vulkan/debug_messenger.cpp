@@ -38,10 +38,10 @@ namespace {
 	};
 
 	// NOTE: Will need to change if vulkan changes their style
-	const std::uint32_t kIndex = static_cast<std::uint32_t>(messageType) & 0xFU;
+	const std::uint32_t kPrefixIndex = static_cast<std::uint32_t>(messageType) & 0xFU;
 
-	TRIVIAL_ASSERT(kIndex < s_kPrefixes.size());
-	return s_kPrefixes[kIndex];
+	TRIVIAL_ASSERT(kPrefixIndex < s_kPrefixes.size());
+	return s_kPrefixes[kPrefixIndex];
 }
 
 void logDebugMessage(VkDebugUtilsMessageSeverityFlagBitsEXT severity,

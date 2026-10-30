@@ -13,8 +13,8 @@ Renderer::Renderer(gpu::Context* gpu) noexcept
 	TRIVIAL_ASSERT(m_gpu != nullptr);
 }
 
-void Renderer::drawFrame(std::uint64_t frameIndex, std::span<const Drawable> drawables) noexcept {
-	if (!m_gpu->beginFrame(frameIndex)) {
+void Renderer::drawFrame(std::uint64_t frameNumber, std::span<const Drawable> drawables) noexcept {
+	if (!m_gpu->beginFrame(frameNumber)) {
 		return;
 	}
 

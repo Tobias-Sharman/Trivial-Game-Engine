@@ -1,7 +1,18 @@
 #ifndef TRIVIAL_CORE_CPU_CPU_CONFIG_H
 #define TRIVIAL_CORE_CPU_CPU_CONFIG_H
 
-#include <trivial/core/config.h> // IWYU pragma: keep
+#include <trivial/core/config.h>
+#include <trivial/core/platform.h>
+
+#if TRIVIAL_ARCH_X86_64
+#if (TRIVIAL_CPU_X86_64_VERSION != 2) && (TRIVIAL_CPU_X86_64_VERSION != 3)
+#error "TRIVIAL_CPU_X86_64_VERSION must be 2 or 3"
+#endif
+#elif TRIVIAL_ARCH_ARM64
+#if (TRIVIAL_CPU_ARM64_APPLE_M1 != 0) && (TRIVIAL_CPU_ARM64_APPLE_M1 != 1)
+#error "TRIVIAL_CPU_ARM64_APPLE_M1 must be 0 or 1"
+#endif
+#endif // CPU version check
 
 #ifndef TRIVIAL_CPU_ENABLE_FLOOR_CHECK
 #define TRIVIAL_CPU_ENABLE_FLOOR_CHECK 1
@@ -17,6 +28,14 @@
 
 #if (TRIVIAL_CPU_ENABLE_CACHE_LINE_CHECK != 0) && (TRIVIAL_CPU_ENABLE_CACHE_LINE_CHECK != 1)
 #error "TRIVIAL_CPU_ENABLE_CACHE_LINE_CHECK must be 0 or 1"
+#endif
+
+#ifndef TRIVIAL_CPU_ROUND_QUOTA_UP
+#define TRIVIAL_CPU_ROUND_QUOTA_UP 1
+#endif
+
+#if (TRIVIAL_CPU_ROUND_QUOTA_UP != 0) && (TRIVIAL_CPU_ROUND_QUOTA_UP != 1)
+#error "TRIVIAL_CPU_ROUND_QUOTA_UP must be 0 or 1"
 #endif
 
 #endif // TRIVIAL_CORE_CPU_CPU_CONFIG_H

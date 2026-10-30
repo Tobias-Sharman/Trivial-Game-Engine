@@ -7,7 +7,7 @@ namespace trivial {
 
 struct FrameContext {
 	double deltaTime = 0.0;
-	std::uint64_t frameIndex = 0;
+	std::uint64_t frameNumber = 0;
 };
 
 } // namespace trivial

@@ -56,7 +56,7 @@ FrameSyncState createFrameSyncState(VkDevice device, std::uint32_t imageCount) n
 	state.renderFinishedSemaphores.reserve(imageCount);
 	state.inFlightFences.reserve(imageCount);
 
-	for (std::uint32_t index = 0; index < imageCount; ++index) {
+	for (std::uint32_t i = 0; i < imageCount; ++i) {
 		state.imageAvailableSemaphores.push_back(createSemaphore(device));
 		state.renderFinishedSemaphores.push_back(createSemaphore(device));
 		state.inFlightFences.push_back(createFence(device));

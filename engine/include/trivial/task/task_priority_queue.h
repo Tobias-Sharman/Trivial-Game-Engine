@@ -5,6 +5,7 @@
 #include <array>
 #include <cstddef>
 #include <deque>
+#include <ranges>
 
 #include <trivial/core/assert.h>
 #include <trivial/core/sync/lock_guard.h>
@@ -38,12 +39,7 @@ public:
 	}
 
 	[[nodiscard]] bool tryPop(TaskHandle& outHandle) noexcept {
-		for (std::size_t priorityIndex = static_cast<std::size_t>(TaskPriority::Count); priorityIndex > 0;
-		     --priorityIndex) {
-			const std::size_t kIndex = priorityIndex - 1;
-
-			PriorityBucket& bucket = m_buckets[kIndex];
-
+		for (PriorityBucket& bucket : std::views::reverse(m_buckets)) {
 			const sync::LockGuard<sync::Mutex> kLock(bucket.mutex);
 
 			if (bucket.queue.empty()) {

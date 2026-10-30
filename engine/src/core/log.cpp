@@ -36,6 +36,23 @@
 
 namespace {
 
+[[nodiscard]] constexpr const char* logLevelName(trivial::core::LogLevel logLevel) noexcept {
+	switch (logLevel) {
+		case trivial::core::LogLevel::Debug:
+			return "debug";
+		case trivial::core::LogLevel::Info:
+			return "info";
+		case trivial::core::LogLevel::Warning:
+			return "warning";
+		case trivial::core::LogLevel::Error:
+			return "error";
+		case trivial::core::LogLevel::Fatal:
+			return "fatal";
+	}
+
+	TRIVIAL_UNREACHABLE();
+}
+
 template <typename... Args>
 TRIVIAL_COLD void logInfo(const char* prefix, std::format_string<const Args&...> format, const Args&... args) noexcept {
 	const std::string kText = std::format(format, args...);
@@ -73,14 +90,14 @@ TRIVIAL_COLD void logInfo(const char* prefix, std::format_string<const Args&...>
 }
 
 #if TRIVIAL_PLATFORM_HAS_CPU_AFFINITY
-TRIVIAL_COLD void appendCache(std::string& line, std::string_view name, std::uint16_t index) noexcept {
-	if (index != TRIVIAL_CPU_INVALID_CACHE_INDEX) {
-		const trivial::cpu::CacheInfo& kCache = trivial::cpu::caches()[index];
+TRIVIAL_COLD void appendCache(std::string& line, std::string_view name, std::uint16_t cacheIndex) noexcept {
+	if (cacheIndex != TRIVIAL_CPU_INVALID_CACHE_INDEX) {
+		const trivial::cpu::CacheInfo& kCache = trivial::cpu::caches()[cacheIndex];
 
 		line += std::format(", {} {} (#{}, shared by {})",
 		                    name,
 		                    formatSize(kCache.sizeBytes),
-		                    index,
+		                    cacheIndex,
 		                    kCache.sharingLogicalProcessorCount);
 	}
 }
@@ -99,27 +116,6 @@ TRIVIAL_COLD void appendCache(std::string& line, std::string_view name, const tr
 } // namespace
 
 namespace trivial::core {
-
-namespace {
-
-[[nodiscard]] constexpr const char* logLevelName(LogLevel logLevel) noexcept {
-	switch (logLevel) {
-		case LogLevel::Debug:
-			return "debug";
-		case LogLevel::Info:
-			return "info";
-		case LogLevel::Warning:
-			return "warning";
-		case LogLevel::Error:
-			return "error";
-		case LogLevel::Fatal:
-			return "fatal";
-	}
-
-	TRIVIAL_UNREACHABLE();
-}
-
-} // namespace
 
 void logMessage(LogLevel level, const char* message) noexcept {
 	(void)std::fputs("Trivial ", stderr);
@@ -187,8 +183,8 @@ void logCpuInfo() noexcept {
 	constexpr std::string_view kLabel = "Features:";
 	std::string line{kLabel};
 
-	for (std::size_t index = 0; index < static_cast<std::size_t>(Feature::Count); ++index) {
-		const Feature kFeature = static_cast<Feature>(index);
+	for (std::size_t i = 0; i < static_cast<std::size_t>(Feature::Count); ++i) {
+		const Feature kFeature = static_cast<Feature>(i);
 
 		if (!trivial::cpu::isDetected(kFeature)) {
 			continue;

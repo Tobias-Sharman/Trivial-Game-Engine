@@ -34,15 +34,15 @@ using Feature = X86_64Feature;
 using Feature = Arm64Feature;
 #endif // Cpu architecture check
 
-TEST(CpuTest, GuaranteedFeaturesAreDetected) {
-	for (std::size_t index = 0; index < static_cast<std::size_t>(Feature::Count); ++index) {
-		const Feature kFeature = static_cast<Feature>(index);
+TEST(CpuTest, TargetFeaturesAreDetected) {
+	for (std::size_t i = 0; i < static_cast<std::size_t>(Feature::Count); ++i) {
+		const Feature kFeature = static_cast<Feature>(i);
 
-		if (isGuaranteed(kFeature)) {
+		if (isTargetFeature(kFeature)) {
 #if TRIVIAL_ENABLE_LOGGING
 			EXPECT_TRUE(isDetected(kFeature)) << featureName(kFeature);
 #else
-			EXPECT_TRUE(isDetected(kFeature)) << index;
+			EXPECT_TRUE(isDetected(kFeature)) << i;
 #endif // TRIVIAL_ENABLE_LOGGING
 		}
 	}
@@ -54,7 +54,14 @@ TEST(CpuTest, VendorAndBrandAreNullTerminated) {
 }
 
 TEST(CpuTest, CountsAreConsistent) {
-	EXPECT_GT(logicalProcessorCount(), 0U);
+	if (logicalProcessorCount() == 0) {
+		EXPECT_EQ(physicalCoreCount(), 0U);
+		EXPECT_EQ(efficiencyClassCount(), 0U);
+		EXPECT_EQ(packageCount(), 0U);
+		EXPECT_EQ(numaNodeCount(), 0U);
+		GTEST_SKIP() << "The topology is unknown on this platform";
+	}
+
 	EXPECT_GE(logicalProcessorCount(), physicalCoreCount());
 	EXPECT_EQ(performanceCoreCount() + efficiencyCoreCount(), physicalCoreCount());
 	EXPECT_GE(efficiencyClassCount(), 1U);
@@ -77,21 +84,37 @@ TEST(CpuTest, QuotaAndAvailableAreBounded) {
 
 	EXPECT_GE(kQuota, 1U);
 	EXPECT_LE(kQuota, kAvailable);
-	EXPECT_LE(kAvailable, logicalProcessorCount());
+
+	if (logicalProcessorCount() != 0) {
+		EXPECT_LE(kAvailable, logicalProcessorCount());
+	}
 }
+
+#if TRIVIAL_ARCH_X86_64
+TEST(CpuTest, IdentityIsReported) {
+	EXPECT_NE(*vendor(), '\0');
+	EXPECT_NE(*brand(), ' ');
+	EXPECT_NE(architectureInfo().family, 0U);
+}
+
+TEST(CpuTest, Avx10VersionMatchesDetection) {
+	EXPECT_EQ(architectureInfo().avx10Version >= 1, isDetected(X86_64Feature::Avx10V1));
+	EXPECT_EQ(architectureInfo().avx10Version >= 2, isDetected(X86_64Feature::Avx10V2));
+}
+#endif // Cpu architecture check
 
 #if TRIVIAL_PLATFORM_HAS_CPU_AFFINITY
 TEST(CpuTest, LogicalProcessorsAreSorted) {
 	const std::span<const LogicalProcessorInfo> kLogicalProcessors = logicalProcessors();
 	ASSERT_EQ(kLogicalProcessors.size(), logicalProcessorCount());
 
-	for (std::size_t index = 1; index < kLogicalProcessors.size(); ++index) {
-		const LogicalProcessorInfo& kPrevious = kLogicalProcessors[index - 1];
-		const LogicalProcessorInfo& kCurrent = kLogicalProcessors[index];
+	for (std::size_t i = 1; i < kLogicalProcessors.size(); ++i) {
+		const LogicalProcessorInfo& kPrevious = kLogicalProcessors[i - 1];
+		const LogicalProcessorInfo& kCurrent = kLogicalProcessors[i];
 
 		EXPECT_LT(std::tie(kPrevious.efficiencyClass, kPrevious.core, kPrevious.processorNumber),
 		          std::tie(kCurrent.efficiencyClass, kCurrent.core, kCurrent.processorNumber))
-		    << index;
+		    << i;
 	}
 }
 
@@ -109,21 +132,21 @@ TEST(CpuTest, CacheIndicesMatchCaches) {
 	std::vector<std::uint32_t> sharers(kCaches.size());
 
 	for (const LogicalProcessorInfo& kLogicalProcessor : logicalProcessors()) {
-		for (std::size_t kind = 0; kind < kLogicalProcessor.cacheIndices.size(); ++kind) {
-			const std::uint16_t kIndex = kLogicalProcessor.cacheIndices[kind];
+		for (std::size_t i = 0; i < kLogicalProcessor.cacheIndices.size(); ++i) {
+			const std::uint16_t kCacheIndex = kLogicalProcessor.cacheIndices[i];
 
-			if (kIndex == TRIVIAL_CPU_INVALID_CACHE_INDEX) {
+			if (kCacheIndex == TRIVIAL_CPU_INVALID_CACHE_INDEX) {
 				continue;
 			}
 
-			ASSERT_LT(kIndex, kCaches.size());
-			EXPECT_EQ(kCaches[kIndex].kind, static_cast<CacheKind>(kind));
-			++sharers[kIndex];
+			ASSERT_LT(kCacheIndex, kCaches.size());
+			EXPECT_EQ(kCaches[kCacheIndex].kind, static_cast<CacheKind>(i));
+			++sharers[kCacheIndex];
 		}
 	}
 
-	for (std::size_t index = 0; index < kCaches.size(); ++index) {
-		EXPECT_EQ(sharers[index], kCaches[index].sharingLogicalProcessorCount) << index;
+	for (std::size_t i = 0; i < kCaches.size(); ++i) {
+		EXPECT_EQ(sharers[i], kCaches[i].sharingLogicalProcessorCount) << i;
 	}
 }
 
@@ -156,12 +179,12 @@ TEST(CpuTest, EfficiencyClassCoresAreUniform) {
 
 TEST(CpuTest, EfficiencyClassCachesMatchKind) {
 	for (const EfficiencyClassInfo& kClass : efficiencyClasses()) {
-		for (std::size_t kind = 0; kind < kClass.caches.size(); ++kind) {
-			const CacheInfo& kCache = kClass.caches[kind];
+		for (std::size_t i = 0; i < kClass.caches.size(); ++i) {
+			const CacheInfo& kCache = kClass.caches[i];
 
-			EXPECT_EQ(kCache.kind, static_cast<CacheKind>(kind));
+			EXPECT_EQ(kCache.kind, static_cast<CacheKind>(i));
 			EXPECT_LE(kCache.sharingLogicalProcessorCount, kClass.logicalProcessorCount);
-			EXPECT_EQ(kCache.sizeBytes == 0, kCache.sharingLogicalProcessorCount == 0) << kind;
+			EXPECT_EQ(kCache.sizeBytes == 0, kCache.sharingLogicalProcessorCount == 0) << i;
 		}
 	}
 }

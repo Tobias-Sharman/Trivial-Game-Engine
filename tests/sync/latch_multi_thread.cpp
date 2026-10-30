@@ -49,17 +49,17 @@ TEST(LatchMultiThreadTest, WaitUnblocksAfterCountDown) {
 	LatchCountDownContext context{.latch = &latch, .completed = &completed};
 
 	trivial::core::HeapArray<trivial::thread::Thread> threads(g_kWorkerThreads);
-	for (std::size_t i = 0; i < g_kWorkerThreads; ++i) {
+	for (trivial::thread::Thread& thread : threads) {
 #if TRIVIAL_PLATFORM_POSIX
 		trivial::thread::ThreadConfig config;
 		trivial::tests::attachStackAllocator(config);
 
-		const trivial::thread::ThreadCreateResult kResult = threads[i].create(config, &countDownWorker, &context);
+		const trivial::thread::ThreadCreateResult kResult = thread.create(config, &countDownWorker, &context);
 		ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
 #else
 		const trivial::thread::ThreadConfig kConfig{};
 
-		const trivial::thread::ThreadCreateResult kResult = threads[i].create(kConfig, &countDownWorker, &context);
+		const trivial::thread::ThreadCreateResult kResult = thread.create(kConfig, &countDownWorker, &context);
 		ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
 #endif // TRIVIAL_PLATFORM_POSIX
 	}
@@ -69,8 +69,8 @@ TEST(LatchMultiThreadTest, WaitUnblocksAfterCountDown) {
 	EXPECT_EQ(completed.load(std::memory_order_acquire), g_kWorkerThreads);
 	EXPECT_EQ(latch.remaining(), 0U);
 
-	for (std::size_t i = 0; i < g_kWorkerThreads; ++i) {
-		threads[i].join();
+	for (trivial::thread::Thread& thread : threads) {
+		thread.join();
 	}
 }
 

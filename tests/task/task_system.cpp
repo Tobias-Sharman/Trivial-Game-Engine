@@ -445,12 +445,12 @@ TEST(TaskSystemMultiThreadTest, TasksDistributeAcrossWorkers) {
 
 	std::atomic<std::size_t> started{0};
 	sync::Event allStarted;
-	std::array<std::uint32_t, kTaskCount> workerIndices{};
+	std::array<std::uint32_t, kTaskCount> threadIds{};
 	std::array<TaskHandle, kTaskCount> handles{};
 
 	for (std::size_t i = 0; i < kTaskCount; ++i) {
-		handles[i] = launch(TaskPayload{[&started, &allStarted, &workerIndices, i]() noexcept {
-			workerIndices[i] = thread::Thread::current()->index();
+		handles[i] = launch(TaskPayload{[&started, &allStarted, &threadIds, i]() noexcept {
+			threadIds[i] = thread::Thread::current()->id();
 
 			if (started.fetch_add(1, std::memory_order_acq_rel) + 1 == kTaskCount) {
 				allStarted.trigger();
@@ -464,7 +464,7 @@ TEST(TaskSystemMultiThreadTest, TasksDistributeAcrossWorkers) {
 
 	wait(std::span<const TaskHandle>{handles});
 
-	EXPECT_NE(workerIndices[0], workerIndices[1]);
+	EXPECT_NE(threadIds[0], threadIds[1]);
 }
 
 TEST(TaskSystemMultiThreadTest, DependencyChainPreservesOrder) {

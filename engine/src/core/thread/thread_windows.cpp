@@ -26,7 +26,7 @@ namespace {
 
 // Non-atomic would be safe but cost is much less than the syscalls for thread
 // creation and makes it safer for future planned usage changes
-std::atomic<std::uint32_t> g_nextThreadIndex{0}; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+std::atomic<std::uint32_t> g_nextThreadId{0}; // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 
 void copyName(const char* name, std::array<char, TRIVIAL_THREAD_MAX_NAME_LENGTH>& outName) noexcept {
 	if (name == nullptr) {
@@ -68,7 +68,7 @@ namespace trivial::thread {
 	TRIVIAL_ASSERT(m_state.load(std::memory_order_relaxed) == ThreadState::NotStarted);
 	TRIVIAL_ASSERT(startRoutine != nullptr);
 
-	m_index = g_nextThreadIndex.fetch_add(1, std::memory_order_relaxed);
+	m_id = g_nextThreadId.fetch_add(1, std::memory_order_relaxed);
 	m_type = config.type;
 	m_startRoutine = startRoutine;
 	m_arg = arg;
@@ -119,7 +119,7 @@ void Thread::adoptCurrentThread(const ThreadConfig& config) noexcept {
 	TRIVIAL_ASSERT(m_state.load(std::memory_order_relaxed) == ThreadState::NotStarted);
 	TRIVIAL_ASSERT(config.type == ThreadType::Main);
 
-	m_index = g_nextThreadIndex.fetch_add(1, std::memory_order_relaxed);
+	m_id = g_nextThreadId.fetch_add(1, std::memory_order_relaxed);
 	m_type = config.type;
 
 	copyName(config.name, m_name);

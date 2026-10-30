@@ -64,23 +64,23 @@ inline void runOnAllThreads(std::size_t threadCount, trivial::thread::ThreadStar
 
 	trivial::core::HeapArray<trivial::thread::Thread> threads(threadCount);
 
-	for (std::size_t i = 0; i < threadCount; ++i) {
+	for (trivial::thread::Thread& thread : threads) {
 #if TRIVIAL_PLATFORM_POSIX
 		trivial::thread::ThreadConfig config;
 		attachStackAllocator(config);
 
-		const trivial::thread::ThreadCreateResult kResult = threads[i].create(config, routine, arg);
+		const trivial::thread::ThreadCreateResult kResult = thread.create(config, routine, arg);
 		ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
 #else
 		const trivial::thread::ThreadConfig kConfig{};
 
-		const trivial::thread::ThreadCreateResult kResult = threads[i].create(kConfig, routine, arg);
+		const trivial::thread::ThreadCreateResult kResult = thread.create(kConfig, routine, arg);
 		ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
 #endif // TRIVIAL_PLATFORM_POSIX
 	}
 
-	for (std::size_t i = 0; i < threadCount; ++i) {
-		threads[i].join();
+	for (trivial::thread::Thread& thread : threads) {
+		thread.join();
 	}
 }
 
