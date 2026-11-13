@@ -80,13 +80,8 @@ function local `static constexpr`.
 
 ## Index, id and count types
 
-An index, id or count uses the type that matches its role and any real constraint,
-not a blanket default. A count matches the API that produces it, so
-`Thread::id()` is `std::uint32_t` like `hardware_concurrency()`, while a
-subscript matches its container, so worker ids are `std::size_t`. A
-narrower type is only chosen for a real reason, such as an external API, a
-genuine packing saving (not one undone by alignment padding), or keeping an
-atomic lock-free on a hot path.
+Typically size_t, but later custom type with allowance non size_t indexing to
+reduce casts where a demotion may not be readily identified.
 
 ## The `detail` namespace
 

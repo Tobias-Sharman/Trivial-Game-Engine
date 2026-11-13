@@ -127,10 +127,6 @@ public:
 
 	static void yield() noexcept;
 
-	// requested == 0 resolves to std::thread::hardware_concurrency() (or 1 if
-	// that can't be determined) any other value passes through unchanged
-	[[nodiscard]] static std::uint32_t resolveConcurrency(std::uint32_t requested) noexcept;
-
 private:
 	static void runEntry(Thread* self) noexcept;
 

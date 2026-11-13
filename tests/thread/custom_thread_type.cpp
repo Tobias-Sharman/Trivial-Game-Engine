@@ -3,7 +3,6 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
-#include <thread>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -164,20 +163,6 @@ TEST(ThreadTest, AdoptCapturesCallingThread) {
 	EXPECT_EQ(thread.state(), trivial::thread::ThreadState::Running);
 	EXPECT_FALSE(thread.joinable());
 	EXPECT_EQ(trivial::thread::Thread::current(), &thread);
-}
-
-TEST(ThreadTest, ConcurrencyPassesThroughNonZero) {
-	EXPECT_EQ(trivial::thread::Thread::resolveConcurrency(5), 5U); // NOLINT(readability-magic-numbers)
-}
-
-TEST(ThreadTest, ConcurrencyDefaultsToHardware) {
-	const std::uint32_t kHardwareConcurrency = std::thread::hardware_concurrency();
-
-	if (kHardwareConcurrency == 0U) {
-		EXPECT_EQ(trivial::thread::Thread::resolveConcurrency(0), 1U);
-	} else {
-		EXPECT_EQ(trivial::thread::Thread::resolveConcurrency(0), kHardwareConcurrency);
-	}
 }
 
 void destroyJoinableThreadTest() {

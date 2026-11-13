@@ -5,6 +5,7 @@
 
 #include <trivial/application.h>
 #include <trivial/core/config.h>
+#include <trivial/core/cpu/cpu.h>
 #include <trivial/core/log.h>
 #include <trivial/core/profile.h>
 #include <trivial/core/thread/thread.h>
@@ -42,7 +43,9 @@ Engine::Engine(const EngineConfig& config) noexcept
 	mainThread->adoptCurrentThread({.name = "Main", .type = thread::ThreadType::Main});
 
 	task::TaskSystemConfig taskConfig = config.tasks;
-	taskConfig.workers.count = thread::Thread::resolveConcurrency(taskConfig.workers.count);
+	if (taskConfig.workers.count == 0) {
+		taskConfig.workers.count = cpu::quotaLogicalProcessorCount();
+	}
 
 	const std::size_t kCapacity = 1 + taskConfig.workers.count + taskConfig.workers.maxStandbyWorkers;
 

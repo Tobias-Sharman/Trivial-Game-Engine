@@ -11,6 +11,7 @@
 
 #include <gtest/gtest.h>
 
+#include <trivial/core/cpu/cpu.h>
 #include <trivial/core/sync/event.h>
 #include <trivial/core/sync/lock_guard.h>
 #include <trivial/core/sync/mutex.h>
@@ -32,7 +33,7 @@ namespace {
 
 TaskSystemConfig makeResolvedTestConfig() noexcept {
 	TaskSystemConfig config{};
-	config.workers.count = trivial::thread::Thread::resolveConcurrency(config.workers.count);
+	config.workers.count = trivial::cpu::quotaLogicalProcessorCount();
 	return config;
 }
 
@@ -435,7 +436,7 @@ TEST(TaskSystemMultiThreadTest, IndependentTasksAllCompleteOnce) {
 }
 
 TEST(TaskSystemMultiThreadTest, TasksDistributeAcrossWorkers) {
-	if (thread::Thread::resolveConcurrency(0) <= 1) {
+	if (cpu::quotaLogicalProcessorCount() <= 1) {
 		GTEST_SKIP() << "Single-core host - worker distribution cannot be observed";
 	}
 

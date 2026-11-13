@@ -1,9 +1,7 @@
 #include <trivial/core/thread/thread.h>
 
 #include <atomic>
-#include <cstdint>
 #include <cstdlib>
-#include <thread>
 
 #include <trivial/core/assert.h>
 #include <trivial/core/log.h>
@@ -26,21 +24,6 @@ void Thread::resume() noexcept {
 
 	m_state.store(ThreadState::Running, std::memory_order_release);
 	m_state.notify_one();
-}
-
-[[nodiscard]] std::uint32_t Thread::resolveConcurrency(std::uint32_t requested) noexcept {
-	if (requested != 0) {
-		return requested;
-	}
-
-	const std::uint32_t kHardware = std::thread::hardware_concurrency();
-
-	if (kHardware == 0U) {
-		TRIVIAL_LOG_ERROR("Could not resolve hardware concurrency");
-		return 1;
-	}
-
-	return kHardware;
 }
 
 } // namespace trivial::thread

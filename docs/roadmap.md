@@ -5,49 +5,75 @@
 - Documentation update and create new documentation
   - Clean up roadmap too
 
-- Memory Allocator
-  - Arenas allocator
-  - general allocator: mimalloc for now but later a streamlined port with nice
-  hooks for engine workloads (in particular frame based)
-  - Debug layer
-
 - Expand assertion and assume macros and finish clang tools version increase
 
-- RW Lock (see about using for helping moves, e.g. custom vector)
-
-- Proper test and benchmarking framework
-  - Benchmark allocator, probably against mimalloc and jemalloc
-  - Sanitiser presets alongside `debug-tsan`: UBSan (cheap, broadly useful) and
-  ASan (needs poisoning annotations in the engine allocators to see inside
-  them)
-
-- First party parallel running tasks
-
-- Proper automatic handle release, mark a flag on destruction (i.e. not some
-reference counted form)
-  - Add `TRIVIAL_LIFETIMEBOUND` to `Task<T>::getResult()`
-  - Add `[[clang::trivial_abi]]` to `Task<T>`
-
-- Clang thread safety analysis (`-Wthread-safety`)
-  - Mark the lock types (`capability`, `scoped_lockable` on LockGuard)
-  - Mark lock and unlock functions (`acquire`/`release`/`try_acquire`)
-  - Mark shared members (`guarded_by`) and functions that need a lock held or
-  not held (`requires`/`excludes`)
-  - Opt out with `no_thread_safety_analysis` where it can't follow the
-  locking (locks crossing functions, ParkingLot bucket callbacks, atomics),
-  or reshape those functions so it can
+- Task system update
+  - Drop the prerequisite list entirely and keep an atomic remaining
+  prerequisite count (start it at the count plus one, linking then removing the
+  extra one, so a prerequisite completing during creation can't double or miss
+  the ready)
+    - Drop the help walk in `tryHelpComplete` with it, waiting helps by running
+    any ready work - should be noted in the task system docs to wait on all
+    prerequisites as wait will still try to run all of the tasks in it
+    - Drop the debug cycle check, as prerequisites only exist at launch so the
+    graph can't loop, a debug system can be added back ad hoc later
+  - Dependants as a lock free list closed on completion, dropping the slot lock
+  and the per completion vector
+  - Drop the claim step, the queue pop is the ownership once the help walk is
+  gone
+  - Reset and reuse the slots rather than construct and destroy, merging the
+  task slot and state, at 128 bytes with the payload inline size maxed out to
+  fit
+    - Reorder the members, review the packed field (`uint32_t` to drop the shift
+    casts) and use the bits helpers (`extractBits`/`insertBits`) for it
+    - Reduce the scope handle size in `TaskLaunchOptions`
+    - Check the slot's cache layout (hot fields on one line, slots on line
+    boundaries)
+  - Packed 64 bit handle, index bits from the max task count macro and the
+  generation taking the rest, all adjustable through macros
+  - Per worker cache of free task indices, refilled and returned in batches
+  - Tasks launched on a worker go onto its own deque by reading the current
+  thread, other threads use the injection queue (no worker deque for them, they
+  only take worker work to help their own waits)
+  - Custom Chase-Lev deque for the worker queues
+  - First party parallel for: one task and handle with a parallel flag, on
+  ready its chunks go to the queues as items holding the handle and a chunk
+  index in place of the generation, each completed chunk decrements the slot's
+  remaining counter and the last completes the task
+    - Chunks sized around cache sizes with a max chunk count
+    - Consider a predictable branch on the flag with the chunk path out of line
 
 - Fibre backing to task system with context switching
   - Context switching at defined points not from outside the running thread
     - Keeps it clean and consistent, and switching from outside would be more of
     an anti-pattern
+  - Per worker ready queues per priority with a non empty bitmask, highest
+  priority first
+  - Started fibres stay on their thread, with the owner kept explicit
+  - Debug checks: thread pointer unchanged on resume, wait cycles, fibre pool
+  exhaustion
+  - Consider fibre local storage, only if the other paths can be kept at no cost
+  - Ensure support for shadow stacks on fibre switching when enabled
+  - Flag for fibres that are safe to move, so other threads can pick them up
+    - Started fibres stay on their thread for now; the safe to move ones would
+    later go in a separate store other threads are free to grab from
+  - Different stack sizes with a flag for tasks that are big and maybe debug
+  reads on memory used for each task - mainly for care of tasks wanting to run
+  on the same stack because there is no space on the worker dequeue for nested
+  task dispatch
+
+- After the fibre update
+  - `TaskSystem::m_parkedWorkerIndices` as a stack
+  - More non-general task paths (up to 8 items) -> check difference in compiled
+  results with span vs not span styles for if even needed/wanted
+
+- Yield update: yielding becomes the context switch
   - Yield directly to the waiting thread from the custom wait primitives rather
   than a plain OS yield, on macOS by passing the target thread instead of
   `MACH_PORT_NULL` to `thread_switch` with the option unchanged
-  - Own TLS and handling fibre local storage
-  - Ensure support for shadow stacks on fibre switching when enabled
-
-- Async support
+  - Async support, with dedicated thread(s) for IO to alert completion
+  - Power saving spin waits with timed low power waits (`TPAUSE`/`UMWAIT` on
+  Intel, `MONITORX`/`MWAITX` on AMD, `WFET` on ARM), through runtime dispatch
 
 - File system abstraction
 
@@ -62,37 +88,69 @@ through so will need adjustment
   test coverage will be cleaner, then add features as they are wanted. This will
   be a drop in support but best to focus on what is needed and come back at a
   later version
+  - Will go for easiest logic with not too much care for speed if it comes at
+  the cost of implementation maintenance since the probes are ran once for the
+  most part
+  - Fill out other memory related probes that mimalloc has
+
+- Topology and affinity
+  - Pin workers to certain cores
+  - Topology aware stealing, threads sharing caches first, replacing the modulo
+  in `tryStealTask`
+  - More even load balancing whilst staying lightweight
+  - Uneven work splitting on hybrid CPUs, by measuring the relative speed of
+  each efficiency class (timing a fixed workload at startup or per class job
+  timings) rather than relying on an OS capacity value, as only Linux exposes
+  one
+  - Dedicated worker threads (main, render, etc.) with config for them
+  - Thread affinities beyond main
+
+- Debug check on how long a task runs, timed from its start to its completion,
+that warns the user to look at that task when it runs too long, as long tasks
+should have yield points or be split into smaller tasks to ensure no task
+starvation
 
 - Review what is exposed as public for the task system and what can moved to
 internal when they ought not be touched, or put in a detail namespace
+
+- Clang thread safety analysis (`-Wthread-safety`)
+  - Mark the lock types (`capability`, `scoped_lockable` on LockGuard)
+  - Mark lock and unlock functions (`acquire`/`release`/`try_acquire`)
+  - Mark shared members (`guarded_by`) and functions that need a lock held or
+  not held (`requires`/`excludes`)
+  - Opt out with `no_thread_safety_analysis` where it can't follow the
+  locking (locks crossing functions, ParkingLot bucket callbacks, atomics),
+  or reshape those functions so it can
+
+- Memory Allocator
+  - Arenas allocator
+  - general allocator: mimalloc for now but later a streamlined port with nice
+  hooks for engine workloads (in particular frame based)
+  - Debug layer
+
+- Proper test and benchmarking framework
+  - Benchmark allocator, probably against mimalloc and jemalloc
+  - Sanitiser presets alongside `debug-tsan`: UBSan (cheap, broadly useful) and
+  ASan (needs poisoning annotations in the engine allocators to see inside
+  them)
 
 - Custom versions of stl vector, string, maps, stack, queue, set, list, and
 other data structures like heaps, trees, graphs, and any others deemed relevant
   - Inline string and inline vector
   - Own algorithms (`allOf`, `anyOf`, ...) and span in place of `std::ranges`
   and `<algorithm>`, for debug build speed and compile times
-  - Consider `-Wpadded` for a pass over struct layout
+  - Consider `-Wpadded` for a pass over struct layout so that future packing
+  issues are identified
   - Consider `-Wunsafe-buffer-usage`
   - Try CRC32 (SSE4.2, ARM CRC32) for hashing keys in the custom maps
-  - `TaskSystem::m_parkedWorkerIndices` as the first user of the custom stack,
-  with capacity fixed at the worker count so parking never allocates
   - Enum utilities for the enums to make the loops cleaner and not have so many
   static casts
     - Add a note to style about how count should be split from enum values with
     a newline
 
-- Custom deque for the `TaskPriorityQueue` ready queue
-
-- Extend maths to give support for custom basic algorithms like min, max, clamp,
-round -> keeping to constexpr where possible with possible branching on a
-version for runtime that exploits CPU capabilities
-
-- Reduction in casts around promotion and demotion by providing functions that
-give the desired type returns with the maths helpers
+- Scalar math helpers that are deterministic cross platform
 
 - Add some sorting functions, along with a general one (SIMD where appropriate)
-
-- Get `TaskSlot` to 128 bytes if not already
 
 - Overhaul of ECS -> chunked archtype unless a better solution can be found
   - Replace the `typeid`/`std::type_index` component store lookup with engine
@@ -102,11 +160,14 @@ give the desired type returns with the maths helpers
     tags
 
 - Fixed timestep simulation with an integer nanosecond accumulator and the
-layer phase hooks (fixed pre/post physics, frame, present with interpolation
-alpha), with input buffering once an input system exists
+layer phase hooks
   - Precise sleep for frame pacing: sleep until a per-platform margin before the
   deadline then spin with the CPU pause hint, fixed margins first and adaptive
   from measured overshoot only if needed
+  - Make layers a vector to allow for mod support by allowing it to run on top
+  of the standard engine by attaching a new layer
+  - Hooks with fixed steps for different subsystems like physics, maybe ai, and
+  any others that can be thought of as relevant
 
 - Wall clock (`GetSystemTimePreciseAsFileTime`/`CLOCK_REALTIME`) for log
 timestamps and save dates, as its own `SystemTime` type that never mixes with
@@ -118,14 +179,25 @@ timestamps and save dates, as its own `SystemTime` type that never mixes with
   (benjoffe.com/fast-date-64, BSL-1.0), which needs the high half of a 64x64
   multiply (`__umulh` on MSVC is not `constexpr`, so needs a constant evaluation
   path)
-  - Some 128 bit maths probably
+  - Expand 128 bit maths
 
 - System sleep detection to flag time jumps rather than relying on the max delta
 clamp
 
-- Basic physics system -> profile and test stuff
+- Update worlds to have physics trees
+  - Static interacting and query only that can be generated and stored as files,
+  likely bvh with simd queries
+    - Store as files for less computation at runtime and allow for making best
+    possible tree -> later editor will build these trees but for now will be
+    a slow runtie
+  - Dynamic interacting and query only as AABB trees
+  - Decide on if wanting a kinematic tree, probably not as tree overhead would
+  exceed gains on just scanning an array
 
-- More fleshed out physics system with parallel operation and SIMD backing
+- Basic physics simulation and update boid simulation to see how much
+performance the dynamic trees would gain
+  - If can be bothered even better by adding some static objects into it so can
+  make a full comparison
 
 - Extend graphics support
   - Load Vulkan at runtime (volk or `vkGetInstanceProcAddr`) instead of linking
@@ -192,45 +264,28 @@ clamp
 Considerations rather than planned work:
 
 - Settle what `Engine` owns once its form is explicit
-- Support more layers in `Application`, possibly as a stack -> maybe how
-granting mod support
 - Screen out `FrameTimer`'s raw delta in release builds
 
 ### Task system
 
-Fibre backing may change the shape of the task system significantly, so these
-may change or disappear with it.
-
-- Profile and adjust `TRIVIAL_TASK_PAYLOAD_INLINE_STORAGE_SIZE`
-- Measure `TaskState` size, padding and alignment across platforms (with custom
-types ought to be same across all of them)
-- Test the task system's types for cache optimisation
-- Avoid the `uint32_t` casts for shifts in `TaskState`
-- Benchmark reusing `TaskState` across tasks (reset on launch and retire)
-against constructing and destroying it in `TaskSlot`'s storage each time. Reuse
-keeps the vectors' capacity, so it avoids reallocating, but the slots should not
-hold on to extra vector length needlessly. See about tidying up the task state
-as a part of this too - may be able to drop it with pure reliance on the key to
-help get down to 128
-- Dedicated worker threads (main, render, etc.) with config for them
-- Thread affinities beyond main
-- change the thread concurrency default from
-`std::thread::hardware_concurrency()` to the CPU module's counts (available
-and quota). With that change also consider making `Thread::id()` a
-`std::size_t`, as it no longer has to match `hardware_concurrency()` and is used
-as a `std::size_t` subscript
-- More non-general task paths -> check difference in compiled results with span
-vs not span styles for if even needed/wanted
-- More even load balancing in `tryStealTask` whilst staying lightweight, maybe
-a custom hash
-- Thread local completion dependant vectors to reduce allocations
-- Consider reducing the scope handle size in `TaskLaunchOptions`
+- Proper automatic handle release, mark a flag on destruction (i.e. not some
+reference counted form)
+  - Add `TRIVIAL_LIFETIMEBOUND` to `Task<T>::getResult()`
+  - Add `[[clang::trivial_abi]]` to `Task<T>`
 - `TaskSystem::m_workers` from `std::deque` to `HeapArray`, as the workers are
 fixed at construction and never move
-- Debug check on how long a task runs, timed from its start to its completion,
-that warns the user to look at that task when it runs too long, as long tasks
-should have yield points or be split into smaller tasks to ensure no task
-starvation
+- Keep thread and worker ids 32 bit, moving the `std::size_t` uses to
+`uint32_t` once the custom types allow `uint32_t` indexing for arrays and such
+
+Not important, for when there is nothing better to do:
+
+- Surface errors from thread entry routines
+- Compile time fixed thread count option, allowing inline forms such as a static
+`ParkingLot`
+  - A lazy initialisation singleton is not pursued, since the gain from one less
+  pointer indirection is insignificant compared to the rest of the function and
+  it would make the behaviour less clean and consistent, and the global will
+  likely be in a lower cache level so fetching is quick anyway
 
 ### Memory
 
@@ -397,13 +452,9 @@ assembly works around `__get_cpuid`, which takes no subleaf)
 
 ### Multithreading
 
+- RW Lock (see about using for helping moves, e.g. custom vector)
 - Get commit hash not dates read for parking lot
 - `Mutex` fairness without timers
-- Power saving spin waits with timed low power waits (`TPAUSE`/`UMWAIT` on
-Intel, `MONITORX`/`MWAITX` on AMD, `WFET` on ARM), through runtime dispatch
-- Uneven work splitting on hybrid CPUs, by measuring the relative speed of each
-efficiency class (timing a fixed workload at startup or per class job timings)
-rather than relying on an OS capacity value, as only Linux exposes one
 - Use the inline vector for `ParkingLot::unparkAll`'s wake batch instead of the
 fixed batch with extra waiters woken under the bucket lock
   - Template option for the inline vector's allocation to be direct OS calls
@@ -413,13 +464,6 @@ fixed batch with extra waiters woken under the bucket lock
   - It should be noted that this should only be reviewed properly once the fibre
   approach is implemented due to the impact that might have on locks
 - Move `Thread`'s stack allocator member to a global
-- Surface errors from thread entry routines
-- Compile time fixed thread count option, allowing inline forms such as a static
-`ParkingLot`
-  - A lazy initialisation singleton is not pursued, since the gain from one less
-  pointer indirection is insignificant compared to the rest of the function and
-  it would make the behaviour less clean and consistent, and the global will
-  likely be in a lower cache level so fetching is quick anyway
 
 ### Maths
 
