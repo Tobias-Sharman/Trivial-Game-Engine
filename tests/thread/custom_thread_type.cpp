@@ -9,7 +9,6 @@
 #include <gtest/gtest.h>
 
 #include <trivial/core/config.h>
-#include <trivial/core/platform.h>
 #include <trivial/core/thread/thread.h>
 #include <trivial/core/time/duration.h>
 #include <trivial/core/time/time.h>
@@ -30,9 +29,6 @@ TEST(ThreadTest, CreateJoinRunsEntry) {
 	trivial::thread::Thread thread;
 	trivial::thread::ThreadConfig config;
 	config.name = "create-join";
-#if TRIVIAL_PLATFORM_POSIX
-	trivial::tests::attachStackAllocator(config);
-#endif // TRIVIAL_PLATFORM_POSIX
 
 	const trivial::thread::ThreadCreateResult kResult = thread.create(config, &markRan, &ran);
 	ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
@@ -54,9 +50,6 @@ TEST(ThreadTest, SuspendedWaitsForResume) {
 	trivial::thread::Thread thread;
 	trivial::thread::ThreadConfig config;
 	config.name = "suspended";
-#if TRIVIAL_PLATFORM_POSIX
-	trivial::tests::attachStackAllocator(config);
-#endif // TRIVIAL_PLATFORM_POSIX
 	config.createSuspended = true;
 
 	const trivial::thread::ThreadCreateResult kResult = thread.create(config, &markRan, &ran);
@@ -86,9 +79,6 @@ TEST(ThreadTest, IdVisibleInEntry) {
 	trivial::thread::Thread thread;
 	trivial::thread::ThreadConfig config;
 	config.name = "id";
-#if TRIVIAL_PLATFORM_POSIX
-	trivial::tests::attachStackAllocator(config);
-#endif // TRIVIAL_PLATFORM_POSIX
 
 	IdObservation observation{.thread = &thread, .observedId = &observedId};
 	const trivial::thread::ThreadCreateResult kResult = thread.create(
@@ -117,9 +107,6 @@ TEST(ThreadTest, IdsAreDistinct) {
 	for (trivial::thread::Thread& thread : threads) {
 		trivial::thread::ThreadConfig config;
 		config.name = "distinct-id";
-#if TRIVIAL_PLATFORM_POSIX
-		trivial::tests::attachStackAllocator(config);
-#endif // TRIVIAL_PLATFORM_POSIX
 
 		const trivial::thread::ThreadCreateResult kResult = thread.create(config, [](void*) noexcept {}, nullptr);
 		ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
@@ -146,9 +133,6 @@ TEST(ThreadTest, CurrentResolvesToSelf) {
 	trivial::thread::Thread thread;
 	trivial::thread::ThreadConfig config;
 	config.name = "current";
-#if TRIVIAL_PLATFORM_POSIX
-	trivial::tests::attachStackAllocator(config);
-#endif // TRIVIAL_PLATFORM_POSIX
 
 	CurrentObservation observation{.thread = &thread, .matched = &matched};
 	const trivial::thread::ThreadCreateResult kResult = thread.create(
@@ -200,9 +184,6 @@ void destroyJoinableThreadTest() {
 	trivial::thread::Thread thread;
 	trivial::thread::ThreadConfig config;
 	config.name = "leaky";
-#if TRIVIAL_PLATFORM_POSIX
-	trivial::tests::attachStackAllocator(config);
-#endif // TRIVIAL_PLATFORM_POSIX
 
 	const trivial::thread::ThreadCreateResult kResult = thread.create(
 	    config,

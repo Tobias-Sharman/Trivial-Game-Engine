@@ -8,6 +8,9 @@
 #include <cstdint>
 #include <cstring>
 
+#include <trivial/core/memory/byte_count.h>
+#include <trivial/core/memory/memory_ops.h>
+
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif // WIN32_LEAN_AND_MEAN
@@ -36,7 +39,7 @@ void copyName(const char* name, std::array<char, TRIVIAL_THREAD_MAX_NAME_LENGTH>
 
 	const std::size_t kLength = std::min(std::strlen(name), outName.size() - 1);
 
-	std::memcpy(outName.data(), name, kLength);
+	trivial::memory::copy(outName.data(), name, trivial::memory::bytes(kLength));
 	outName[kLength] = '\0';
 }
 
@@ -75,7 +78,8 @@ namespace trivial::thread {
 
 	copyName(config.name, m_name);
 
-	HANDLE handle = CreateThread(nullptr, config.stackSize, &Thread::win32ThreadEntry, this, CREATE_SUSPENDED, nullptr);
+	HANDLE handle
+	    = CreateThread(nullptr, config.stackSize.toSize(), &Thread::win32ThreadEntry, this, CREATE_SUSPENDED, nullptr);
 
 	if (handle == nullptr) {
 		const DWORD kError = GetLastError();

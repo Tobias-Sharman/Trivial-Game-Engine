@@ -24,6 +24,8 @@ Linux testing has not been done on older libc versions, but no linker issues are
 expected for older Linux versions - provided they are above the floor mentioned
 below.
 
+Linux support is glibc only, musl is not supported.
+
 Any other operating system (including Apple platforms other than macOS - these
 apple platforms will be extended in the future but adding another test target
 would harm early development so they are neglected) or CPU architecture fails at
@@ -76,34 +78,43 @@ creation of the window manager.
 
 ### Memory
 
-- Page size: the smallest unit memory is committed, freed or protected in (thus
+- OS page size: the smallest unit memory is committed, freed or protected in (thus
 also the size of the guard page)
   - Windows: 4 KiB
   - Linux: 4 KiB on x86-64, not known at compile time on ARM64, as kernels can
   use 4, 16 or 64 KiB pages, so it is queried at start-up
   - macOS: 16 KiB on ARM64, so small commits and guards cost four times what
   they do with 4 KiB pages, and 4 KiB on x86-64
-- Allocation granularity: the step address space is reserved in
+- OS allocation granularity: the step address space is reserved in
   - Windows: 64 KiB, so reservations are rounded and aligned to 64 KiB rather
   than to a page
   - Linux and macOS: the page size, so reservations only need page alignment
-- Large pages
-  - Windows: only available when the user has been granted the "Lock pages in
-  memory" privilege, otherwise left off, and large page memory is locked into
-  RAM rather than pageable
-  - Linux: a hint (transparent huge pages) the kernel may or may not act on
-  - macOS: not available
+- Reserving address space at an alignment
+  - macOS: `mach_vm_map` with an alignment mask (as Apple's own malloc does), so
+  the kernel places the reservation aligned directly. Available since Mac OS X
+  10.4, so it does not affect the 14.4 floor
+  - Windows: `VirtualAlloc2` with an alignment requirement, also placed directly
+  - Linux: a plain `mmap`, which is used if it happens to be aligned, otherwise
+  an over reserve that is trimmed down to the aligned range
+- Naming in OS tools
+  - macOS: reservations are tagged as `App-Specific Tag 16` in `vmmap` and
+  Instruments
+  - Linux: reservations are named `[anon:trivial]` in `/proc/<pid>/maps` on
+  kernels 5.17+ built with `CONFIG_ANON_VMA_NAME`, otherwise left unnamed
+  - Windows: no equivalent
 - Decommit: memory handed back to the OS stops counting towards the process
-straight away and reads as zero when used again, and on every platform it is
-made inaccessible until recommitted, so a stray use faults
+straight away. It is not made inaccessible, so a stray use does not fault (the
+memory debug layer is to later catch that), and only Windows and Linux guarantee
+it reads as zero when used again
   - Windows: a true decommit, the physical memory and its commit charge are
   released, so it no longer counts against the system commit limit
-  - Linux: by default memory is only backed once touched, with no up front
-  reservation to give back, so decommitting drops the physical pages, lowering
-  the resident size
+  - Linux: address space is reserved read/write with `MAP_NORESERVE`, so
+  committing is only accounting and memory is backed once touched, and
+  decommitting drops the physical pages, lowering the resident size
   - macOS: the usual Linux approach does not reliably release pages, so a
   macOS specific one is used that also removes them from the memory footprint
-  shown in Activity Monitor, with recommitting adding them back
+  shown in Activity Monitor, with recommitting adding them back, though the old
+  contents may still be there
 - Lazy decommit (opt-in): the OS only takes the memory back under memory
 pressure, so reusing it soon after skips the cost of faulting it back in
   - Until reclaimed it still counts towards the process in OS tools, so they

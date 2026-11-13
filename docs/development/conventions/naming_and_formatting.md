@@ -58,9 +58,9 @@ followed but since there is no tool to enforce them some drift may occur. If
 some drift from the below patterns are identified please mention.
 
 Every engine macro starts with `TRIVIAL_`, followed by the module it belongs to
-(`TRIVIAL_MEMORY_SEGMENT_SIZE`, `TRIVIAL_TASK_PAYLOAD_INLINE_STORAGE_SIZE`,
-`TRIVIAL_PLATFORM_PAGE_SIZE`). Internal macros go further and name the type too,
-`TRIVIAL_<MODULE>_<TYPE>_<NAME>` (for example
+(`TRIVIAL_MEMORY_ENABLE_DECOMMIT`, `TRIVIAL_TASK_PAYLOAD_INLINE_STORAGE_SIZE`,
+`TRIVIAL_PLATFORM_OS_PAGE_SIZE`). Internal macros go further and name the type
+too, `TRIVIAL_<MODULE>_<TYPE>_<NAME>` (for example
 `TRIVIAL_SYNC_ESCALATING_LOCK_QUEUE_MASK`), so they read correctly on their own.
 
 The exception is the core macros used throughout the engine, which have no

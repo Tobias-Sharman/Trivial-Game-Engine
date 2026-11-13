@@ -2,8 +2,7 @@ target_sources(trivial
 	PRIVATE
 		src/core/cpu/cpu_probe_windows.cpp
 		src/core/cpu/cpu_windows.cpp
-		src/core/memory/segment_allocator_metadata_windows.cpp
-		src/core/memory/virtual_memory_windows.cpp
+		src/core/memory/os/os_memory_windows.cpp
 		src/core/sync/parker_windows.cpp
 		src/core/thread/thread_windows.cpp
 		src/core/time/time_capabilities_windows.cpp

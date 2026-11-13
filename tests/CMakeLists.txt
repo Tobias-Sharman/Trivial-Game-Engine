@@ -31,8 +31,7 @@ add_executable(trivial_tests
 	math/vector.cpp
 	math/matrix.cpp
 	math/transform.cpp
-	memory/segment_allocator_multi_thread.cpp
-	memory/segment_allocator_single_thread.cpp
+	memory/allocation.cpp
 	sync/condition_variable_multi_thread.cpp
 	sync/condition_variable_single_thread.cpp
 	sync/event_multi_thread.cpp

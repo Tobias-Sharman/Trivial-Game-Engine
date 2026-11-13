@@ -10,7 +10,6 @@
 #include <vector>
 
 #include <trivial/core/compiler.h>
-#include <trivial/core/platform.h>
 #include <trivial/core/sync/mutex.h>
 #include <trivial/core/sync/semaphore.h>
 #include <trivial/task/task_graph.h>
@@ -19,10 +18,6 @@
 #include <trivial/task/task_payload.h>
 #include <trivial/task/task_priority_queue.h>
 #include <trivial/task/worker.h>
-
-#if TRIVIAL_PLATFORM_POSIX
-#include <trivial/core/thread/thread_stack_allocator.h>
-#endif // TRIVIAL_PLATFORM_POSIX
 
 namespace trivial::task {
 
@@ -101,10 +96,6 @@ private:
 	TaskGraph m_graph;
 
 	std::array<TaskPriorityQueue, static_cast<std::size_t>(TaskAffinity::Count)> m_affinityQueues;
-
-#if TRIVIAL_PLATFORM_POSIX
-	thread::ThreadStackAllocator m_workerStackAllocator;
-#endif // TRIVIAL_PLATFORM_POSIX
 
 	// Can't do vector since no move construction
 	std::deque<Worker> m_workers;

@@ -24,6 +24,8 @@
 #include <trivial/core/cpu/cpu_feature_set.h>
 #include <trivial/core/cpu/cpu_features_arm64.h>
 #include <trivial/core/log.h>
+#include <trivial/core/memory/byte_count.h>
+#include <trivial/core/memory/memory_ops.h>
 
 #include "core/cpu/cpu_probe_arm64.h"
 
@@ -337,7 +339,9 @@ void probeIdentity() noexcept {
 	if (RegGetValueA(processorKey, nullptr, "CP 4000", RRF_RT_REG_QWORD, nullptr, &mainIdRegister, &mainIdSize)
 	    == ERROR_SUCCESS) {
 		const char* kVendor = implementerName(decodeMainId(mainIdRegister).implementer);
-		std::memcpy(detail::g_detectedCapabilities.identity.vendor.data(), kVendor, std::strlen(kVendor) + 1);
+		memory::copy(detail::g_detectedCapabilities.identity.vendor.data(),
+		             kVendor,
+		             memory::bytes(std::strlen(kVendor) + 1));
 	}
 
 	DWORD brandSize = 0;
@@ -377,7 +381,7 @@ void probeMainIds(std::span<RawLogicalProcessor> logicalProcessors) noexcept {
 		}
 
 		std::array<char, TRIVIAL_CPU_WINDOWS_ARM64_PROCESSOR_KEY_CAPACITY> keyName{};
-		std::memcpy(keyName.data(), kKeyPrefix.data(), kKeyPrefix.size());
+		memory::copy(keyName.data(), kKeyPrefix.data(), memory::bytes(kKeyPrefix.size()));
 		(void)std::to_chars(&keyName[kKeyPrefix.size()], &keyName.back(), registryNumber);
 
 		std::uint64_t mainIdRegister = 0;

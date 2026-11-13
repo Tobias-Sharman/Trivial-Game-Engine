@@ -22,8 +22,10 @@
 
 #include <trivial/core/assert.h>
 #include <trivial/core/log.h>
+#include <trivial/core/memory/byte_count.h>
+#include <trivial/core/memory/memory_ops.h>
 #include <trivial/core/thread/thread_config.h>
-#include <trivial/core/thread/thread_stack_allocator.h>
+#include <trivial/core/thread/thread_stack.h>
 
 static_assert(sizeof(pthread_t) == sizeof(void*), "pthread_t is no longer NativeHandleStorage-sized");
 static_assert(sizeof(mach_port_t) == sizeof(std::uint32_t), "mach_port_t no longer fits m_machThreadPort");
@@ -42,7 +44,7 @@ void copyName(const char* name, std::array<char, TRIVIAL_THREAD_MAX_NAME_LENGTH>
 
 	const std::size_t kLength = std::min(std::strlen(name), outName.size() - 1);
 
-	std::memcpy(outName.data(), name, kLength);
+	trivial::memory::copy(outName.data(), name, trivial::memory::bytes(kLength));
 	outName[kLength] = '\0';
 }
 
@@ -79,21 +81,18 @@ namespace trivial::thread {
 	m_qosClass = config.qosClass;
 	m_qosRelativePriority = config.qosRelativePriority;
 
-	TRIVIAL_ASSERT(config.stackAllocator != nullptr);
-
 	ThreadStackAllocation allocation{};
 	int osErrorCode = 0;
 
-	if (!config.stackAllocator->allocate(config.stackSize, allocation, osErrorCode)) {
+	if (!allocateStack(config.stackSize, allocation, osErrorCode)) {
 		return ThreadCreateResult{.error = ThreadCreateError::StackAllocationFailed, .platformErrorCode = osErrorCode};
 	}
 
-	m_stackAllocator = config.stackAllocator;
 	m_stackAllocation = allocation;
 
 	pthread_attr_t attr{};
 	pthread_attr_init(&attr);
-	pthread_attr_setstack(&attr, allocation.stackBase, allocation.stackSize);
+	pthread_attr_setstack(&attr, allocation.stackBase, allocation.stackSize.toSize());
 
 	m_state.store(config.createSuspended ? ThreadState::Suspended : ThreadState::Running, std::memory_order_release);
 
@@ -103,8 +102,7 @@ namespace trivial::thread {
 	pthread_attr_destroy(&attr);
 
 	if (kResult != 0) {
-		m_stackAllocator->release(m_stackAllocation);
-		m_stackAllocator = nullptr;
+		releaseStack(m_stackAllocation);
 		m_stackAllocation = ThreadStackAllocation{};
 		m_state.store(ThreadState::NotStarted, std::memory_order_release);
 
@@ -171,8 +169,7 @@ void Thread::join() noexcept {
 	(void)mach_port_deallocate(mach_task_self(), m_machThreadPort);
 	m_machThreadPort = 0;
 
-	m_stackAllocator->release(m_stackAllocation);
-	m_stackAllocator = nullptr;
+	releaseStack(m_stackAllocation);
 	m_stackAllocation = ThreadStackAllocation{};
 
 	m_state.store(ThreadState::Joined, std::memory_order_release);

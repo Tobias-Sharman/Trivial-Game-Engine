@@ -52,14 +52,13 @@
 		},
 		{
 			"name": "debug-tsan",
-			"displayName": "Debug + ThreadSanitizer + No FMA + No Decommit",
+			"displayName": "Debug + ThreadSanitizer + No FMA",
 			"inherits": "debug",
 			"binaryDir": "${sourceDir}/build/debug-tsan",
 			"cacheVariables": {
 				"TRIVIAL_ENABLE_TSAN": "ON",
 				"TRIVIAL_ENABLE_TRACY": "OFF",
-				"TRIVIAL_MATH_DISABLE_FMA": "ON",
-				"TRIVIAL_MEMORY_DECOMMIT": "OFF"
+				"TRIVIAL_MATH_DISABLE_FMA": "ON"
 			}
 		},
 		{

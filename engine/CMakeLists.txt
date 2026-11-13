@@ -32,7 +32,7 @@ option(TRIVIAL_WARNINGS_AS_ERRORS "Treat compiler warnings in the engine as erro
 set(TRIVIAL_MEMORY_DEBUG "AUTO" CACHE STRING "Allocation level memory debugging (AUTO/ON/OFF)")
 set_property(CACHE TRIVIAL_MEMORY_DEBUG PROPERTY STRINGS AUTO ON OFF)
 
-set(TRIVIAL_MEMORY_DEBUG_STATS "AUTO" CACHE STRING "Segment level memory statistics (AUTO/ON/OFF)")
+set(TRIVIAL_MEMORY_DEBUG_STATS "AUTO" CACHE STRING "Memory statistics (AUTO/ON/OFF)")
 set_property(CACHE TRIVIAL_MEMORY_DEBUG_STATS PROPERTY STRINGS AUTO ON OFF)
 
 set(TRIVIAL_MEMORY_DECOMMIT "AUTO" CACHE STRING "Return freed memory to the OS (AUTO/ON/OFF)")
@@ -87,8 +87,8 @@ set(TRIVIAL_PRIVATE_SOURCES
 	src/core/cpu/cpu_capabilities.cpp
 	src/core/log.cpp
 	src/core/math/mat4.cpp
-	src/core/memory/memory_capabilities.cpp
-	src/core/memory/segment_allocator.cpp
+	src/core/memory/allocation.cpp
+	src/core/memory/os/memory_capabilities.cpp
 	src/core/sync/condition_variable.cpp
 	src/core/sync/escalating_lock.cpp
 	src/core/sync/event.cpp
@@ -223,11 +223,39 @@ FetchContent_Declare(
 set(TRACY_ENABLE ${TRIVIAL_ENABLE_TRACY} CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(tracy)
 
+FetchContent_Declare(
+	mimalloc
+	GIT_REPOSITORY https://github.com/microsoft/mimalloc.git
+	GIT_TAG v3.6.1
+	GIT_SHALLOW TRUE
+	SYSTEM
+	EXCLUDE_FROM_ALL
+)
+set(MI_OVERRIDE OFF CACHE BOOL "" FORCE)
+set(MI_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+set(MI_BUILD_OBJECT OFF CACHE BOOL "" FORCE)
+set(MI_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(MI_OPT_ARCH OFF CACHE STRING "" FORCE)
+if(TRIVIAL_ENABLE_TSAN AND NOT MSVC)
+	set(MI_DEBUG_TSAN ON CACHE BOOL "" FORCE)
+else()
+	set(MI_DEBUG_TSAN OFF CACHE BOOL "" FORCE)
+endif()
+FetchContent_MakeAvailable(mimalloc)
+
 unset(CMAKE_EXPORT_COMPILE_COMMANDS)
 
 if(NOT MSVC)
 	target_compile_options(TracyClient PRIVATE -Wno-deprecated-declarations)
 endif()
+
+target_compile_options(mimalloc-static PRIVATE $<TARGET_PROPERTY:trivial,INTERFACE_COMPILE_OPTIONS>)
+
+add_library(trivial_new_delete OBJECT src/core/memory/new_delete.cpp)
+target_compile_features(trivial_new_delete PRIVATE cxx_std_23)
+target_compile_options(trivial_new_delete PRIVATE $<TARGET_PROPERTY:trivial,INTERFACE_COMPILE_OPTIONS>)
+target_link_libraries(trivial_new_delete PRIVATE mimalloc-static)
+target_sources(trivial INTERFACE $<TARGET_OBJECTS:trivial_new_delete>)
 
 target_link_libraries(trivial
 	PUBLIC
@@ -236,6 +264,7 @@ target_link_libraries(trivial
 		Tracy::TracyClient
 	PRIVATE
 		GPUOpen::VulkanMemoryAllocator
+		mimalloc-static
 )
 
 # -----------------------------------------------------------------------------

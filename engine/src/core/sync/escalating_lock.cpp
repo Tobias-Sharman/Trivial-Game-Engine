@@ -2,6 +2,7 @@
 #include "core/sync/escalating_lock.h"
 
 #include <atomic>
+#include <bit>
 #include <cstdint>
 
 #include <trivial/core/compiler.h>
@@ -60,8 +61,7 @@ void EscalatingLock::lockSlow() noexcept {
 		s_node.parker.prepare();
 
 		const std::uintptr_t kQueueHeadAddress = state & TRIVIAL_SYNC_ESCALATING_LOCK_QUEUE_MASK;
-		// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast, performance-no-int-to-ptr)
-		EscalatingLockNode* const kQueueHead = reinterpret_cast<EscalatingLockNode*>(kQueueHeadAddress);
+		EscalatingLockNode* const kQueueHead = std::bit_cast<EscalatingLockNode*>(kQueueHeadAddress);
 		if (kQueueHead == nullptr) {
 			s_node.queueTail = &s_node;
 			s_node.previous = nullptr;
@@ -71,8 +71,7 @@ void EscalatingLock::lockSlow() noexcept {
 			s_node.next = kQueueHead;
 		}
 
-		// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-		const std::uintptr_t kNodeAddress = reinterpret_cast<std::uintptr_t>(&s_node);
+		const std::uintptr_t kNodeAddress = std::bit_cast<std::uintptr_t>(&s_node);
 		const std::uintptr_t kNewState = (state & ~TRIVIAL_SYNC_ESCALATING_LOCK_QUEUE_MASK) | kNodeAddress;
 		if (!m_state.compare_exchange_weak(state, kNewState, std::memory_order_acq_rel, std::memory_order_relaxed)) {
 			continue;
@@ -105,8 +104,7 @@ void EscalatingLock::unlockSlow() noexcept { // NOLINT(readability-function-cogn
 outer:
 	for (;;) {
 		const std::uintptr_t kQueueHeadAddress = state & TRIVIAL_SYNC_ESCALATING_LOCK_QUEUE_MASK;
-		// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast, performance-no-int-to-ptr)
-		EscalatingLockNode* const kQueueHead = reinterpret_cast<EscalatingLockNode*>(kQueueHeadAddress);
+		EscalatingLockNode* const kQueueHead = std::bit_cast<EscalatingLockNode*>(kQueueHeadAddress);
 		EscalatingLockNode* queueTail = kQueueHead->queueTail;
 		EscalatingLockNode* current = kQueueHead;
 		while (queueTail == nullptr) {

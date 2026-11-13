@@ -580,8 +580,7 @@ inline void setActiveParkingLot(ParkingLot* const kParkingLot) noexcept {
 
 template <typename Object>
 [[nodiscard]] TRIVIAL_FORCE_INLINE std::uintptr_t parkingKey(Object& object) noexcept {
-	// NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-	return reinterpret_cast<std::uintptr_t>(std::addressof(object));
+	return std::bit_cast<std::uintptr_t>(std::addressof(object));
 }
 
 } // namespace trivial::sync

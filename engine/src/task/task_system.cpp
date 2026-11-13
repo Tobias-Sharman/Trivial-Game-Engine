@@ -13,7 +13,6 @@
 #include <trivial/core/assert.h>
 #include <trivial/core/config.h>
 #include <trivial/core/log.h>
-#include <trivial/core/platform.h>
 #include <trivial/core/profile.h>
 #include <trivial/core/sync/latch.h>
 #include <trivial/core/sync/lock_guard.h>
@@ -67,9 +66,6 @@ TaskSystem::TaskSystem(const TaskSystemConfig& config) noexcept
 	const thread::ThreadConfig kThreadConfig{
 	    .name = "Worker",
 	    .type = thread::ThreadType::Worker,
-#if TRIVIAL_PLATFORM_POSIX
-	    .stackAllocator = &m_workerStackAllocator,
-#endif // TRIVIAL_PLATFORM_POSIX
 	};
 
 	for (Worker& worker : m_workers) {

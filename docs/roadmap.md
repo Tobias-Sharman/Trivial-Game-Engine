@@ -3,20 +3,15 @@
 ## Main roadmap
 
 - Documentation update and create new documentation
+  - Clean up roadmap too
 
 - Memory Allocator
   - Arenas allocator
-  - general allocator
-    - small   <= 8 KiB   per-thread bins over 64 KiB pages, remote free lists
-    - medium  <= 512 KiB TLSF over boundary tags, one pool per segment
-    - large   > 512 KiB  page granular spans, multi segment runs above 2 MiB
+  - general allocator: mimalloc for now but later a streamlined port with nice
+  hooks for engine workloads (in particular frame based)
   - Debug layer
-  - Migrate heap allocation that is not tied to a data type I will later replace
-    - `Engine`'s main `Thread`, `ParkingLot` and `TaskSystem`
-    - `TaskPayload`'s heap stored callables
-    - `HeapArray`'s storage
 
-- Expand assertion and assume macros
+- Expand assertion and assume macros and finish clang tools version increase
 
 - RW Lock (see about using for helping moves, e.g. custom vector)
 
@@ -74,6 +69,8 @@ internal when they ought not be touched, or put in a detail namespace
 - Custom versions of stl vector, string, maps, stack, queue, set, list, and
 other data structures like heaps, trees, graphs, and any others deemed relevant
   - Inline string and inline vector
+  - Own algorithms (`allOf`, `anyOf`, ...) and span in place of `std::ranges`
+  and `<algorithm>`, for debug build speed and compile times
   - Consider `-Wpadded` for a pass over struct layout
   - Consider `-Wunsafe-buffer-usage`
   - Try CRC32 (SSE4.2, ARM CRC32) for hashing keys in the custom maps
@@ -156,6 +153,7 @@ clamp
   requirements to run the application
   - Pretty formatting for the system info logs once proper helpers exist (e.g.
   boxes for CPU topology diagrams instead of the plain indented lines)
+  - Pretty byte count size return
   - Move the system info logs off `std::string` to the custom small string so
   they avoid needless early heap allocation
   - Change up the dependency ties: `log.cpp` pulls in the CPU module for the
@@ -229,41 +227,82 @@ a custom hash
 - Consider reducing the scope handle size in `TaskLaunchOptions`
 - `TaskSystem::m_workers` from `std::deque` to `HeapArray`, as the workers are
 fixed at construction and never move
+- Debug check on how long a task runs, timed from its start to its completion,
+that warns the user to look at that task when it runs too long, as long tasks
+should have yield points or be split into smaller tasks to ensure no task
+starvation
 
 ### Memory
 
 - Tune the shifts in `memory_config.h`
-- Plan migration of segment kind to operate on a higher level (i.e. the
-different higher level allocators with some kind of debug layer)
-- Named structs for safety in `SegmentAllocator`'s internal functions
-- Pointer arithmetic functions so there are not so many NOLINTs (about 80 for
-`pro-bounds-pointer-arithmetic`, `pro-type-reinterpret-cast` and
-`no-int-to-ptr`), each holding its one suppression:
-  - Byte offsets (`static_cast<char*>(p) + n` and `- n`): `SegmentAllocator`,
-  the virtual memory and segment metadata files, `ThreadStackAllocator`
-  - Pointer to address (`reinterpret_cast<std::uintptr_t>`) for alignment
-  checks and masking: the virtual memory files, `SegmentAllocator`,
-  `ParkingLot`'s key, `EscalatingLock`
-  - Address back to pointer: `EscalatingLock`'s queue head
-  - Aligning a pointer down to its segment: `segment_allocator.h`
-  - Typed views over raw memory (`reinterpret_cast<T*>(cursor)`):
-  `SegmentAllocator`'s bitmaps and records, `TaskSlot` and `TaskPayload`
-  storage
-  - Indexing raw pointer arrays, which could become spans instead:
-  `SegmentAllocator`'s bitmaps and records
-- SIMD the cached run search once runtime dispatch exists and a workload needs
-it
-- Verify the Linux large page size calculation in `virtual_memory.h`
-- Plain reserve function in `virtual_memory.h` for page aligned requests (such
-as the CPU topology tables), so they skip `reserveAligned`'s over reserve and
-trim
-- Get rid of the `MADV_FREE` probe, have it error, or decide on keeping it and
-lowering the Linux floor
+- Review pointer casts
+- Consider a `TRIVIAL_BIT_CAST` in `compiler.h` over `__builtin_bit_cast`
+  (Clang, GCC 11+, MSVC 19.27+), as `std::bit_cast` is a real call at `-O0`
+- Large and huge os page support
 - Expand the memory probe
+  - See mimalloc as a good reference for these
+- A known memory size branch (e.g. consoles with a fixed memory size) to drop
+the memory detected capabilities global
 - Group engine specific allocations for memory efficiency, especially what is
 meant to be read only (made to error on write), consuming the metadata and the
 like for engine components such as the CPU topology and the allocators' memory
 related data
+
+#### Allocation
+
+- General purpose allocator: a streamlined C++ port of mimalloc (started on the
+`gpa` branch which is not likely on github until a useful version is finished)
+  - Limiting it to engine threads gained little, the real gains are from cutting
+  back capabilities due to engine based constrictions and workload patterns
+  - Do in the port:
+    - No system calls in frames: budgeted purging from the engine tick or
+    background threads, commit ahead at loading screen
+    - Debug layer: debug bitmap, quarantine, fill patterns, call stacks, leak
+    report
+    - Per system stats and budgets, and allocation trace recording
+    - Any optimisation around a fixed number of engine threads
+  - Deferred until a full engine can be benchmarked (recorded traces replayed
+  against mimalloc: frame time p99 and worst case, resident memory over long
+  sessions, remote free rate, fragmentation):
+    - One large reservation, free as subtract and shift instead of the page map
+    (will also save in vmaps)
+    - Foreign threads get a reusable set of theaps
+    - Frame mode: slow paths only use committed memory
+    - Size classes from recorded allocation histograms
+    - Batched remote frees flushed at task boundaries (as snmalloc)
+    - Cache colouring, the 128 byte page metadata split, transparent huge pages
+    - Level lifetime heaps
+    - Replacing C `malloc` too: Linux only trial first (macOS needs malloc
+    zones, Windows cannot with static linking), and it means covering the whole
+    `malloc` family on every platform
+- Different allocators per usage pattern (frame arenas, pools, level heaps,
+growable regions, an allocator designed for one over large virtual memory
+allocation to reduce moves on important objects)
+- A tracking or likely better probe on process memory for use against a memory
+pressure flag to signal systems to cutback on memory
+- Fix linux container memory probe to be for the container not system
+- Test the flag for flickering when commits and decommits race around the
+  threshold, and consider hysteresis (separate set and clear thresholds)
+  - If the shared counter shows contention, track per thread in thread local
+  counters instead and merge them into the global on the engine tick
+- Cache colouring: blocks handed out at large power of two alignments put their
+hot starts in the same cache sets, so offset their starts in cache line steps
+  - A shared stateless helper in core memory, `cacheOffset(index, range)`,
+  using mimalloc's mapping (Fibonacci hash of the index, built on
+  `hash::fibonacciHash`), scaled to `TRIVIAL_PLATFORM_FALSE_SHARING_ALIGNMENT`
+  (128 byte) steps on every platform, as x86 prefetches lines in 128 byte pairs
+  and mimalloc's `MI_PAGE_CACHE_OFFSET_UNIT` is 128 too
+  - Each allocator picks its own index: thread stacks (the thread id, offsetting
+  the stack start in `allocateStack`), then pools and slot arrays (the slot
+  index)
+  - Mainly helps L1 (and x86 4K aliasing), L2 spreading comes from the
+  addresses themselves
+- `fillPattern` in `memory_ops.h` for raw byte patterns over 8 bytes, using a
+doubling copy (and SIMD splats for widths that divide the vector), as arrays
+of structs use a typed fill instead
+- Checked `copy(std::span<T> destination, std::span<const T> source)` in
+`memory_ops.h` that asserts the source fits, taking the capacity from the span,
+alongside the unchecked byte `copy`
 
 ### CPU
 
@@ -370,8 +409,6 @@ fixed batch with extra waiters woken under the bucket lock
   - Template option for the inline vector's allocation to be direct OS calls
   for a page rather than the engine allocators (allocating through those under
   a bucket lock can park on the `ParkingLot` itself)
-    - Or maybe change segment allocator lock not held to parking lot, e.g. spin
-    lock
   - Still keep handling for failed allocation (wake under the lock)
   - It should be noted that this should only be reviewed properly once the fibre
   approach is implemented due to the impact that might have on locks
@@ -404,34 +441,27 @@ epsilon, infinity and max when doing so
   `clamp`, `floor` etc.)
 - `Mat3` class
 - Maths helpers (maybe more maybe less)
-  - `nearlyEqual` on the maths classes for approximate comparison
-    - Turn on `-Wfloat-equal` and deal with any bits that would want
-     suppression
-  - `min`, `max`, `clamp` and `minMax` (`<algorithm>`)
+  - Turn on `-Wfloat-equal` (the maths classes all have `nearlyEqual` now)
+  and deal with any bits that would want suppression
+  - `minMax` (`<algorithm>`)
   - `abs`, `sign`, `floor`, `ceil`, `round` and `sqrt` (`<cmath>`), as
   `constexpr` where the standard ones are not
   - `lerp` and `midpoint` (`<cmath>`, `<numeric>`), plus `inverseLerp`, `remap`
   and `smoothstep`
   - `gcd` and `lcm` (`<numeric>`)
-  - Power of two checks and rounding, and alignment helpers (`<bit>`)
-  - Bit functions (`popcount`, `countrZero`, `countlZero`, `bitCeil`,
-  `bitWidth`) returning desired types so call sites lose their `static_cast`s
+  - `bitCeil` (rounding up to a power of two) in `bits.h`, returning the
+  desired type like the other bit functions
+  - Benchmark whether any `bits.h` function is worth runtime dispatching
   - Bit maths helpers that do as much as they can at compile time and are
   templated over the unsigned integer sizes (8, 16, 32 and 64 bit) so the same
-  call works on any register or packed field:
+  call works on any register or packed field - bitmap type:
     - `extractBits(value, highBit, lowBit)` and `insertBits(value, field,
     highBit, lowBit)` for reading and writing a packed field, e.g. the task
     state's packed status, priority, affinity and lifetime
-    - `bitMask(width)` and `bitRangeMask(highBit, lowBit)`, valid up to the full
-    width
-    - `isBitSet`, `setBit`, `clearBit` and `toggleBit` on a value, plus bitmap
-    versions over a span of words, replacing `SegmentAllocator`'s own bitmap
-    functions, `FeatureSet`'s word masks, the CPUID bit tests in
-    `cpu_probe_x86_64.cpp` and the affinity bit tests in `thread_linux.cpp` and
-    `cpu_probe_windows.cpp`
-    - `lowestSetBit` (`x & -x`) and `clearLowestSetBit` (`x & (x - 1)`), and
-    iterating the set bits of a mask, e.g. walking affinity and group masks
-    - `countlOne`, `countrOne`, `rotl`, `rotr` and `byteswap` (`<bit>`)
+    - `bitMask(width)`, valid up to the full width
+    - `isBitSet`, `setBit`, `clearBit` and `toggleBit`
+    - Iterating the set bits of a mask, e.g. walking affinity and group masks
+    - `rotl`, `rotr` and `byteswap` (`<bit>`)
     - `signExtend(value, bits)` for signed packed fields
     - `reverseBits` and `parity`, if a use comes up
     - Morton encoding (interleaving the bits of two or three coordinates), for

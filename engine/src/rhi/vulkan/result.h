@@ -3,6 +3,7 @@
 
 #include <vulkan/vulkan_core.h>
 
+#include <trivial/core/assert.h>
 #include <trivial/core/compiler.h>
 #include <trivial/core/log.h>
 

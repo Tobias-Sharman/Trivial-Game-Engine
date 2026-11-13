@@ -1,8 +1,6 @@
 #include <trivial/engine.h>
 
 #include <cstddef>
-#include <cstdlib>
-#include <new>
 #include <vector>
 
 #include <trivial/application.h>
@@ -17,28 +15,30 @@
 #include <trivial/task/task_system.h>
 
 #include "core/cpu/cpu_capabilities.h"
-#include "core/memory/memory_capabilities.h"
+#include "core/memory/os/memory_capabilities.h"
 #include "core/sync/parking_lot.h"
 #include "core/time/time_capabilities.h"
 
 namespace trivial {
+
+Engine::CoreSystems::CoreSystems() noexcept {
+	cpu::initCapabilities();
+	memory::initCapabilities();
+	time::initCapabilities();
+
+	TRIVIAL_LOG_STARTUP_SYSTEM_INFO();
+}
+
+Engine::CoreSystems::~CoreSystems() {
+	cpu::freeCapabilities();
+}
 
 Engine::Engine(const EngineConfig& config) noexcept
     : m_requestedGraphicsApi(config.graphicsApi)
     , m_window(config.window)
     , m_gpu(config.graphicsApi, config.applicationInfo, m_window)
     , m_renderer(&m_gpu) {
-	memory::initCapabilities();
-	cpu::initCapabilities();
-	time::initCapabilities();
-
-	TRIVIAL_LOG_STARTUP_SYSTEM_INFO();
-
-	thread::Thread* mainThread = new (std::nothrow) thread::Thread();
-	if (mainThread == nullptr) {
-		TRIVIAL_LOG_FATAL_PREFIX("Engine", "Failed to allocate main thread adoption record");
-		std::abort();
-	}
+	thread::Thread* mainThread = new thread::Thread();
 	mainThread->adoptCurrentThread({.name = "Main", .type = thread::ThreadType::Main});
 
 	task::TaskSystemConfig taskConfig = config.tasks;
@@ -46,19 +46,8 @@ Engine::Engine(const EngineConfig& config) noexcept
 
 	const std::size_t kCapacity = 1 + taskConfig.workers.count + taskConfig.workers.maxStandbyWorkers;
 
-	sync::ParkingLot* parkingLot = new (std::nothrow) sync::ParkingLot(kCapacity);
-	if (parkingLot == nullptr) {
-		TRIVIAL_LOG_FATAL_PREFIX("Engine", "Failed to allocate ParkingLot");
-		std::abort();
-	}
-	sync::setActiveParkingLot(parkingLot);
-
-	task::TaskSystem* taskSystem = new (std::nothrow) task::TaskSystem(taskConfig);
-	if (taskSystem == nullptr) {
-		TRIVIAL_LOG_FATAL_PREFIX("Engine", "Failed to allocate TaskSystem");
-		std::abort();
-	}
-	task::setActiveTaskSystem(taskSystem);
+	sync::setActiveParkingLot(new sync::ParkingLot(kCapacity));
+	task::setActiveTaskSystem(new task::TaskSystem(taskConfig));
 }
 
 Engine::~Engine() {
@@ -69,8 +58,6 @@ Engine::~Engine() {
 	sync::setActiveParkingLot(nullptr);
 
 	delete thread::Thread::current();
-
-	cpu::freeCapabilities();
 }
 
 void Engine::tick(Application& application) noexcept {

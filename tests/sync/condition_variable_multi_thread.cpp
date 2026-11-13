@@ -3,7 +3,6 @@
 
 #include <gtest/gtest.h>
 
-#include <trivial/core/platform.h>
 #include <trivial/core/sync/condition_variable.h>
 #include <trivial/core/sync/mutex.h>
 #include <trivial/core/thread/thread.h>
@@ -52,18 +51,10 @@ TEST(ConditionVariableMultiThreadTest, WaitUnblocksOnNotifyOne) {
 	};
 
 	trivial::thread::Thread waiter;
-#if TRIVIAL_PLATFORM_POSIX
-	trivial::thread::ThreadConfig config;
-	trivial::tests::attachStackAllocator(config);
-
-	const trivial::thread::ThreadCreateResult kResult = waiter.create(config, &waitWorker, &context);
-	ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
-#else
 	const trivial::thread::ThreadConfig kConfig{};
 
 	const trivial::thread::ThreadCreateResult kResult = waiter.create(kConfig, &waitWorker, &context);
 	ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
-#endif // TRIVIAL_PLATFORM_POSIX
 
 	mutex.lock();
 	ready = true;
@@ -94,18 +85,10 @@ TEST(ConditionVariableMultiThreadTest, NotifyAllWakesEveryWaiter) {
 
 	trivial::core::HeapArray<trivial::thread::Thread> waiters(g_kWaiterThreads);
 	for (trivial::thread::Thread& waiter : waiters) {
-#if TRIVIAL_PLATFORM_POSIX
-		trivial::thread::ThreadConfig config;
-		trivial::tests::attachStackAllocator(config);
-
-		const trivial::thread::ThreadCreateResult kResult = waiter.create(config, &waitWorker, &context);
-		ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
-#else
 		const trivial::thread::ThreadConfig kConfig{};
 
 		const trivial::thread::ThreadCreateResult kResult = waiter.create(kConfig, &waitWorker, &context);
 		ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
-#endif // TRIVIAL_PLATFORM_POSIX
 	}
 
 	mutex.lock();

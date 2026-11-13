@@ -7,24 +7,12 @@
 #include <gtest/gtest.h>
 
 #include <trivial/core/log.h>
-#include <trivial/core/platform.h>
 #include <trivial/core/thread/thread.h>
 
 #include "core/heap_array.h"
 #include "core/sync/parking_lot.h"
 
-#if TRIVIAL_PLATFORM_POSIX
-#include <trivial/core/thread/thread_stack_allocator.h>
-#endif // TRIVIAL_PLATFORM_POSIX
-
 namespace trivial::tests {
-
-#if TRIVIAL_PLATFORM_POSIX
-inline void attachStackAllocator(trivial::thread::ThreadConfig& config) {
-	static trivial::thread::ThreadStackAllocator s_allocator;
-	config.stackAllocator = &s_allocator;
-}
-#endif // TRIVIAL_PLATFORM_POSIX
 
 // Tests creating threads or a parking lot should be ran isolated to not mess
 // with the global counter on thread index and introduce a subtle error
@@ -65,18 +53,10 @@ inline void runOnAllThreads(std::size_t threadCount, trivial::thread::ThreadStar
 	trivial::core::HeapArray<trivial::thread::Thread> threads(threadCount);
 
 	for (trivial::thread::Thread& thread : threads) {
-#if TRIVIAL_PLATFORM_POSIX
-		trivial::thread::ThreadConfig config;
-		attachStackAllocator(config);
-
-		const trivial::thread::ThreadCreateResult kResult = thread.create(config, routine, arg);
-		ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
-#else
 		const trivial::thread::ThreadConfig kConfig{};
 
 		const trivial::thread::ThreadCreateResult kResult = thread.create(kConfig, routine, arg);
 		ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
-#endif // TRIVIAL_PLATFORM_POSIX
 	}
 
 	for (trivial::thread::Thread& thread : threads) {

@@ -23,8 +23,8 @@ HEADER_SUFFIXES: tuple[str, ...] = (".h",)
 SOURCE_SUFFIXES: tuple[str, ...] = (".cpp",)
 
 TOOL_VERSIONS: dict[str, str] = {
-    "clang-format": "23.1.2",
-    "clang-tidy": "23.1.2",
+    "clang-format": "23.1.5",
+    "clang-tidy": "23.1.5",
 }
 
 ALL_EXCLUDED_PRESETS: tuple[str, ...] = ("debug-deps",)
@@ -76,10 +76,6 @@ ISOLATED_TESTS: tuple[str, ...] = (
     "TaskSystemMultiThreadTest.ReentrantWaitDoesNotDeadlock",
     "TaskSystemMultiThreadTest.DestructorDrainsOutstandingWork",
     "TaskSystemMultiThreadTest.DestructorWaitsForSlowTask",
-    "SegmentAllocatorMultiThreadTest.AllocFreeNeverHandsOutSameSegment",
-    "SegmentAllocatorMultiThreadTest.MultiSegmentRunsStayContiguous",
-    "SegmentAllocatorMultiThreadTest.CommitKeepsPrefixConsistent",
-    "SegmentAllocatorMultiThreadTest.CommittedBytesReturnsToBaseline",
 )
 
 

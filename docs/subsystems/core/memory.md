@@ -7,18 +7,19 @@ them are not documented here yet.
 
 `trivial/core/memory/memory.h` gives:
 
-- `pageSize()`: the smallest unit memory is committed, freed or protected in
-- `allocationGranularity()`: the step address space is reserved in
-- `largePageSize()`: only with `TRIVIAL_MEMORY_ENABLE_LARGE_PAGES`, 0 when large
-pages are not available
+- `osPageSize()`: the smallest unit memory is committed, freed or protected in
+- `osAllocationGranularity()`: the step address space is reserved in
+
+Both return a `ByteCount` (`trivial/core/memory/byte_count.h`), the type every
+memory API takes and returns sizes as.
 
 ## Known at compile time or probed
 
 Where a platform has one page size it is fixed at compile time
-(`TRIVIAL_PLATFORM_PAGE_SIZE_KNOWN` in `platform.h`), so `pageSize()` and
-`allocationGranularity()` are constants and nothing is stored:
+(`TRIVIAL_PLATFORM_OS_PAGE_SIZE_KNOWN == 1` in `platform.h`), so `osPageSize()`
+and `osAllocationGranularity()` are constants and nothing is stored:
 
-|                 | Page size                  | Allocation granularity |
+|                 | OS page size               | OS allocation granularity |
 | --------------- | -------------------------- | ---------------------- |
 | Windows         | 4 KiB                      | 64 KiB                 |
 | macOS ARM64     | 16 KiB                     | page size              |
@@ -35,17 +36,6 @@ In builds with asserts the OS is still asked on every platform, and start-up
 asserts that it agrees with the compile time values, so a wrong assumption is
 caught on the first run rather than as a misaligned reservation later. If you
 run into such an assertion please raise an issue so it can be addressed.
-
-## Large pages
-
-Large pages are opt-in (`TRIVIAL_MEMORY_ENABLE_LARGE_PAGES`) and untested, see
-[platform support](../../manual/platform_support.md).
-
-- Windows: `GetLargePageMinimum`, which is only usable once the user has been
-granted the "Lock pages in memory" privilege
-- Linux: the size one page table level up from the base page (2 MiB with 4 KiB
-pages), as transparent huge pages are a hint the kernel may ignore
-- macOS: not available, so the size is 0
 
 ## Other start-up checks
 

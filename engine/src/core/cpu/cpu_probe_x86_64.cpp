@@ -11,6 +11,8 @@
 #include <trivial/core/cpu/cpu.h>
 #include <trivial/core/cpu/cpu_feature_set.h>
 #include <trivial/core/cpu/cpu_features_x86_64.h>
+#include <trivial/core/memory/byte_count.h>
+#include <trivial/core/memory/memory_ops.h>
 #include <trivial/core/platform.h>
 
 #if TRIVIAL_COMPILER_MSVC || TRIVIAL_COMPILER_CLANG_CL
@@ -866,7 +868,7 @@ void probeIdentity() noexcept {
 	const CpuidResult kVendorLeaf = cpuid(TRIVIAL_CPU_X86_64_LEAF_VENDOR, 0);
 	const std::array<std::uint32_t, 3> kVendorWords{kVendorLeaf.ebx, kVendorLeaf.edx, kVendorLeaf.ecx};
 	static_assert(sizeof(kVendorWords) < sizeof(VendorString), "Vendor string should fit with its terminator");
-	std::memcpy(identity.vendor.data(), kVendorWords.data(), sizeof(kVendorWords));
+	memory::copy(identity.vendor.data(), kVendorWords.data(), memory::bytes(sizeof(kVendorWords)));
 	identity.vendor[sizeof(kVendorWords)] = '\0';
 
 	const std::uint32_t kMaxLeaf = kVendorLeaf.eax;
@@ -921,10 +923,10 @@ void probeIdentity() noexcept {
 		static_assert(sizeof(kBrandLeaves) < sizeof(BrandString), "Brand string should fit with its terminator");
 
 		BrandString& brand = identity.brand;
-		std::memcpy(brand.data(), kBrandLeaves.data(), sizeof(kBrandLeaves));
+		memory::copy(brand.data(), kBrandLeaves.data(), memory::bytes(sizeof(kBrandLeaves)));
 		brand[sizeof(kBrandLeaves)] = '\0';
 		const std::size_t kLeadingSpaces = std::strspn(brand.data(), " ");
-		std::memmove(brand.data(), &brand[kLeadingSpaces], std::strlen(&brand[kLeadingSpaces]) + 1);
+		memory::move(brand.data(), &brand[kLeadingSpaces], memory::bytes(std::strlen(&brand[kLeadingSpaces]) + 1));
 	}
 }
 

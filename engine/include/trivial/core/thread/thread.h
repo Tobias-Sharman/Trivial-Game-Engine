@@ -7,11 +7,12 @@
 #include <cstdint>
 
 #include <trivial/core/compiler.h>
+#include <trivial/core/memory/byte_count.h>
 #include <trivial/core/platform.h>
 #include <trivial/core/thread/thread_config.h>
 
 #if TRIVIAL_PLATFORM_POSIX
-#include <trivial/core/thread/thread_stack_allocator.h>
+#include <trivial/core/thread/thread_stack.h>
 #endif // TRIVIAL_PLATFORM_POSIX
 
 #if TRIVIAL_PLATFORM_MACOS
@@ -61,7 +62,7 @@ private:
 struct ThreadConfig {
 	const char* name = nullptr;
 	ThreadType type = ThreadType::Unknown;
-	std::size_t stackSize = TRIVIAL_THREAD_DEFAULT_STACK_SIZE_BYTES;
+	memory::ByteCount stackSize = memory::bytes(TRIVIAL_THREAD_DEFAULT_STACK_SIZE_BYTES);
 	bool createSuspended = false;
 
 #if TRIVIAL_PLATFORM_LINUX
@@ -78,10 +79,6 @@ struct ThreadConfig {
 	std::uint64_t affinityMask = 0;
 	std::uint16_t affinityGroup = 0;
 #endif // TRIVIAL_PLATFORM_HAS_CPU_AFFINITY
-
-#if TRIVIAL_PLATFORM_POSIX
-	ThreadStackAllocator* stackAllocator = nullptr;
-#endif // TRIVIAL_PLATFORM_POSIX
 };
 
 class Thread {
@@ -156,7 +153,6 @@ private:
 	void* m_arg = nullptr;
 
 #if TRIVIAL_PLATFORM_POSIX
-	ThreadStackAllocator* m_stackAllocator = nullptr;
 	ThreadStackAllocation m_stackAllocation{};
 #endif // TRIVIAL_PLATFORM_POSIX
 

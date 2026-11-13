@@ -3,7 +3,7 @@
 #include <trivial/core/log.h>
 
 #include "core/cpu/cpu_capabilities.h"
-#include "core/memory/memory_capabilities.h"
+#include "core/memory/os/memory_capabilities.h"
 #include "core/time/time_capabilities.h"
 
 int main(int argc, char** argv) {

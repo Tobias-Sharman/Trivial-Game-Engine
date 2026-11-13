@@ -6,76 +6,67 @@
 #include <type_traits>
 
 #include <trivial/core/assert.h>
+#include <trivial/core/compiler.h>
 #include <trivial/core/time/time_constants.h>
 
 namespace trivial::time {
 
 struct Duration {
-	[[nodiscard]] static constexpr Duration fromNanoseconds(std::int64_t nanoseconds) noexcept {
-		Duration result;
-		result.m_nanoseconds = nanoseconds;
-		return result;
+	TRIVIAL_FORCE_INLINE constexpr Duration() noexcept = default;
+
+	[[nodiscard]] TRIVIAL_FORCE_INLINE static constexpr Duration fromNanoseconds(std::int64_t nanoseconds) noexcept {
+		return Duration(nanoseconds);
 	}
 
-	[[nodiscard]] constexpr std::int64_t count() const noexcept { return m_nanoseconds; }
+	[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr std::int64_t count() const noexcept { return m_nanoseconds; }
 
-	[[nodiscard]] constexpr std::int64_t toMicroseconds() const noexcept {
+	[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr std::int64_t toMicroseconds() const noexcept {
 		return m_nanoseconds / TRIVIAL_TIME_NANOSECONDS_PER_MICROSECOND;
 	}
 
-	[[nodiscard]] constexpr std::int64_t toMilliseconds() const noexcept {
+	[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr std::int64_t toMilliseconds() const noexcept {
 		return m_nanoseconds / TRIVIAL_TIME_NANOSECONDS_PER_MILLISECOND;
 	}
 
-	[[nodiscard]] constexpr std::int64_t toMillisecondsCeil() const noexcept {
+	[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr std::int64_t toMillisecondsCeil() const noexcept {
 		const std::int64_t kWhole = m_nanoseconds / TRIVIAL_TIME_NANOSECONDS_PER_MILLISECOND;
 		return m_nanoseconds % TRIVIAL_TIME_NANOSECONDS_PER_MILLISECOND > 0 ? kWhole + 1 : kWhole;
 	}
 
-	[[nodiscard]] constexpr std::int64_t toSeconds() const noexcept {
+	[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr std::int64_t toSeconds() const noexcept {
 		return m_nanoseconds / TRIVIAL_TIME_NANOSECONDS_PER_SECOND;
 	}
 
-	[[nodiscard]] constexpr double toSecondsDouble() const noexcept {
+	[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr double toSecondsDouble() const noexcept {
 		return static_cast<double>(m_nanoseconds) / static_cast<double>(TRIVIAL_TIME_NANOSECONDS_PER_SECOND);
 	}
 
-	[[nodiscard]] constexpr Duration operator+() const noexcept { return *this; }
-	[[nodiscard]] constexpr Duration operator-() const noexcept {
-		Duration result = *this;
-		result.m_nanoseconds = -m_nanoseconds;
-		return result;
+	[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr Duration operator+() const noexcept { return *this; }
+	[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr Duration operator-() const noexcept {
+		return Duration(-m_nanoseconds);
 	}
 
-	[[nodiscard]] constexpr Duration operator+(Duration rhs) const noexcept {
-		Duration result = *this;
-		result.m_nanoseconds += rhs.m_nanoseconds;
-		return result;
+	[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr Duration operator+(Duration rhs) const noexcept {
+		return Duration(m_nanoseconds + rhs.m_nanoseconds);
 	}
 
-	[[nodiscard]] constexpr Duration operator-(Duration rhs) const noexcept {
-		Duration result = *this;
-		result.m_nanoseconds -= rhs.m_nanoseconds;
-		return result;
+	[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr Duration operator-(Duration rhs) const noexcept {
+		return Duration(m_nanoseconds - rhs.m_nanoseconds);
 	}
 
-	[[nodiscard]] constexpr Duration operator*(std::int64_t scalar) const noexcept {
-		Duration result = *this;
-		result.m_nanoseconds *= scalar;
-		return result;
+	[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr Duration operator*(std::int64_t scalar) const noexcept {
+		return Duration(m_nanoseconds * scalar);
 	}
 
-	[[nodiscard]] constexpr Duration operator/(std::int64_t scalar) const noexcept {
+	[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr Duration operator/(std::int64_t scalar) const noexcept {
 		constexpr std::int64_t kMin = std::numeric_limits<std::int64_t>::min();
 		TRIVIAL_ASSUME(scalar != 0);
 		TRIVIAL_ASSUME(!(m_nanoseconds == kMin && scalar == -1)); // NOLINT(readability-simplify-boolean-expr)
 
-		Duration result = *this;
-		result.m_nanoseconds /= scalar;
-		return result;
+		return Duration(m_nanoseconds / scalar);
 	}
 
-	[[nodiscard]] constexpr std::int64_t operator/(Duration rhs) const noexcept {
+	[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr std::int64_t operator/(Duration rhs) const noexcept {
 		constexpr std::int64_t kMin = std::numeric_limits<std::int64_t>::min();
 		TRIVIAL_ASSUME(rhs.m_nanoseconds != 0);
 		// NOLINTNEXTLINE(readability-simplify-boolean-expr)
@@ -84,33 +75,31 @@ struct Duration {
 		return m_nanoseconds / rhs.m_nanoseconds;
 	}
 
-	[[nodiscard]] constexpr Duration operator%(Duration rhs) const noexcept {
+	[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr Duration operator%(Duration rhs) const noexcept {
 		constexpr std::int64_t kMin = std::numeric_limits<std::int64_t>::min();
 		TRIVIAL_ASSUME(rhs.m_nanoseconds != 0);
 		// NOLINTNEXTLINE(readability-simplify-boolean-expr)
 		TRIVIAL_ASSUME(!(m_nanoseconds == kMin && rhs.m_nanoseconds == -1));
 
-		Duration result = *this;
-		result.m_nanoseconds %= rhs.m_nanoseconds;
-		return result;
+		return Duration(m_nanoseconds % rhs.m_nanoseconds);
 	}
 
-	constexpr Duration& operator+=(Duration rhs) noexcept {
+	TRIVIAL_FORCE_INLINE constexpr Duration& operator+=(Duration rhs) noexcept {
 		m_nanoseconds += rhs.m_nanoseconds;
 		return *this;
 	}
 
-	constexpr Duration& operator-=(Duration rhs) noexcept {
+	TRIVIAL_FORCE_INLINE constexpr Duration& operator-=(Duration rhs) noexcept {
 		m_nanoseconds -= rhs.m_nanoseconds;
 		return *this;
 	}
 
-	constexpr Duration& operator*=(std::int64_t scalar) noexcept {
+	TRIVIAL_FORCE_INLINE constexpr Duration& operator*=(std::int64_t scalar) noexcept {
 		m_nanoseconds *= scalar;
 		return *this;
 	}
 
-	constexpr Duration& operator/=(std::int64_t scalar) noexcept {
+	TRIVIAL_FORCE_INLINE constexpr Duration& operator/=(std::int64_t scalar) noexcept {
 		constexpr std::int64_t kMin = std::numeric_limits<std::int64_t>::min();
 		TRIVIAL_ASSUME(scalar != 0);
 		TRIVIAL_ASSUME(!(m_nanoseconds == kMin && scalar == -1)); // NOLINT(readability-simplify-boolean-expr)
@@ -119,7 +108,7 @@ struct Duration {
 		return *this;
 	}
 
-	constexpr Duration& operator%=(Duration rhs) noexcept {
+	TRIVIAL_FORCE_INLINE constexpr Duration& operator%=(Duration rhs) noexcept {
 		constexpr std::int64_t kMin = std::numeric_limits<std::int64_t>::min();
 		TRIVIAL_ASSUME(rhs.m_nanoseconds != 0);
 		// NOLINTNEXTLINE(readability-simplify-boolean-expr)
@@ -129,40 +118,45 @@ struct Duration {
 		return *this;
 	}
 
-	[[nodiscard]] constexpr bool operator==(const Duration&) const noexcept = default;
+	[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr bool operator==(const Duration&) const noexcept = default;
 
-	[[nodiscard]] constexpr bool operator<(Duration rhs) const noexcept { return m_nanoseconds < rhs.m_nanoseconds; }
-	[[nodiscard]] constexpr bool operator<=(Duration rhs) const noexcept { return m_nanoseconds <= rhs.m_nanoseconds; }
-	[[nodiscard]] constexpr bool operator>(Duration rhs) const noexcept { return m_nanoseconds > rhs.m_nanoseconds; }
-	[[nodiscard]] constexpr bool operator>=(Duration rhs) const noexcept { return m_nanoseconds >= rhs.m_nanoseconds; }
+	[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr bool operator<(Duration rhs) const noexcept {
+		return m_nanoseconds < rhs.m_nanoseconds;
+	}
+	[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr bool operator<=(Duration rhs) const noexcept {
+		return m_nanoseconds <= rhs.m_nanoseconds;
+	}
+	[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr bool operator>(Duration rhs) const noexcept {
+		return m_nanoseconds > rhs.m_nanoseconds;
+	}
+	[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr bool operator>=(Duration rhs) const noexcept {
+		return m_nanoseconds >= rhs.m_nanoseconds;
+	}
 
 private:
+	TRIVIAL_FORCE_INLINE constexpr explicit Duration(std::int64_t nanoseconds) noexcept
+	    : m_nanoseconds(nanoseconds) {}
+
 	std::int64_t m_nanoseconds = 0;
 };
 
-[[nodiscard]] constexpr Duration operator*(std::int64_t scalar, Duration duration) noexcept {
+[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr Duration operator*(std::int64_t scalar, Duration duration) noexcept {
 	return duration * scalar;
 }
 
-[[nodiscard]] constexpr Duration nanoseconds(std::int64_t count) noexcept {
+[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr Duration nanoseconds(std::int64_t count) noexcept {
 	return Duration::fromNanoseconds(count);
 }
 
-[[nodiscard]] constexpr Duration microseconds(std::int64_t count) noexcept {
-	TRIVIAL_ASSERT(count <= std::numeric_limits<std::int64_t>::max() / TRIVIAL_TIME_NANOSECONDS_PER_MICROSECOND);
-	TRIVIAL_ASSERT(count >= std::numeric_limits<std::int64_t>::min() / TRIVIAL_TIME_NANOSECONDS_PER_MICROSECOND);
+[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr Duration microseconds(std::int64_t count) noexcept {
 	return Duration::fromNanoseconds(count * TRIVIAL_TIME_NANOSECONDS_PER_MICROSECOND);
 }
 
-[[nodiscard]] constexpr Duration milliseconds(std::int64_t count) noexcept {
-	TRIVIAL_ASSERT(count <= std::numeric_limits<std::int64_t>::max() / TRIVIAL_TIME_NANOSECONDS_PER_MILLISECOND);
-	TRIVIAL_ASSERT(count >= std::numeric_limits<std::int64_t>::min() / TRIVIAL_TIME_NANOSECONDS_PER_MILLISECOND);
+[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr Duration milliseconds(std::int64_t count) noexcept {
 	return Duration::fromNanoseconds(count * TRIVIAL_TIME_NANOSECONDS_PER_MILLISECOND);
 }
 
-[[nodiscard]] constexpr Duration seconds(std::int64_t count) noexcept {
-	TRIVIAL_ASSERT(count <= std::numeric_limits<std::int64_t>::max() / TRIVIAL_TIME_NANOSECONDS_PER_SECOND);
-	TRIVIAL_ASSERT(count >= std::numeric_limits<std::int64_t>::min() / TRIVIAL_TIME_NANOSECONDS_PER_SECOND);
+[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr Duration seconds(std::int64_t count) noexcept {
 	return Duration::fromNanoseconds(count * TRIVIAL_TIME_NANOSECONDS_PER_SECOND);
 }
 

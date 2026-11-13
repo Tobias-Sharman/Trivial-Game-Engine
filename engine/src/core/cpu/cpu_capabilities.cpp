@@ -5,7 +5,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
-#include <cstring>
 #include <string_view>
 
 #include <trivial/core/config.h>
@@ -13,6 +12,8 @@
 #include <trivial/core/cpu/cpu_config.h>
 #include <trivial/core/cpu/cpu_feature_set.h>
 #include <trivial/core/log.h>
+#include <trivial/core/memory/byte_count.h>
+#include <trivial/core/memory/memory_ops.h>
 #include <trivial/core/platform.h>
 
 #if TRIVIAL_ARCH_X86_64
@@ -314,7 +315,7 @@ void copyBrand(std::string_view reported) noexcept {
 	BrandString& brand = detail::g_detectedCapabilities.identity.brand;
 	const std::size_t kCopied = std::min(kLength, brand.size() - 1);
 
-	std::memcpy(brand.data(), reported.data(), kCopied);
+	memory::copy(brand.data(), reported.data(), memory::bytes(kCopied));
 	brand[kCopied] = '\0';
 
 	if (kLength > kCopied) {

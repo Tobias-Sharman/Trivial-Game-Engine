@@ -4,7 +4,6 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <cstring>
 #include <limits>
 #include <span>
 #include <sys/sysctl.h>
@@ -14,6 +13,8 @@
 #include <trivial/core/cpu/cpu.h>
 #include <trivial/core/cpu/cpu_feature_set.h>
 #include <trivial/core/cpu/cpu_features_arm64.h>
+#include <trivial/core/memory/byte_count.h>
+#include <trivial/core/memory/memory_ops.h>
 
 #include "core/cpu/cpu_probe_arm64.h"
 
@@ -313,7 +314,7 @@ namespace trivial::cpu {
 void probeIdentity() noexcept {
 	probeFeatures();
 
-	std::memcpy(detail::g_detectedCapabilities.identity.vendor.data(), "Apple", sizeof("Apple"));
+	memory::copy(detail::g_detectedCapabilities.identity.vendor.data(), "Apple", memory::bytes(sizeof("Apple")));
 
 	std::size_t brandSize = 0;
 

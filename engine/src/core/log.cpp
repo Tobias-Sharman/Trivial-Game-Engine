@@ -4,6 +4,7 @@
 
 #if TRIVIAL_ENABLE_LOGGING
 
+#include <cinttypes>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
@@ -15,9 +16,9 @@
 #include <trivial/core/assert.h>
 #include <trivial/core/compiler.h>
 #include <trivial/core/cpu/cpu.h>
+#include <trivial/core/memory/byte_count.h>
 #include <trivial/core/memory/memory.h>
 #include <trivial/core/memory/memory_config.h>
-#include <trivial/core/memory/memory_constants.h>
 #include <trivial/core/platform.h>
 #include <trivial/core/time/time.h>
 #include <trivial/core/time/time_constants.h>
@@ -60,32 +61,32 @@ TRIVIAL_COLD void logInfo(const char* prefix, std::format_string<const Args&...>
 	TRIVIAL_LOG_INFO_PREFIX(prefix, kText.c_str());
 }
 
-[[nodiscard]] TRIVIAL_COLD std::string formatSize(std::uint64_t bytes) noexcept {
-	if (bytes == 0) {
+[[nodiscard]] TRIVIAL_COLD std::string formatSize(trivial::memory::ByteCount size) noexcept {
+	if (size.isZero()) {
 		return "unknown";
 	}
 
 	const char* unit = "B";
-	std::uint64_t divisor = 1;
+	trivial::memory::ByteCount divisor = trivial::memory::bytes(1);
 
-	if (bytes >= TRIVIAL_LOG_SYSTEM_INFO_SIZE_UNIT_LIMIT) {
+	if (size >= trivial::memory::bytes(TRIVIAL_LOG_SYSTEM_INFO_SIZE_UNIT_LIMIT)) {
 		unit = "KiB";
-		divisor = TRIVIAL_MEMORY_BYTES_PER_KIB;
+		divisor = trivial::memory::kibibytes(1);
 	}
 
-	if (bytes >= TRIVIAL_LOG_SYSTEM_INFO_SIZE_UNIT_LIMIT * TRIVIAL_MEMORY_BYTES_PER_KIB) {
+	if (size >= trivial::memory::kibibytes(TRIVIAL_LOG_SYSTEM_INFO_SIZE_UNIT_LIMIT)) {
 		unit = "MiB";
-		divisor = TRIVIAL_MEMORY_BYTES_PER_MIB;
+		divisor = trivial::memory::mebibytes(1);
 	}
 
-	if (bytes >= TRIVIAL_LOG_SYSTEM_INFO_SIZE_UNIT_LIMIT * TRIVIAL_MEMORY_BYTES_PER_MIB) {
+	if (size >= trivial::memory::mebibytes(TRIVIAL_LOG_SYSTEM_INFO_SIZE_UNIT_LIMIT)) {
 		unit = "GiB";
-		divisor = TRIVIAL_MEMORY_BYTES_PER_GIB;
+		divisor = trivial::memory::gibibytes(1);
 	}
 
 	return std::format("{}.{:02} {}",
-	                   bytes / divisor,
-	                   bytes % divisor * TRIVIAL_LOG_SYSTEM_INFO_SIZE_HUNDREDTHS / divisor,
+	                   size / divisor,
+	                   size % divisor * TRIVIAL_LOG_SYSTEM_INFO_SIZE_HUNDREDTHS / divisor,
 	                   unit);
 }
 
@@ -96,7 +97,7 @@ TRIVIAL_COLD void appendCache(std::string& line, std::string_view name, std::uin
 
 		line += std::format(", {} {} (#{}, shared by {})",
 		                    name,
-		                    formatSize(kCache.sizeBytes),
+		                    formatSize(kCache.size()),
 		                    cacheIndex,
 		                    kCache.sharingLogicalProcessorCount);
 	}
@@ -104,10 +105,10 @@ TRIVIAL_COLD void appendCache(std::string& line, std::string_view name, std::uin
 
 #else
 TRIVIAL_COLD void appendCache(std::string& line, std::string_view name, const trivial::cpu::CacheInfo& cache) noexcept {
-	if (cache.sizeBytes != 0) {
+	if (!cache.size().isZero()) {
 		line += std::format(", {} {} (shared by {})",
 		                    name,
-		                    formatSize(cache.sizeBytes),
+		                    formatSize(cache.size()),
 		                    cache.sharingLogicalProcessorCount);
 	}
 }
@@ -135,13 +136,17 @@ void logMessageWithPrefix(LogLevel level, const char* prefix, const char* messag
 	(void)std::fputc('\n', stderr);
 }
 
-void logOomFailure(const char* prefix, const char* context, std::size_t requestedSize, int osErrorCode) noexcept {
+void logOomFailure(LogLevel level,
+                   const char* prefix,
+                   const char* context,
+                   trivial::memory::ByteCount requestedSize,
+                   int osErrorCode) noexcept {
 	(void)std::fprintf(stderr, // NOLINT(cppcoreguidelines-pro-type-vararg)
-	                   "Trivial %s [%s]: %s (requested %zu bytes, os error %d)\n",
-	                   logLevelName(LogLevel::Fatal),
+	                   "Trivial %s [%s]: %s (requested %" PRIu64 " bytes, os error %d)\n",
+	                   logLevelName(level),
 	                   prefix,
 	                   context,
-	                   requestedSize,
+	                   requestedSize.count(),
 	                   osErrorCode);
 }
 
@@ -286,11 +291,9 @@ void logCpuTopology() noexcept {
 void logMemoryInfo() noexcept {
 	constexpr const char* kPrefix = "Memory";
 
-	logInfo(kPrefix, "Page size: {}", formatSize(trivial::memory::pageSize()));
-	logInfo(kPrefix, "Allocation granularity: {}", formatSize(trivial::memory::allocationGranularity()));
-#if TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
-	logInfo(kPrefix, "Large page size: {}", formatSize(trivial::memory::largePageSize()));
-#endif // TRIVIAL_MEMORY_ENABLE_LARGE_PAGES
+	logInfo(kPrefix, "OS page size: {}", formatSize(trivial::memory::osPageSize()));
+	logInfo(kPrefix, "OS allocation granularity: {}", formatSize(trivial::memory::osAllocationGranularity()));
+	logInfo(kPrefix, "Physical memory: {}", formatSize(trivial::memory::physicalMemorySize()));
 }
 
 void logTimeInfo() noexcept {

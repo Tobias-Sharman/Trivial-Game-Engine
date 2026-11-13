@@ -48,6 +48,21 @@ public:
 	[[nodiscard]] const render::Renderer& renderer() const noexcept TRIVIAL_LIFETIMEBOUND { return m_renderer; }
 
 private:
+	class CoreSystems {
+	public:
+		CoreSystems() noexcept;
+
+		~CoreSystems();
+
+		CoreSystems(const CoreSystems&) = delete;
+		CoreSystems& operator=(const CoreSystems&) = delete;
+
+		CoreSystems(CoreSystems&&) = delete;
+		CoreSystems& operator=(CoreSystems&&) = delete;
+	};
+
+	TRIVIAL_NO_UNIQUE_ADDRESS CoreSystems m_coreSystems;
+
 	GraphicsApi m_requestedGraphicsApi = GraphicsApi::Auto;
 	FrameTimer m_frameTimer;
 	std::uint64_t m_frameNumber = 0;

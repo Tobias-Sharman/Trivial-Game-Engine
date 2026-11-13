@@ -13,7 +13,9 @@
 
 #include <trivial/core/assert.h>
 #include <trivial/core/log.h>
-#include <trivial/core/thread/thread_stack_allocator.h>
+#include <trivial/core/memory/byte_count.h>
+#include <trivial/core/memory/memory_ops.h>
+#include <trivial/core/thread/thread_stack.h>
 
 #define TRIVIAL_THREAD_AFFINITY_MASK_BITS 64U
 
@@ -33,7 +35,7 @@ void copyName(const char* name, std::array<char, TRIVIAL_THREAD_MAX_NAME_LENGTH>
 
 	const std::size_t kLength = std::min(std::strlen(name), outName.size() - 1);
 
-	std::memcpy(outName.data(), name, kLength);
+	trivial::memory::copy(outName.data(), name, trivial::memory::bytes(kLength));
 	outName[kLength] = '\0';
 }
 
@@ -54,21 +56,18 @@ namespace trivial::thread {
 
 	copyName(config.name, m_name);
 
-	TRIVIAL_ASSERT(config.stackAllocator != nullptr);
-
 	ThreadStackAllocation allocation{};
 	int osErrorCode = 0;
 
-	if (!config.stackAllocator->allocate(config.stackSize, allocation, osErrorCode)) {
+	if (!allocateStack(config.stackSize, allocation, osErrorCode)) {
 		return ThreadCreateResult{.error = ThreadCreateError::StackAllocationFailed, .platformErrorCode = osErrorCode};
 	}
 
-	m_stackAllocator = config.stackAllocator;
 	m_stackAllocation = allocation;
 
 	pthread_attr_t attr{};
 	pthread_attr_init(&attr);
-	pthread_attr_setstack(&attr, allocation.stackBase, allocation.stackSize);
+	pthread_attr_setstack(&attr, allocation.stackBase, allocation.stackSize.toSize());
 
 	if (config.schedPolicy != SCHED_OTHER) {
 		if (pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED) != 0
@@ -107,8 +106,7 @@ namespace trivial::thread {
 	pthread_attr_destroy(&attr);
 
 	if (kResult != 0) {
-		m_stackAllocator->release(m_stackAllocation);
-		m_stackAllocator = nullptr;
+		releaseStack(m_stackAllocation);
 		m_stackAllocation = ThreadStackAllocation{};
 		m_state.store(ThreadState::NotStarted, std::memory_order_release);
 
@@ -188,8 +186,7 @@ void Thread::join() noexcept {
 
 	pthread_join(kHandle, nullptr);
 
-	m_stackAllocator->release(m_stackAllocation);
-	m_stackAllocator = nullptr;
+	releaseStack(m_stackAllocation);
 	m_stackAllocation = ThreadStackAllocation{};
 
 	m_state.store(ThreadState::Joined, std::memory_order_release);

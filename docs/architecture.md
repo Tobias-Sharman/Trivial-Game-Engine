@@ -28,7 +28,7 @@ a starting point in the future.
 
 ### Missing from the diagram
 
-- Memory: virtual memory, segment allocator, thread stack allocator,
+- Memory: OS memory layer, commit accounting, thread stack allocator,
 capabilities
 - Threading: `Thread`, ParkingLot, sync primitives
 - Time: platform time, `Instant`/`Duration`

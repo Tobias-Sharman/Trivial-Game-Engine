@@ -1,6 +1,5 @@
 #include <trivial/core/cpu/cpu.h>
 
-#include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -75,7 +74,7 @@ TEST(CpuTest, CountsAreConsistent) {
 }
 
 TEST(CpuTest, CacheLineSizeIsZeroOrPowerOfTwo) {
-	EXPECT_TRUE(cacheLineSize() == 0 || std::has_single_bit(cacheLineSize())) << cacheLineSize();
+	EXPECT_TRUE(cacheLineSize().isZero() || cacheLineSize().isPowerOfTwo()) << cacheLineSize().count();
 }
 
 TEST(CpuTest, QuotaAndAvailableAreBounded) {

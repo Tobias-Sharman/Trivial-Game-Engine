@@ -12,6 +12,8 @@
 #include <trivial/core/cpu/cpu_feature_set.h>
 #include <trivial/core/cpu/cpu_features_arm64.h>
 #include <trivial/core/log.h>
+#include <trivial/core/memory/byte_count.h>
+#include <trivial/core/memory/memory_ops.h>
 
 #include "core/cpu/cpu_probe_arm64.h"
 
@@ -502,7 +504,9 @@ void probeIdentity() noexcept {
 		__asm__ volatile("mrs %0, midr_el1" : "=r"(mainIdRegister)); // NOLINT(portability-no-assembler)
 
 		const char* kVendor = implementerName(decodeMainId(mainIdRegister).implementer);
-		std::memcpy(detail::g_detectedCapabilities.identity.vendor.data(), kVendor, std::strlen(kVendor) + 1);
+		memory::copy(detail::g_detectedCapabilities.identity.vendor.data(),
+		             kVendor,
+		             memory::bytes(std::strlen(kVendor) + 1));
 	} else {
 		TRIVIAL_LOG_ERROR_PREFIX("Cpu", "the OS does not allow reading the main ID, so the vendor is unknown");
 	}

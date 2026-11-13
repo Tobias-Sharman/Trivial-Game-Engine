@@ -7,7 +7,7 @@ Diagnostics:
     IgnoreHeader:
       - '[/\]trivial_user_config\.h'
       - /_time\.h
-      - /mach/(arm|i386)/kern_return\.h
+      - /mach/(arm|i386)/(kern_return|vm_types)\.h
       - /sys/_pthread/.*
       - /sys/_types/.*
       - /bits/.*

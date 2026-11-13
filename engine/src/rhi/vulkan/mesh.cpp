@@ -1,12 +1,14 @@
 #include "rhi/vulkan/mesh.h"
 
 #include <cstdint>
-#include <cstring>
 #include <span>
 
 #include <vulkan/vulkan_core.h>
 
 #include <trivial/core/assert.h>
+#include <trivial/core/memory/byte_count.h>
+#include <trivial/core/memory/memory_ops.h>
+#include <trivial/core/memory/pointer_arithmetic.h>
 #include <trivial/rhi/mesh_types.h>
 
 #include "rhi/vulkan/result.h"
@@ -65,10 +67,11 @@ MeshData createMeshData(VmaAllocator allocator,
 	TRIVIAL_ASSERT(mesh.buffer != VK_NULL_HANDLE);
 	TRIVIAL_ASSERT(allocationInfo.pMappedData != nullptr);
 
-	std::uint8_t* destination = static_cast<std::uint8_t*>(allocationInfo.pMappedData);
-	std::memcpy(destination, vertices.data(), static_cast<std::size_t>(kVertexBytes));
-	//NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic) -> cba to to do subspan to avoid this
-	std::memcpy(destination + kVertexBytes, indices.data(), static_cast<std::size_t>(kIndexBytes));
+	void* const kDestination = allocationInfo.pMappedData;
+	memory::copy(kDestination, vertices.data(), memory::bytes(kVertexBytes));
+	memory::copy(memory::pointerPlus(kDestination, memory::bytes(kVertexBytes)),
+	             indices.data(),
+	             memory::bytes(kIndexBytes));
 
 	return mesh;
 }

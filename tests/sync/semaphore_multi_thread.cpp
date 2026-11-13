@@ -3,7 +3,6 @@
 
 #include <gtest/gtest.h>
 
-#include <trivial/core/platform.h>
 #include <trivial/core/sync/semaphore.h>
 #include <trivial/core/thread/thread.h>
 
@@ -61,18 +60,10 @@ TEST(SemaphoreMultiThreadTest, AcquireUnblocksAfterRelease) {
 	SemaphoreReleaseContext context{.semaphore = &semaphore, .released = &released};
 
 	trivial::thread::Thread releaser;
-#if TRIVIAL_PLATFORM_POSIX
-	trivial::thread::ThreadConfig config;
-	trivial::tests::attachStackAllocator(config);
-
-	const trivial::thread::ThreadCreateResult kResult = releaser.create(config, &releaseWorker, &context);
-	ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
-#else
 	const trivial::thread::ThreadConfig kConfig{};
 
 	const trivial::thread::ThreadCreateResult kResult = releaser.create(kConfig, &releaseWorker, &context);
 	ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
-#endif // TRIVIAL_PLATFORM_POSIX
 
 	semaphore.acquire();
 

@@ -10,6 +10,7 @@
 #include <trivial/core/compiler.h>
 #include <trivial/core/config.h>
 #include <trivial/core/cpu/cpu_feature_set.h>
+#include <trivial/core/memory/byte_count.h>
 #include <trivial/core/platform.h>
 
 #if TRIVIAL_ARCH_X86_64
@@ -41,6 +42,10 @@ enum class CacheKind : std::uint8_t {
 };
 
 struct CacheInfo {
+	[[nodiscard]] TRIVIAL_FORCE_INLINE constexpr memory::ByteCount size() const noexcept {
+		return memory::bytes(sizeBytes);
+	}
+
 	std::uint32_t sizeBytes;
 	std::uint16_t associativity;
 	std::uint16_t sharingLogicalProcessorCount;
@@ -236,9 +241,9 @@ template <Arm64Feature Feature>
 	return detail::g_detectedCapabilities.topology.numaNodeCount;
 }
 
-[[nodiscard]] TRIVIAL_FORCE_INLINE std::uint16_t cacheLineSize() noexcept {
+[[nodiscard]] TRIVIAL_FORCE_INLINE memory::ByteCount cacheLineSize() noexcept {
 	TRIVIAL_ASSERT(detail::g_detectedCapabilities.initialised);
-	return detail::g_detectedCapabilities.topology.cacheLineSize;
+	return memory::bytes(detail::g_detectedCapabilities.topology.cacheLineSize);
 }
 
 [[nodiscard]] TRIVIAL_FORCE_INLINE bool runningTranslated() noexcept {

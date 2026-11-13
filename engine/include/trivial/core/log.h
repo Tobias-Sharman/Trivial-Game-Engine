@@ -6,10 +6,9 @@
 #include <trivial/core/config.h>
 
 #if TRIVIAL_ENABLE_LOGGING
-#include <cstddef>
-
 #include <trivial/core/compiler.h>
 #include <trivial/core/log_config.h>
+#include <trivial/core/memory/byte_count.h>
 #endif // TRIVIAL_ENABLE_LOGGING
 
 namespace trivial::core {
@@ -26,9 +25,10 @@ enum class LogLevel : std::uint8_t {
 
 void logMessage(LogLevel level, const char* message) noexcept;
 void logMessageWithPrefix(LogLevel level, const char* prefix, const char* message) noexcept;
-TRIVIAL_COLD void logOomFailure(const char* prefix,
+TRIVIAL_COLD void logOomFailure(LogLevel level,
+                                const char* prefix,
                                 const char* context,
-                                std::size_t requestedSize,
+                                memory::ByteCount requestedSize,
                                 int osErrorCode) noexcept;
 
 TRIVIAL_COLD void logCpuInfo() noexcept;
@@ -60,8 +60,18 @@ TRIVIAL_COLD void logSystemInfo() noexcept;
 #define TRIVIAL_LOG_FATAL_PREFIX(prefix, message)                                                                      \
 	::trivial::core::logMessageWithPrefix(::trivial::core::LogLevel::Fatal, (prefix), (message))
 
-#define TRIVIAL_LOG_OOM_FAILURE(prefix, context, requestedSize, osErrorCode)                                           \
-	::trivial::core::logOomFailure((prefix), (context), (requestedSize), (osErrorCode))
+#define TRIVIAL_LOG_OOM_WARNING(prefix, context, requestedSize, osErrorCode)                                           \
+	::trivial::core::logOomFailure(::trivial::core::LogLevel::Warning,                                                 \
+	                               (prefix),                                                                           \
+	                               (context),                                                                          \
+	                               (requestedSize),                                                                    \
+	                               (osErrorCode))
+#define TRIVIAL_LOG_OOM_FATAL(prefix, context, requestedSize, osErrorCode)                                             \
+	::trivial::core::logOomFailure(::trivial::core::LogLevel::Fatal,                                                   \
+	                               (prefix),                                                                           \
+	                               (context),                                                                          \
+	                               (requestedSize),                                                                    \
+	                               (osErrorCode))
 
 #define TRIVIAL_LOG_CPU_INFO() ::trivial::core::logCpuInfo()
 #define TRIVIAL_LOG_CPU_TOPOLOGY() ::trivial::core::logCpuTopology()
@@ -103,7 +113,8 @@ TRIVIAL_COLD void logSystemInfo() noexcept;
 #define TRIVIAL_LOG_ERROR_PREFIX(prefix, message) ((void)0)
 #define TRIVIAL_LOG_FATAL_PREFIX(prefix, message) ((void)0)
 
-#define TRIVIAL_LOG_OOM_FAILURE(prefix, context, requestedSize, osErrorCode) ((void)0)
+#define TRIVIAL_LOG_OOM_WARNING(prefix, context, requestedSize, osErrorCode) ((void)0)
+#define TRIVIAL_LOG_OOM_FATAL(prefix, context, requestedSize, osErrorCode) ((void)0)
 
 #define TRIVIAL_LOG_CPU_INFO() ((void)0)
 #define TRIVIAL_LOG_CPU_TOPOLOGY() ((void)0)

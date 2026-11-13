@@ -50,7 +50,7 @@ Fetched automatically by CMake at configure time:
 
 - `debug`: asserts, logging, Vulkan validation and Tracy
 - `debug-slow`: `debug` plus slow asserts and the scalar maths path
-- `debug-tsan`: `debug` with ThreadSanitizer, with Tracy, FMA and decommit off
+- `debug-tsan`: `debug` with ThreadSanitizer, with Tracy and FMA off
 - `release`: no asserts, logging, validation or Tracy
 - `relwithdebinfo`: optimised with logging and Tracy, no asserts or validation
 - `debug-deps`: `debug` with third party code in `compile_commands.json`, for

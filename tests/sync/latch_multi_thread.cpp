@@ -3,7 +3,6 @@
 
 #include <gtest/gtest.h>
 
-#include <trivial/core/platform.h>
 #include <trivial/core/sync/latch.h>
 #include <trivial/core/thread/thread.h>
 
@@ -50,18 +49,10 @@ TEST(LatchMultiThreadTest, WaitUnblocksAfterCountDown) {
 
 	trivial::core::HeapArray<trivial::thread::Thread> threads(g_kWorkerThreads);
 	for (trivial::thread::Thread& thread : threads) {
-#if TRIVIAL_PLATFORM_POSIX
-		trivial::thread::ThreadConfig config;
-		trivial::tests::attachStackAllocator(config);
-
-		const trivial::thread::ThreadCreateResult kResult = thread.create(config, &countDownWorker, &context);
-		ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
-#else
 		const trivial::thread::ThreadConfig kConfig{};
 
 		const trivial::thread::ThreadCreateResult kResult = thread.create(kConfig, &countDownWorker, &context);
 		ASSERT_EQ(kResult.error, trivial::thread::ThreadCreateError::None);
-#endif // TRIVIAL_PLATFORM_POSIX
 	}
 
 	latch.wait();
